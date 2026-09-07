@@ -4,13 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Xếp Hạng Pickleball CLB (DUPR Engine & Quỹ CLB)</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- SheetJS CDN with fallback -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
@@ -21,10 +17,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
 
-    <!-- SIDEBAR / NAVIGATION -->
     <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between shadow-xl">
         <div>
-            <!-- App Header -->
             <div class="p-5 border-b border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg">
@@ -39,7 +33,6 @@
                 </div>
             </div>
 
-            <!-- Nav Links -->
             <nav class="p-3 space-y-1" id="mainNav">
                 <button onclick="switchTab('dashboard')" class="nav-item active w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
                     <i class="fa-solid fa-chart-pie w-5 text-blue-400"></i>
@@ -80,7 +73,6 @@
             </nav>
         </div>
 
-        <!-- Sync Status Footer -->
         <div class="p-4 border-t border-slate-800 text-xs text-slate-400 space-y-1">
             <div class="flex items-center justify-between">
                 <span>Trạng thái Sync:</span>
@@ -90,10 +82,8 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT AREA -->
     <main class="flex-1 p-4 md:p-8 overflow-y-auto">
 
-        <!-- TAB 1: DASHBOARD OVERVIEW -->
         <div id="tab-dashboard" class="tab-content active space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div>
@@ -112,7 +102,6 @@
                 </div>
             </div>
 
-            <!-- KPI Cards Grid -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <p class="text-xs font-semibold text-slate-400 uppercase">Tổng Trận Đấu</p>
@@ -140,10 +129,8 @@
                 </div>
             </div>
 
-            <!-- Spotlight & Top 5 Fund Contributors Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <!-- TOP 5 BẢNG VÀNG CỐNG HIẾN CARD -->
                 <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg lg:col-span-1 space-y-4 relative overflow-hidden">
                     <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl">
                         <i class="fa-solid fa-award"></i>
@@ -159,15 +146,13 @@
                     <p class="text-xs text-amber-100">Top 5 VĐV đóng góp tiền phạt thua/hòa nhiều nhất vào Quỹ CLB:</p>
 
                     <div id="top5FundList" class="space-y-2 pt-1">
-                        <!-- Dynamically filled -->
-                    </div>
+                        </div>
 
                     <button onclick="switchTab('fundTab')" class="w-full mt-3 bg-white hover:bg-amber-50 text-amber-800 font-bold py-2 rounded-xl text-xs shadow transition text-center block">
                         Tùy Chỉnh Theo Tháng / Quý / Năm &rarr;
                     </button>
                 </div>
 
-                <!-- Top 10 Rating Leaderboard Brief -->
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
                     <div class="flex items-center justify-between border-b pb-3 border-slate-100">
                         <h3 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
@@ -190,15 +175,13 @@
                                 </tr>
                             </thead>
                             <tbody id="top10TableBody" class="divide-y divide-slate-100 font-medium">
-                                <!-- Filled dynamically -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 2: QUỸ CLB & BẢNG VÀNG TỔNG HỢP (THÁNG / QUÝ / NĂM) -->
         <div id="tab-fundTab" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -209,7 +192,6 @@
                     <p class="text-sm text-slate-500 mt-1">Lọc tổng hợp Quỹ & Bảng Vàng theo Tháng, Quý, hoặc Năm</p>
                 </div>
 
-                <!-- TIME FILTER SELECTORS -->
                 <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase">Chế Độ Lọc</label>
@@ -221,13 +203,11 @@
                         </select>
                     </div>
 
-                    <!-- Month Picker -->
                     <div id="filterMonthContainer">
                         <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Tháng</label>
                         <input type="month" id="filterMonthVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold text-xs text-slate-800">
                     </div>
 
-                    <!-- Quarter Picker -->
                     <div id="filterQuarterContainer" class="hidden flex items-center gap-2">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Quý</label>
@@ -244,7 +224,6 @@
                         </div>
                     </div>
 
-                    <!-- Year Picker -->
                     <div id="filterYearContainer" class="hidden">
                         <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Năm</label>
                         <select id="filterYearVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-xs text-slate-800"></select>
@@ -252,7 +231,6 @@
                 </div>
             </div>
 
-            <!-- Fund Summary Overview Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
                     <p class="text-xs font-bold text-amber-700 uppercase">Tổng Tiền Quỹ Thu Được</p>
@@ -271,7 +249,6 @@
                 </div>
             </div>
 
-            <!-- Full Monthly/Quarterly/Yearly Fund Leaderboard Table -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
@@ -294,14 +271,12 @@
                             </tr>
                         </thead>
                         <tbody id="fullFundTableBody" class="divide-y divide-slate-100 font-medium">
-                            <!-- Filled dynamically -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 3: BATCH FILE IMPORT (FIXED & IMPROVED) -->
         <div id="tab-importBatch" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
@@ -311,7 +286,6 @@
                 <p class="text-sm text-slate-500 mt-1">Hỗ trợ đọc file `.xlsx`, `.xls`, `.csv`. Nhập nhanh danh sách VĐV hoặc Lịch sử trận đấu.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    <!-- Import Players Card -->
                     <div class="bg-purple-50/50 border border-purple-200 p-5 rounded-2xl space-y-4">
                         <div class="flex items-center space-x-3">
                             <div class="p-3 bg-purple-600 text-white rounded-xl"><i class="fa-solid fa-users text-lg"></i></div>
@@ -328,7 +302,6 @@
                         </button>
                     </div>
 
-                    <!-- Import Matches Card -->
                     <div class="bg-emerald-50/50 border border-emerald-200 p-5 rounded-2xl space-y-4">
                         <div class="flex items-center space-x-3">
                             <div class="p-3 bg-emerald-600 text-white rounded-xl"><i class="fa-solid fa-table-list text-lg"></i></div>
@@ -348,7 +321,6 @@
             </div>
         </div>
 
-        <!-- TAB 4: MATCH LOGGING -->
         <div id="tab-matchLog" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
@@ -357,7 +329,6 @@
                 </h2>
                 <p class="text-sm text-slate-500 mt-1">Hệ thống tự động tính Rating DUPR & cộng 10.000 VNĐ phạt Quỹ CLB cho bên thua.</p>
 
-                <!-- Match Form -->
                 <form id="matchForm" onsubmit="handleSaveMatch(event)" class="mt-6 space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -380,9 +351,7 @@
                         </div>
                     </div>
 
-                    <!-- Teams Inputs -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                        <!-- Team A -->
                         <div class="space-y-4">
                             <div class="flex items-center justify-between border-b pb-2 border-slate-200">
                                 <span class="font-bold text-blue-700 text-base">ĐỘI A</span>
@@ -401,7 +370,6 @@
                             </div>
                         </div>
 
-                        <!-- Team B -->
                         <div class="space-y-4">
                             <div class="flex items-center justify-between border-b pb-2 border-slate-200">
                                 <span class="font-bold text-rose-700 text-base">ĐỘI B</span>
@@ -428,7 +396,6 @@
                 </form>
             </div>
 
-            <!-- Recent Matches Table -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><h3 class="font-bold text-slate-800 text-lg">Lịch Sử Trận Đấu Đã Ghi Nhận</h3><button onclick="approveAllPendingMatches()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-check-double"></i> Duyệt Tất Cả Trận Chờ</button></div>
                 <div class="overflow-x-auto">
@@ -446,14 +413,12 @@
                             </tr>
                         </thead>
                         <tbody id="matchesTableBody" class="divide-y divide-slate-100 font-medium">
-                            <!-- Filled dynamically -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 5: LEADERBOARD -->
         <div id="tab-leaderboard" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -486,14 +451,12 @@
                             </tr>
                         </thead>
                         <tbody id="fullLeaderboardBody" class="divide-y divide-slate-100 font-medium">
-                            <!-- Filled dynamically -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 6: PLAYERS MANAGEMENT -->
         <div id="tab-players" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -522,14 +485,12 @@
                             </tr>
                         </thead>
                         <tbody id="playersMasterTableBody" class="divide-y divide-slate-100 font-medium">
-                            <!-- Filled dynamically -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 7: PARTNER MATRIX -->
         <div id="tab-partners" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h2 class="text-2xl font-bold text-slate-900">Phân Tích Cặp Đôi Ăn Ý</h2>
@@ -549,14 +510,12 @@
                             </tr>
                         </thead>
                         <tbody id="partnerTableBody" class="divide-y divide-slate-100 font-medium">
-                            <!-- Filled dynamically -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 8: HEAD TO HEAD -->
         <div id="tab-h2h" class="tab-content space-y-6">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h2 class="text-2xl font-bold text-slate-900">So Sánh Thành Tích Đối Đầu (H2H)</h2>
@@ -575,11 +534,9 @@
             </div>
 
             <div id="h2hResults" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Dynamically populated -->
-            </div>
+                </div>
         </div>
 
-        <!-- TAB 9: SETTINGS -->
         <div id="tab-settings" class="tab-content space-y-6">
             
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -597,20 +554,18 @@
             </div>
 
             
-            <!-- ADMIN PIN CONFIG CARD -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
                     <i class="fa-solid fa-lock text-amber-500"></i>
                     <span>Cấu Hình Mã PIN Admin Ban Quản Lý</span>
                 </h3>
-                <p class="text-xs text-slate-500">Đặt mã PIN Admin để bảo vệ các thao tác: Nhập/Xóa trận đấu, Sửa VĐV, Import file Excel và Reset dữ liệu. (Mặc định: <strong>1234</strong>)</p>
+                <p class="text-xs text-slate-500">Đặt mã PIN Admin để bảo vệ các thao tác: Nhập/Xóa trận đấu, Sửa VĐV, Import file Excel, Lưu URL Google Sheets và Reset dữ liệu. (Mặc định: <strong>1234</strong>)</p>
                 <div class="flex items-center space-x-3 max-w-md">
                     <input type="password" id="adminPinInput" placeholder="Nhập PIN mới (4-8 số)" maxlength="8" class="bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono w-full">
                     <button onclick="saveAdminPin()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition whitespace-nowrap">Đổi Mã PIN</button>
                 </div>
             </div>
 
-            <!-- HARD RESET BUTTON / XÓA SẠCH DỮ LIỆU MAU -->
             <div class="bg-rose-50 p-6 rounded-2xl border border-rose-200 shadow-sm space-y-4">
                 <h3 class="text-lg font-bold text-rose-900 flex items-center space-x-2">
                     <i class="fa-solid fa-trash-can text-rose-600"></i>
@@ -627,8 +582,6 @@
 
     </main>
 
-    
-    <!-- EDIT PLAYER MODAL -->
     <div id="editPlayerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -680,8 +633,6 @@
         </div>
     </div>
 
-
-    <!-- NEW PLAYER MODAL -->
     <div id="newPlayerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -718,8 +669,6 @@
         </div>
     </div>
 
-    
-    <!-- ADMIN PIN MODAL (PASSWORD HIDDEN) -->
     <div id="adminPinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -738,13 +687,8 @@
         </div>
     </div>
 
-
-    <!-- JAVASCRIPT APP LOGIC -->
-    
-    <!-- JAVASCRIPT APP LOGIC -->
-    
     <script>
-const DEFAULT_PLAYERS = [
+        const DEFAULT_PLAYERS = [
             { id: "P001", name: "Hải", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "Thành viên sáng lập", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
             { id: "P002", name: "A Cường", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
             { id: "P003", name: "Dũng", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
@@ -770,12 +714,11 @@ const DEFAULT_PLAYERS = [
         let appState = {
             players: [],
             matches: [],
-            googleScriptUrl: "https://script.google.com/macros/s/AKfycbwbSGvup8MTYYD7ynbAUtcjOAFhFxBSz0YOEwUlmxvJsBmOlpNEMtglmHwA_RtKPxkR/exec",
+            googleScriptUrl: "",
             adminPin: "1234",
             computedStats: {}
         };
 
-        // ADMIN PIN MODAL PROMISE HELPERS
         let pinResolveCallback = null;
 
         function requestAdminPin(promptTitle = "Vui lòng nhập mã PIN Admin để tiếp tục:") {
@@ -819,49 +762,49 @@ const DEFAULT_PLAYERS = [
         }
 
         async function initApp() {
-           const savedData = localStorage.getItem('pickleball_dupr_app_data');
-    if (savedData) {
-        try {
-            appState = JSON.parse(savedData);
-        } catch(e) {
-            appState.players = [...DEFAULT_PLAYERS];
-            appState.matches = [...DEFAULT_MATCHES];
-        }
-    } else {
-        appState.players = [...DEFAULT_PLAYERS];
-        appState.matches = [...DEFAULT_MATCHES];
-    }
-
-    if (!appState.adminPin) appState.adminPin = "1234";
-
-    document.getElementById('googleScriptUrl').value = appState.googleScriptUrl || "";
-    document.getElementById('matchDate').valueAsDate = new Date();
-    
-    populateYearDropdowns();
-
-    const now = new Date();
-    const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
-    document.getElementById('filterMonthVal').value = monthStr;
-
-    updateSyncBadge();
-    recalculateDUPREngine();
-    renderAllViews();
-
-    if (appState.googleScriptUrl) {
-        try {
-            const res = await fetch(appState.googleScriptUrl);
-            const data = await res.json();
-            if (data && data.players && data.matches) {
-                appState.players = data.players;
-                appState.matches = data.matches;
-                recalculateDUPREngine();
-                renderAllViews();
+            const savedData = localStorage.getItem('pickleball_dupr_app_data');
+            if (savedData) {
+                try {
+                    appState = JSON.parse(savedData);
+                } catch(e) {
+                    appState.players = [...DEFAULT_PLAYERS];
+                    appState.matches = [...DEFAULT_MATCHES];
+                }
+            } else {
+                appState.players = [...DEFAULT_PLAYERS];
+                appState.matches = [...DEFAULT_MATCHES];
             }
-        } catch (err) {
-            console.error("Auto-sync background error:", err);
+
+            if (!appState.adminPin) appState.adminPin = "1234";
+
+            document.getElementById('googleScriptUrl').value = appState.googleScriptUrl || "";
+            document.getElementById('matchDate').valueAsDate = new Date();
+            
+            populateYearDropdowns();
+
+            const now = new Date();
+            const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterMonthVal').value = monthStr;
+
+            updateSyncBadge();
+            recalculateDUPREngine();
+            renderAllViews();
+
+            if (appState.googleScriptUrl) {
+                try {
+                    const res = await fetch(appState.googleScriptUrl);
+                    const data = await res.json();
+                    if (data && data.players && data.matches) {
+                        appState.players = data.players;
+                        appState.matches = data.matches;
+                        recalculateDUPREngine();
+                        renderAllViews();
+                    }
+                } catch (err) {
+                    console.error("Auto-sync background error:", err);
+                }
+            }
         }
-    }
-    }
 
         function populateYearDropdowns() {
             const currentYear = new Date().getFullYear();
@@ -889,7 +832,6 @@ const DEFAULT_PLAYERS = [
             renderFundTab();
         }
 
-        // BATCH FILE IMPORT PROCESSORS
         async function processPlayerImport() {
             if (!await verifyAdminPin()) return;
             const fileInput = document.getElementById('playerExcelInput');
@@ -1063,7 +1005,6 @@ const DEFAULT_PLAYERS = [
             reader.readAsArrayBuffer(file);
         }
 
-        // ENGINE DUPR RECALCULATION
         function recalculateDUPREngine() {
             let playerRatings = {}, playerMatchCounts = {}, playerWins = {}, playerLosses = {};
 
@@ -1128,7 +1069,6 @@ const DEFAULT_PLAYERS = [
             saveAppState();
         }
 
-        // TIME-FILTERED FUND CALCULATOR
         function getFilteredFundStats() {
             const mode = document.getElementById('timeFilterMode').value;
             let labelDisplay = "Tất Cả Thời Gian";
@@ -1687,11 +1627,12 @@ const DEFAULT_PLAYERS = [
             }
         }
 
-        function saveGoogleScriptUrl() {
+        async function saveGoogleScriptUrl() {
+            if (!await verifyAdminPin()) return;
             appState.googleScriptUrl = document.getElementById('googleScriptUrl').value.trim();
             saveAppState();
             updateSyncBadge();
-            alert("Đã lưu URL Google Apps Script!");
+            alert("✅ Đã lưu thành công URL Google Apps Script!");
         }
 
         function updateSyncBadge() {
