@@ -818,7 +818,7 @@ const DEFAULT_PLAYERS = [
             return false;
         }
 
-        function initApp() {
+        async function initApp() {
            const savedData = localStorage.getItem('pickleball_dupr_app_data');
     if (savedData) {
         try {
