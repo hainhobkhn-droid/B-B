@@ -846,7 +846,23 @@ const DEFAULT_PLAYERS = [
             updateSyncBadge();
             recalculateDUPREngine();
             renderAllViews();
-        }
+
+            // Tự động kéo dữ liệu ngầm từ Google Sheets nếu đã có URL kết nối
+            if (appState.googleScriptUrl) {
+                try {
+                    const res = await fetch(appState.googleScriptUrl);
+                    const data = await res.json();
+                    if (data && data.players && data.matches) {
+                        appState.players = data.players;
+                        appState.matches = data.matches;
+                        recalculateDUPREngine();
+                        renderAllViews();
+                }
+            } catch (err) {
+                console.error("Auto-sync background error:", err);
+            }
+        } 
+    }
 
         function populateYearDropdowns() {
             const currentYear = new Date().getFullYear();
