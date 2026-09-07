@@ -819,49 +819,48 @@ const DEFAULT_PLAYERS = [
         }
 
         function initApp() {
-            const savedData = localStorage.getItem('pickleball_dupr_app_data');
-            if (savedData) {
-                try {
-                    appState = JSON.parse(savedData);
-                } catch(e) {
-                    appState.players = [...DEFAULT_PLAYERS];
-                    appState.matches = [...DEFAULT_MATCHES];
-                }
-            } else {
-                appState.players = [...DEFAULT_PLAYERS];
-                appState.matches = [...DEFAULT_MATCHES];
-            }
+           const savedData = localStorage.getItem('pickleball_dupr_app_data');
+    if (savedData) {
+        try {
+            appState = JSON.parse(savedData);
+        } catch(e) {
+            appState.players = [...DEFAULT_PLAYERS];
+            appState.matches = [...DEFAULT_MATCHES];
+        }
+    } else {
+        appState.players = [...DEFAULT_PLAYERS];
+        appState.matches = [...DEFAULT_MATCHES];
+    }
 
-            if (!appState.adminPin) appState.adminPin = "1234";
+    if (!appState.adminPin) appState.adminPin = "1234";
 
-            document.getElementById('googleScriptUrl').value = appState.googleScriptUrl || "";
-            document.getElementById('matchDate').valueAsDate = new Date();
+    document.getElementById('googleScriptUrl').value = appState.googleScriptUrl || "";
+    document.getElementById('matchDate').valueAsDate = new Date();
     
-            populateYearDropdowns();
+    populateYearDropdowns();
 
-            const now = new Date();
-            const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
-            document.getElementById('filterMonthVal').value = monthStr;
+    const now = new Date();
+    const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+    document.getElementById('filterMonthVal').value = monthStr;
 
-            updateSyncBadge();
-            recalculateDUPREngine();
-            renderAllViews();
+    updateSyncBadge();
+    recalculateDUPREngine();
+    renderAllViews();
 
-            // Tự động kéo dữ liệu ngầm từ Google Sheets nếu đã có URL kết nối
-            if (appState.googleScriptUrl) {
-                try {
-                    const res = await fetch(appState.googleScriptUrl);
-                    const data = await res.json();
-                    if (data && data.players && data.matches) {
-                        appState.players = data.players;
-                        appState.matches = data.matches;
-                        recalculateDUPREngine();
-                        renderAllViews();
-                }
-            } catch (err) {
-                console.error("Auto-sync background error:", err);
+    if (appState.googleScriptUrl) {
+        try {
+            const res = await fetch(appState.googleScriptUrl);
+            const data = await res.json();
+            if (data && data.players && data.matches) {
+                appState.players = data.players;
+                appState.matches = data.matches;
+                recalculateDUPREngine();
+                renderAllViews();
             }
-        } 
+        } catch (err) {
+            console.error("Auto-sync background error:", err);
+        }
+    }
     }
 
         function populateYearDropdowns() {
