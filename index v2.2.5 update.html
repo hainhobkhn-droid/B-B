@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Xếp Hạng Pickleball CLB (DUPR Engine & Quỹ CLB)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SheetJS CDN with fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .nav-item.active { background-color: #1e293b; color: #ffffff; border-left: 4px solid #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- SIDEBAR / NAVIGATION -->
+    <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between shadow-xl">
+        <div>
+            <!-- App Header -->
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg">
+                        <i class="fa-solid fa-table-tennis-paddle-ball text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white text-base leading-tight">Pickleball DUPR</h1>
+                        <p class="text-xs text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                            <i class="fa-solid fa-piggy-bank"></i> Tích Hợp Quỹ CLB
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="p-3 space-y-1" id="mainNav">
+                <button onclick="switchTab('dashboard')" class="nav-item active w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-chart-pie w-5 text-blue-400"></i>
+                    <span>Trang Chủ Overview</span>
+                </button>
+                <button onclick="switchTab('fundTab')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-hand-holding-dollar w-5 text-amber-400"></i>
+                    <span>Quỹ CLB & Bảng Vàng</span>
+                </button>
+                <button onclick="switchTab('matchLog')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-plus-circle w-5 text-emerald-400"></i>
+                    <span>Nhập Trận Đấu</span>
+                </button>
+                <button onclick="switchTab('leaderboard')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-trophy w-5 text-amber-400"></i>
+                    <span>Bảng Xếp Hạng Rating</span>
+                </button>
+                <button onclick="switchTab('players')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-users w-5 text-purple-400"></i>
+                    <span>Danh Sách VĐV</span>
+                </button>
+                <button onclick="switchTab('importBatch')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-file-import w-5 text-indigo-400"></i>
+                    <span>Import File Excel / CSV</span>
+                </button>
+                <button onclick="switchTab('partners')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-handshake w-5 text-teal-400"></i>
+                    <span>Phân Tích Cặp Đôi</span>
+                </button>
+                <button onclick="switchTab('h2h')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-swords w-5 text-rose-400"></i>
+                    <span>Đối Đầu (H2H)</span>
+                </button>
+                <button onclick="switchTab('settings')" class="nav-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 text-sm font-semibold transition hover:bg-slate-800">
+                    <i class="fa-solid fa-sliders w-5 text-slate-400"></i>
+                    <span>Kết Nối Google Sheets</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sync Status Footer -->
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-400 space-y-1">
+            <div class="flex items-center justify-between">
+                <span>Trạng thái Sync:</span>
+                <span id="syncBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Lưu Nội Bộ</span>
+            </div>
+            <p class="text-[11px] text-slate-500 pt-1">Tự động nộp Quỹ 10.000đ/trận thua</p>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+
+        <!-- TAB 1: DASHBOARD OVERVIEW -->
+        <div id="tab-dashboard" class="tab-content active space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Trung Tâm Phân Tích Hiệu Suất & Quỹ CLB</h2>
+                    <p class="text-sm text-slate-500 mt-1">Xếp hạng DUPR, Theo dõi Quỹ phạt thua & Bảng Vàng theo Tháng / Quý / Năm</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="syncFromGoogleSheets()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow transition flex items-center space-x-2 text-sm">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Đồng Bộ Google Sheets</span>
+                    </button>
+                    <button onclick="switchTab('matchLog')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow transition flex items-center space-x-2 text-sm">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nhập Trận Mới</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase">Tổng Trận Đấu</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-2" id="kpi-total-matches">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase">VĐV CLB</p>
+                    <p class="text-2xl font-bold text-blue-600 mt-2" id="kpi-club-players">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-amber-200 bg-amber-50/30 shadow-sm">
+                    <p class="text-xs font-bold text-amber-700 uppercase">Tổng Quỹ CLB (Lọc)</p>
+                    <p class="text-2xl font-extrabold text-amber-600 mt-2" id="kpi-monthly-fund">0 VNĐ</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase">Rating TB</p>
+                    <p class="text-2xl font-bold text-emerald-600 mt-2" id="kpi-avg-rating">0.000</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase">Rating Max</p>
+                    <p class="text-2xl font-bold text-purple-600 mt-2" id="kpi-max-rating">0.000</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase">Độ Tin Cậy TB</p>
+                    <p class="text-2xl font-bold text-rose-600 mt-2" id="kpi-avg-reliability">0.0%</p>
+                </div>
+            </div>
+
+            <!-- Spotlight & Top 5 Fund Contributors Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- TOP 5 BẢNG VÀNG CỐNG HIẾN CARD -->
+                <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg lg:col-span-1 space-y-4 relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl">
+                        <i class="fa-solid fa-award"></i>
+                    </div>
+                    <div class="flex items-center justify-between border-b border-amber-400/50 pb-3">
+                        <h3 class="font-extrabold text-lg flex items-center space-x-2">
+                            <i class="fa-solid fa-crown text-yellow-300 text-xl"></i>
+                            <span>BẢNG VÀNG CỐNG HIẾN</span>
+                        </h3>
+                        <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded-full" id="dashTimeFilterLabel">Tháng Này</span>
+                    </div>
+
+                    <p class="text-xs text-amber-100">Top 5 VĐV đóng góp tiền phạt thua/hòa nhiều nhất vào Quỹ CLB:</p>
+
+                    <div id="top5FundList" class="space-y-2 pt-1">
+                        <!-- Dynamically filled -->
+                    </div>
+
+                    <button onclick="switchTab('fundTab')" class="w-full mt-3 bg-white hover:bg-amber-50 text-amber-800 font-bold py-2 rounded-xl text-xs shadow transition text-center block">
+                        Tùy Chỉnh Theo Tháng / Quý / Năm &rarr;
+                    </button>
+                </div>
+
+                <!-- Top 10 Rating Leaderboard Brief -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
+                    <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+                        <h3 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
+                            <i class="fa-solid fa-trophy text-amber-500"></i>
+                            <span>Top 10 Bảng Xếp Hạng Rating CLB</span>
+                        </h3>
+                        <button onclick="switchTab('leaderboard')" class="text-xs font-bold text-blue-600 hover:underline">Xem Tất Cả &rarr;</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase">
+                                <tr>
+                                    <th class="p-3">Hạng</th>
+                                    <th class="p-3">VĐV</th>
+                                    <th class="p-3 text-center">Rating DUPR</th>
+                                    <th class="p-3 text-center">Độ Tin Cậy</th>
+                                    <th class="p-3 text-center">Số Trận</th>
+                                    <th class="p-3 text-center">Trạng Thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top10TableBody" class="divide-y divide-slate-100 font-medium">
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: QUỸ CLB & BẢNG VÀNG TỔNG HỢP (THÁNG / QUÝ / NĂM) -->
+        <div id="tab-fundTab" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-piggy-bank text-amber-500"></i>
+                        <span>Quản Lý Quỹ CLB & Bảng Vàng Cống Hiến</span>
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">Lọc tổng hợp Quỹ & Bảng Vàng theo Tháng, Quý, hoặc Năm</p>
+                </div>
+
+                <!-- TIME FILTER SELECTORS -->
+                <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase">Chế Độ Lọc</label>
+                        <select id="timeFilterMode" onchange="handleFilterModeChange()" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-xs text-slate-800">
+                            <option value="MONTH" selected>Theo Tháng</option>
+                            <option value="QUARTER">Theo Quý</option>
+                            <option value="YEAR">Theo Năm</option>
+                            <option value="ALL">Tất Cả Thời Gian</option>
+                        </select>
+                    </div>
+
+                    <!-- Month Picker -->
+                    <div id="filterMonthContainer">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Tháng</label>
+                        <input type="month" id="filterMonthVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 font-bold text-xs text-slate-800">
+                    </div>
+
+                    <!-- Quarter Picker -->
+                    <div id="filterQuarterContainer" class="hidden flex items-center gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Quý</label>
+                            <select id="filterQuarterVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs text-slate-800">
+                                <option value="Q1">Quý 1 (T1-T3)</option>
+                                <option value="Q2">Quý 2 (T4-T6)</option>
+                                <option value="Q3">Quý 3 (T7-T9)</option>
+                                <option value="Q4">Quý 4 (T10-T12)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase">Năm</label>
+                            <select id="filterQuarterYearVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs text-slate-800"></select>
+                        </div>
+                    </div>
+
+                    <!-- Year Picker -->
+                    <div id="filterYearContainer" class="hidden">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase">Chọn Năm</label>
+                        <select id="filterYearVal" onchange="renderFundTab()" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-xs text-slate-800"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fund Summary Overview Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
+                    <p class="text-xs font-bold text-amber-700 uppercase">Tổng Tiền Quỹ Thu Được</p>
+                    <p class="text-3xl font-extrabold text-amber-600 mt-2" id="fundTotalAmount">0 VNĐ</p>
+                    <p class="text-xs text-amber-700/80 mt-1" id="fundTotalMatchesCount">Tổng số: 0 trận phát sinh phạt</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 p-5 rounded-2xl">
+                    <p class="text-xs font-bold text-blue-700 uppercase">👑 Vua Cống Hiến (Nộp nhiều nhất)</p>
+                    <p class="text-2xl font-extrabold text-blue-800 mt-2" id="fundTopDonorName">-</p>
+                    <p class="text-xs text-blue-700 mt-1" id="fundTopDonorAmount">0 VNĐ</p>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl">
+                    <p class="text-xs font-bold text-emerald-700 uppercase">🛡️ Dãy Bất Bại (Nộp ít nhất)</p>
+                    <p class="text-2xl font-extrabold text-emerald-800 mt-2" id="fundLowestDonorName">-</p>
+                    <p class="text-xs text-emerald-700 mt-1" id="fundLowestDonorAmount">0 VNĐ</p>
+                </div>
+            </div>
+
+            <!-- Full Monthly/Quarterly/Yearly Fund Leaderboard Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800 text-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-list-ol text-amber-500"></i>
+                        <span>Bảng Chi Tiết Tiền Nộp Quỹ CLB & Xếp Hạng Vàng</span>
+                    </h3>
+                    <span class="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full" id="fundFilterLabelDisplay">Kỳ: Tất Cả</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-white text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="p-3.5 text-center">Thứ Hạng</th>
+                                <th class="p-3.5">Tên VĐV</th>
+                                <th class="p-3.5 text-center">Trận Thua</th>
+                                <th class="p-3.5 text-center">Trận Hòa</th>
+                                <th class="p-3.5 text-center">Tổng Trận Phạt</th>
+                                <th class="p-3.5 text-center">Tiền Phạt Quỹ (VNĐ)</th>
+                                <th class="p-3.5 text-center">Danh Hiệu Bảng Vàng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullFundTableBody" class="divide-y divide-slate-100 font-medium">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: BATCH FILE IMPORT (FIXED & IMPROVED) -->
+        <div id="tab-importBatch" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                    <span>Nhập Hàng Loạt Từ File Excel / CSV</span>
+                </h2>
+                <p class="text-sm text-slate-500 mt-1">Hỗ trợ đọc file `.xlsx`, `.xls`, `.csv`. Nhập nhanh danh sách VĐV hoặc Lịch sử trận đấu.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <!-- Import Players Card -->
+                    <div class="bg-purple-50/50 border border-purple-200 p-5 rounded-2xl space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-3 bg-purple-600 text-white rounded-xl"><i class="fa-solid fa-users text-lg"></i></div>
+                            <div>
+                                <h3 class="font-bold text-purple-900 text-base">1. Import Danh Sách VĐV</h3>
+                                <p class="text-xs text-purple-700">Tự đọc cột: Tên VĐV, Phân loại, Giới tính, Rating</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600">Định dạng mẫu: <code class="bg-white px-1.5 py-0.5 rounded border text-purple-800 font-bold">Mã VĐV | Tên VĐV | Phân loại | Giới tính | Rating khởi tạo</code></p>
+                        <input type="file" id="playerExcelInput" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"/>
+                        <button onclick="processPlayerImport()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl shadow transition text-sm flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>Nạp Danh Sách VĐV</span>
+                        </button>
+                    </div>
+
+                    <!-- Import Matches Card -->
+                    <div class="bg-emerald-50/50 border border-emerald-200 p-5 rounded-2xl space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-3 bg-emerald-600 text-white rounded-xl"><i class="fa-solid fa-table-list text-lg"></i></div>
+                            <div>
+                                <h3 class="font-bold text-emerald-900 text-base">2. Import Lịch Sử Trận Đấu</h3>
+                                <p class="text-xs text-emerald-700">Nạp hàng chục/hàng trăm trận đấu cùng lúc</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600">Định dạng mẫu: <code class="bg-white px-1.5 py-0.5 rounded border text-emerald-800 font-bold">Ngày đấu | Trận số | Đội A - VĐV 1 | Đội A - VĐV 2 | Đội B - VĐV 1 | Đội B - VĐV 2 | Tỷ số A | Tỷ số B</code></p>
+                        <input type="file" id="matchExcelInput" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"/>
+                        <button onclick="processMatchImport()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow transition text-sm flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>Nạp Lịch Sử Trận Đấu</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: MATCH LOGGING -->
+        <div id="tab-matchLog" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-to-square text-emerald-500"></i>
+                    <span>Ghi Nhận Kết Quả Trận Đấu</span>
+                </h2>
+                <p class="text-sm text-slate-500 mt-1">Hệ thống tự động tính Rating DUPR & cộng 10.000 VNĐ phạt Quỹ CLB cho bên thua.</p>
+
+                <!-- Match Form -->
+                <form id="matchForm" onsubmit="handleSaveMatch(event)" class="mt-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Ngày đấu</label>
+                            <input type="date" id="matchDate" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Trận số</label>
+                            <input type="number" id="matchNum" min="1" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Loại trận đấu</label>
+                            <select id="matchType" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800">
+                                <option value="CLUB RATED">CLUB RATED (Hệ số 0.90)</option>
+                                <option value="TOURNAMENT">TOURNAMENT (Hệ số 1.00)</option>
+                                <option value="LEAGUE">LEAGUE (Hệ số 0.95)</option>
+                                <option value="FRIENDLY RATED">FRIENDLY RATED (Hệ số 0.60)</option>
+                                <option value="TRAINING">TRAINING (Không tính Rating)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Teams Inputs -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                        <!-- Team A -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between border-b pb-2 border-slate-200">
+                                <span class="font-bold text-blue-700 text-base">ĐỘI A</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-semibold text-slate-500">Tỷ số:</span>
+                                    <input type="number" id="scoreA" min="0" value="0" required class="w-16 bg-white border border-slate-300 rounded-lg p-1.5 text-center font-bold text-lg text-blue-700">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">VĐV A1</label>
+                                <select id="playerA1" required class="player-select w-full bg-white border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">VĐV A2</label>
+                                <select id="playerA2" required class="player-select w-full bg-white border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800"></select>
+                            </div>
+                        </div>
+
+                        <!-- Team B -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between border-b pb-2 border-slate-200">
+                                <span class="font-bold text-rose-700 text-base">ĐỘI B</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-semibold text-slate-500">Tỷ số:</span>
+                                    <input type="number" id="scoreB" min="0" value="0" required class="w-16 bg-white border border-slate-300 rounded-lg p-1.5 text-center font-bold text-lg text-rose-700">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">VĐV B1</label>
+                                <select id="playerB1" required class="player-select w-full bg-white border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">VĐV B2</label>
+                                <select id="playerB2" required class="player-select w-full bg-white border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-base">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu Trận Đấu & Cập Nhật Quỹ CLB</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Recent Matches Table -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><h3 class="font-bold text-slate-800 text-lg">Lịch Sử Trận Đấu Đã Ghi Nhận</h3><button onclick="approveAllPendingMatches()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-check-double"></i> Duyệt Tất Cả Trận Chờ</button></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="p-3">Ngày</th>
+                                <th class="p-3 text-center">Trận</th>
+                                <th class="p-3">Đội A</th>
+                                <th class="p-3 text-center">Tỷ Số</th>
+                                <th class="p-3">Đội B</th>
+                                <th class="p-3 text-center">Đội Thắng</th>
+                                <th class="p-3 text-center">Tiền Phạt Quỹ</th>
+                                <th class="p-3 text-center">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matchesTableBody" class="divide-y divide-slate-100 font-medium">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: LEADERBOARD -->
+        <div id="tab-leaderboard" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Bảng Xếp Hạng Rating DUPR CLB</h2>
+                    <p class="text-sm text-slate-500 mt-1">Xếp hạng theo Rating DUPR & Mức độ tin cậy của VĐV</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <select id="filterPlayerType" onchange="renderLeaderboard()" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-sm text-slate-800">
+                        <option value="ALL">Tất Cả VĐV</option>
+                        <option value="CLUB" selected>Chỉ Thành Viên CLB</option>
+                        <option value="GUEST">Chỉ Khách Mời</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-white text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="p-3.5 text-center">Hạng</th>
+                                <th class="p-3.5">Tên VĐV</th>
+                                <th class="p-3.5 text-center">Loại</th>
+                                <th class="p-3.5 text-center">Rating DUPR</th>
+                                <th class="p-3.5 text-center">Độ Tin Cậy %</th>
+                                <th class="p-3.5 text-center">Tổng Trận</th>
+                                <th class="p-3.5 text-center">Thắng/Thua</th>
+                                <th class="p-3.5 text-center">Tỷ Lệ Thắng</th>
+                                <th class="p-3.5 text-center">Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullLeaderboardBody" class="divide-y divide-slate-100 font-medium">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: PLAYERS MANAGEMENT -->
+        <div id="tab-players" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Quản Lý Danh Sách VĐV</h2>
+                    <p class="text-sm text-slate-500 mt-1">Thêm thành viên mới hoặc điều chỉnh rating khởi tạo ban đầu</p>
+                </div>
+                <button onclick="toggleNewPlayerModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-md transition flex items-center space-x-2 text-sm">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Thêm VĐV Mới</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-100 text-slate-600 text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="p-3.5">Mã VĐV</th>
+                                <th class="p-3.5">Tên VĐV</th>
+                                <th class="p-3.5 text-center">Phân Loại</th>
+                                <th class="p-3.5 text-center">Giới Tính</th>
+                                <th class="p-3.5 text-center">Sinh Hoạt</th>
+                                <th class="p-3.5 text-center">Rating Đầu</th>
+                                <th class="p-3.5 text-center">Rating DUPR</th>
+                                <th class="p-3.5 text-center">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playersMasterTableBody" class="divide-y divide-slate-100 font-medium">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 7: PARTNER MATRIX -->
+        <div id="tab-partners" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h2 class="text-2xl font-bold text-slate-900">Phân Tích Cặp Đôi Ăn Ý</h2>
+                <p class="text-sm text-slate-500 mt-1">Đánh giá hiệu suất kết hợp giữa các cặp VĐV trong CLB</p>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-white text-xs font-semibold uppercase">
+                            <tr>
+                                <th class="p-3.5">Cặp Đôi VĐV</th>
+                                <th class="p-3.5 text-center">Số Trận Chung</th>
+                                <th class="p-3.5 text-center">Thắng - Thua</th>
+                                <th class="p-3.5 text-center">Tỷ Lệ Thắng %</th>
+                                <th class="p-3.5 text-center">Trạng Thái Mẫu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partnerTableBody" class="divide-y divide-slate-100 font-medium">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 8: HEAD TO HEAD -->
+        <div id="tab-h2h" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-2xl font-bold text-slate-900">So Sánh Thành Tích Đối Đầu (H2H)</h2>
+                <p class="text-sm text-slate-500">Chọn 2 VĐV để phân tích chi tiết kết quả khi họ ở 2 bên lưới đối diện</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Chọn VĐV A</label>
+                        <select id="h2hPlayerA" onchange="renderH2H()" class="w-full bg-white border border-blue-300 rounded-xl p-2.5 font-bold text-blue-900"></select>
+                    </div>
+                    <div class="bg-rose-50 p-4 rounded-xl border border-rose-200">
+                        <label class="block text-xs font-bold text-rose-800 uppercase mb-1">Chọn VĐV B</label>
+                        <select id="h2hPlayerB" onchange="renderH2H()" class="w-full bg-white border border-rose-300 rounded-xl p-2.5 font-bold text-rose-900"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="h2hResults" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- TAB 9: SETTINGS -->
+        <div id="tab-settings" class="tab-content space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-2xl font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-link text-blue-600"></i>
+                    <span>Cấu Hình Kết Nối Google Sheets Real-time</span>
+                </h2>
+                <p class="text-sm text-slate-500">Dán URL Web App Apps Script từ Google Sheets để kích hoạt đồng bộ dữ liệu.</p>
+
+                <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200 space-y-3">
+                    <label class="block text-xs font-bold text-blue-900 uppercase">Google Apps Script Web App URL:</label>
+                    <input type="text" id="googleScriptUrl" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="w-full bg-white border border-blue-300 rounded-xl p-3 font-mono text-xs text-slate-800">
+                    <button onclick="saveGoogleScriptUrl()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition">Lưu Cấu Hình Kết Nối</button>
+                </div>
+            </div>
+
+            
+            <!-- ADMIN PIN CONFIG CARD -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-amber-500"></i>
+                    <span>Cấu Hình Mã PIN Admin Ban Quản Lý</span>
+                </h3>
+                <p class="text-xs text-slate-500">Đặt mã PIN Admin để bảo vệ các thao tác: Nhập/Xóa trận đấu, Sửa VĐV, Import file Excel và Reset dữ liệu. (Mặc định: <strong>1234</strong>)</p>
+                <div class="flex items-center space-x-3 max-w-md">
+                    <input type="password" id="adminPinInput" placeholder="Nhập PIN mới (4-8 số)" maxlength="8" class="bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono w-full">
+                    <button onclick="saveAdminPin()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition whitespace-nowrap">Đổi Mã PIN</button>
+                </div>
+            </div>
+
+            <!-- HARD RESET BUTTON / XÓA SẠCH DỮ LIỆU MAU -->
+            <div class="bg-rose-50 p-6 rounded-2xl border border-rose-200 shadow-sm space-y-4">
+                <h3 class="text-lg font-bold text-rose-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-trash-can text-rose-600"></i>
+                    <span>Xóa Trắng Toàn Bộ Dữ Liệu Mẫu (Reset Hệ Thống)</span>
+                </h3>
+                <p class="text-xs text-rose-700">Nếu bạn muốn làm lại từ đầu với file Google Sheets trống, hãy bấm nút bên dưới để xóa toàn bộ danh sách VĐV, Lịch sử trận đấu và Quỹ đang lưu trong trình duyệt.</p>
+                <button onclick="clearAllData()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-broom"></i>
+                    <span>Xóa Trắng Dữ Liệu Ngay (Reset về 0)</span>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    
+    <!-- EDIT PLAYER MODAL -->
+    <div id="editPlayerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-slate-900">Chỉnh Sửa Thông Tin VĐV</h3>
+                <button onclick="toggleEditPlayerModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form onsubmit="handleSaveEditedPlayer(event)" class="space-y-4">
+                <input type="hidden" id="editPlayerId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tên VĐV</label>
+                    <input type="text" id="editPlayerName" required class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Phân Loại</label>
+                        <select id="editPlayerType" class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="CLUB">CLUB (Chính thức)</option>
+                            <option value="GUEST">GUEST (Khách mời)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Giới Tính</label>
+                        <select id="editPlayerGender" class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="M">Nam (M)</option>
+                            <option value="F">Nữ (F)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Trạng Thái Sinh Hoạt</label>
+                        <select id="editPlayerStatus" class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="ACTIVE">Đang sinh hoạt</option>
+                            <option value="INACTIVE">Tạm nghỉ</option>
+                            <option value="LEFT">Đã rời CLB</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Rating Khởi Tạo</label>
+                        <input type="number" step="0.001" id="editPlayerRating" min="2.0" max="8.0" required class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nhật Ký Thay Đổi / Lịch Sử:</label>
+                    <div id="editPlayerHistoryLog" class="bg-slate-50 p-3 rounded-xl border text-xs text-slate-600 max-h-28 overflow-y-auto space-y-1 font-mono"></div>
+                </div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow transition">Lưu Thay Đổi</button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- NEW PLAYER MODAL -->
+    <div id="newPlayerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-slate-900">Thêm VĐV Mới</h3>
+                <button onclick="toggleNewPlayerModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form onsubmit="handleCreatePlayer(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tên VĐV</label>
+                    <input type="text" id="newPlayerName" required class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Phân Loại</label>
+                        <select id="newPlayerType" class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="CLUB">CLUB (Chính thức)</option>
+                            <option value="GUEST">GUEST (Khách mời)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Giới Tính</label>
+                        <select id="newPlayerGender" class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="M">Nam (M)</option>
+                            <option value="F">Nữ (F)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Rating Khởi Tạo (Mặc định: 4.000)</label>
+                    <input type="number" step="0.001" id="newPlayerRating" value="4.000" min="2.0" max="8.0" required class="w-full bg-slate-50 border rounded-xl p-2.5 font-medium text-slate-800">
+                </div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow transition">Lưu VĐV Mới</button>
+            </form>
+        </div>
+    </div>
+
+    
+    <!-- ADMIN PIN MODAL (PASSWORD HIDDEN) -->
+    <div id="adminPinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-amber-500"></i>
+                    <span>Xác Thực Mã PIN Admin</span>
+                </h3>
+                <button onclick="closeAdminPinModal(false)" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <p class="text-xs text-slate-600" id="pinModalPromptText">Vui lòng nhập mã PIN Admin để tiếp tục:</p>
+            <input type="password" id="modalAdminPinInput" placeholder="Nhập mã PIN..." maxlength="8" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm font-mono tracking-widest text-center" onkeydown="if(event.key==='Enter') submitAdminPinModal(true)">
+            <div class="flex items-center gap-2 pt-2">
+                <button onclick="closeAdminPinModal(false)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">Bỏ qua / Hủy</button>
+                <button onclick="submitAdminPinModal(true)" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow">Xác Nhận</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    
+    <!-- JAVASCRIPT APP LOGIC -->
+    
+    <script>
+const DEFAULT_PLAYERS = [
+            { id: "P001", name: "Hải", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "Thành viên sáng lập", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P002", name: "A Cường", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P003", name: "Dũng", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P004", name: "A Tuệ", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P005", name: "Giang", type: "CLUB", gender: "F", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P006", name: "Phương", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P007", name: "Hưng", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P008", name: "Ngọc", type: "CLUB", gender: "F", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P009", name: "Khải", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P010", name: "Hiếu", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P011", name: "Đạt", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] },
+            { id: "P012", name: "Tùng", type: "CLUB", gender: "M", initRating: 4.000, status: "ACTIVE", joinDate: "2025-01-01", notes: "", historyLog: ["2025-01-01: Gia nhập CLB (CLUB)"] }
+        ];
+
+        const DEFAULT_MATCHES = [
+            { id: 1, date: "2026-03-01", matchNum: 28, a1: "Phương", a2: "Hiếu", b1: "Khải", b2: "Hải", scoreA: 0, scoreB: 1, type: "CLUB RATED", notes: "" },
+            { id: 2, date: "2026-03-01", matchNum: 29, a1: "Hiếu", a2: "Dũng", b1: "Khải", b2: "Hải", scoreA: 0, scoreB: 1, type: "CLUB RATED", notes: "" },
+            { id: 3, date: "2026-03-01", matchNum: 30, a1: "Phương", a2: "Hiếu", b1: "Dũng", b2: "Đạt", scoreA: 0, scoreB: 1, type: "CLUB RATED", notes: "" },
+            { id: 4, date: "2026-03-02", matchNum: 31, a1: "Phương", a2: "Dũng", b1: "Hải", b2: "Tùng", scoreA: 1, scoreB: 0, type: "CLUB RATED", notes: "" },
+            { id: 5, date: "2026-03-02", matchNum: 32, a1: "Phương", a2: "Đạt", b1: "Hải", b2: "Hiếu", scoreA: 0, scoreB: 1, type: "CLUB RATED", notes: "" }
+        ];
+
+        let appState = {
+            players: [],
+            matches: [],
+            googleScriptUrl: "",
+            adminPin: "1234",
+            computedStats: {}
+        };
+
+        // ADMIN PIN MODAL PROMISE HELPERS
+        let pinResolveCallback = null;
+
+        function requestAdminPin(promptTitle = "Vui lòng nhập mã PIN Admin để tiếp tục:") {
+            return new Promise((resolve) => {
+                document.getElementById('pinModalPromptText').textContent = promptTitle;
+                const inputEl = document.getElementById('modalAdminPinInput');
+                inputEl.value = '';
+                const modal = document.getElementById('adminPinModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => inputEl.focus(), 100);
+                pinResolveCallback = resolve;
+            });
+        }
+
+        function submitAdminPinModal(isConfirmed) {
+            const inputVal = document.getElementById('modalAdminPinInput').value.trim();
+            closeAdminPinModal(isConfirmed ? inputVal : null);
+        }
+
+        function closeAdminPinModal(resultValue) {
+            const modal = document.getElementById('adminPinModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (pinResolveCallback) {
+                pinResolveCallback(resultValue);
+                pinResolveCallback = null;
+            }
+        }
+
+        async function verifyAdminPin() {
+            if (!appState.adminPin) return true;
+            const inputPin = await requestAdminPin("🔒 YÊU CẦU QUYỀN ADMIN\nVui lòng nhập mã PIN Admin để thực hiện thao tác này:");
+            if (inputPin === appState.adminPin) {
+                return true;
+            } else if (inputPin !== null && inputPin !== "") {
+                alert("❌ Mã PIN Admin không chính xác! Thao tác bị hủy bỏ.");
+                return false;
+            }
+            return false;
+        }
+
+        function initApp() {
+            const savedData = localStorage.getItem('pickleball_dupr_app_data');
+            if (savedData) {
+                try {
+                    appState = JSON.parse(savedData);
+                } catch(e) {
+                    appState.players = [...DEFAULT_PLAYERS];
+                    appState.matches = [...DEFAULT_MATCHES];
+                }
+            } else {
+                appState.players = [...DEFAULT_PLAYERS];
+                appState.matches = [...DEFAULT_MATCHES];
+            }
+
+            if (!appState.adminPin) appState.adminPin = "1234";
+
+            document.getElementById('googleScriptUrl').value = appState.googleScriptUrl || "";
+            document.getElementById('matchDate').valueAsDate = new Date();
+            
+            populateYearDropdowns();
+
+            const now = new Date();
+            const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filterMonthVal').value = monthStr;
+
+            updateSyncBadge();
+            recalculateDUPREngine();
+            renderAllViews();
+        }
+
+        function populateYearDropdowns() {
+            const currentYear = new Date().getFullYear();
+            const years = [currentYear - 1, currentYear, currentYear + 1];
+            
+            ['filterQuarterYearVal', 'filterYearVal'].forEach(selectId => {
+                const el = document.getElementById(selectId);
+                if (!el) return;
+                el.innerHTML = '';
+                years.forEach(y => {
+                    const opt = document.createElement('option');
+                    opt.value = y;
+                    opt.textContent = y;
+                    if (y === currentYear) opt.selected = true;
+                    el.appendChild(opt);
+                });
+            });
+        }
+
+        function handleFilterModeChange() {
+            const mode = document.getElementById('timeFilterMode').value;
+            document.getElementById('filterMonthContainer').classList.toggle('hidden', mode !== 'MONTH');
+            document.getElementById('filterQuarterContainer').classList.toggle('hidden', mode !== 'QUARTER');
+            document.getElementById('filterYearContainer').classList.toggle('hidden', mode !== 'YEAR');
+            renderFundTab();
+        }
+
+        // BATCH FILE IMPORT PROCESSORS
+        async function processPlayerImport() {
+            if (!await verifyAdminPin()) return;
+            const fileInput = document.getElementById('playerExcelInput');
+            if (!fileInput.files.length) {
+                alert("Vui lòng chọn file Excel hoặc CSV chứa danh sách VĐV!");
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                alert("Lỗi: Thư viện đọc Excel chưa được tải. Vui lòng kiểm tra kết nối Internet!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+                    if (!jsonData || jsonData.length === 0) {
+                        alert("File không chứa dữ liệu hoặc không đúng định dạng!");
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    jsonData.forEach((row) => {
+                        const keys = Object.keys(row);
+                        const idKey = keys.find(k => /^(mã|id|code|stt)/i.test(k.trim()));
+                        const nameKey = keys.find(k => {
+                            const tk = k.trim().toLowerCase();
+                            if (/mã|id|code|stt/i.test(tk)) return false;
+                            return /tên|name|vđv|vdv|cầu thủ|vận động viên/i.test(tk);
+                        });
+
+                        const rawName = nameKey ? row[nameKey] : (row['Tên VĐV'] || row['Tên'] || row['Name']);
+                        if (!rawName || String(rawName).trim() === '') return;
+
+                        const cleanName = String(rawName).trim();
+                        if (!appState.players.some(p => p.name.trim() === cleanName)) {
+                            const rawId = idKey ? String(row[idKey]).trim() : "";
+                            const customId = rawId !== "" ? rawId : ("P" + String(appState.players.length + 1).padStart(3, '0'));
+
+                            const typeKey = keys.find(k => /loại|type|phân/i.test(k));
+                            const genderKey = keys.find(k => /giới|gender|sex/i.test(k));
+                            const ratingKey = keys.find(k => /rating|điểm|init/i.test(k));
+
+                            const pType = (typeKey && row[typeKey] ? String(row[typeKey]) : "CLUB").toUpperCase().includes("GUEST") ? "GUEST" : "CLUB";
+                            const pGender = (genderKey && row[genderKey] ? String(row[genderKey]) : "M").toUpperCase().startsWith("F") ? "F" : "M";
+                            const pRating = ratingKey && row[ratingKey] ? parseFloat(row[ratingKey]) : 4.000;
+
+                            appState.players.push({
+                                id: customId,
+                                name: cleanName,
+                                type: pType,
+                                gender: pGender,
+                                initRating: isNaN(pRating) ? 4.000 : pRating,
+                                status: "ACTIVE",
+                                notes: "Imported",
+                                historyLog: [`${new Date().toISOString().slice(0,10)}: Import từ Excel`]
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    recalculateDUPREngine();
+                    renderAllViews();
+                    alert(`Đã nạp thành công ${addedCount} VĐV mới vào hệ thống!`);
+                    fileInput.value = '';
+                } catch (err) {
+                    console.error(err);
+                    alert("Lỗi khi đọc file Excel: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function processMatchImport() {
+            if (!await verifyAdminPin()) return;
+            const fileInput = document.getElementById('matchExcelInput');
+            if (!fileInput.files.length) {
+                alert("Vui lòng chọn file Excel hoặc CSV chứa lịch sử trận đấu!");
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                alert("Lỗi: Thư viện đọc Excel chưa được tải. Vui lòng kiểm tra kết nối Internet!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+                    if (!jsonData || jsonData.length === 0) {
+                        alert("File không chứa dữ liệu hoặc không đúng định dạng!");
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    jsonData.forEach((row, idx) => {
+                        const keys = Object.keys(row);
+                        const a1Key = keys.find(k => /a1|đội a.*1|team a.*1/i.test(k));
+                        const a2Key = keys.find(k => /a2|đội a.*2|team a.*2/i.test(k));
+                        const b1Key = keys.find(k => /b1|đội b.*1|team b.*1/i.test(k));
+                        const b2Key = keys.find(k => /b2|đội b.*2|team b.*2/i.test(k));
+
+                        const a1 = a1Key ? row[a1Key] : (row['A1'] || row['Đội A - VĐV 1']);
+                        const a2 = a2Key ? row[a2Key] : (row['A2'] || row['Đội A - VĐV 2']);
+                        const b1 = b1Key ? row[b1Key] : (row['B1'] || row['Đội B - VĐV 1']);
+                        const b2 = b2Key ? row[b2Key] : (row['B2'] || row['Đội B - VĐV 2']);
+
+                        if (a1 && a2 && b1 && b2) {
+                            const dateKey = keys.find(k => /ngày|date/i.test(k));
+                            const matchNumKey = keys.find(k => /trận|match|stt/i.test(k));
+                            const scoreAKey = keys.find(k => /tỷ số a|score a|diem a/i.test(k));
+                            const scoreBKey = keys.find(k => /tỷ số b|score b|diem b/i.test(k));
+
+                            appState.matches.push({
+                                id: Date.now() + idx,
+                                date: (() => {
+                                    let rawDate = dateKey ? row[dateKey] : row['Ngày'];
+                                    if (!rawDate) return new Date().toISOString().slice(0, 10);
+                                    if (typeof rawDate === 'number') {
+                                        let parsed = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+                                        return parsed.toISOString().slice(0, 10);
+                                    }
+                                    let dateStr = String(rawDate).trim();
+                                    if (dateStr.includes('/')) {
+                                        let parts = dateStr.split('/');
+                                        if (parts.length === 3) {
+                                            if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                                            return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                                        }
+                                    }
+                                    return dateStr.slice(0, 10);
+                                })(),
+                                matchNum: (matchNumKey && row[matchNumKey]) ? parseInt(row[matchNumKey]) : (appState.matches.length + 1),
+                                a1: String(a1).trim(),
+                                a2: String(a2).trim(),
+                                b1: String(b1).trim(),
+                                b2: String(b2).trim(),
+                                scoreA: (scoreAKey && row[scoreAKey] !== "") ? parseInt(row[scoreAKey]) : 0,
+                                scoreB: (scoreBKey && row[scoreBKey] !== "") ? parseInt(row[scoreBKey]) : 0,
+                                type: "CLUB RATED",
+                                status: "APPROVED",
+                                notes: "Imported"
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    recalculateDUPREngine();
+                    renderAllViews();
+                    alert(`Đã nạp thành công ${addedCount} trận đấu từ file Excel vào hệ thống!`);
+                    fileInput.value = '';
+                } catch (err) {
+                    console.error(err);
+                    alert("Lỗi khi đọc file Excel trận đấu: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ENGINE DUPR RECALCULATION
+        function recalculateDUPREngine() {
+            let playerRatings = {}, playerMatchCounts = {}, playerWins = {}, playerLosses = {};
+
+            appState.players.forEach(p => {
+                playerRatings[p.name] = p.initRating || 4.000;
+                playerMatchCounts[p.name] = 0; playerWins[p.name] = 0; playerLosses[p.name] = 0;
+            });
+
+            appState.matches.forEach(m => {
+                if (m.status && m.status === 'PENDING') return;
+                const pA1 = m.a1, pA2 = m.a2, pB1 = m.b1, pB2 = m.b2;
+                if (!playerRatings[pA1] || !playerRatings[pA2] || !playerRatings[pB1] || !playerRatings[pB2]) return;
+
+                const ratingA = (playerRatings[pA1] + playerRatings[pA2]) / 2;
+                const ratingB = (playerRatings[pB1] + playerRatings[pB2]) / 2;
+
+                const expectedA = 1 / (1 + Math.exp((ratingB - ratingA) / 0.900));
+                const expectedB = 1 - expectedA;
+
+                const totalPoints = m.scoreA + m.scoreB;
+                const actualA = totalPoints > 0 ? m.scoreA / totalPoints : 0.5;
+                const actualB = 1 - actualA;
+
+                const gapA = actualA - expectedA, gapB = actualB - expectedB;
+                let typeWeight = m.type === "TOURNAMENT" ? 1.00 : (m.type === "LEAGUE" ? 0.95 : (m.type === "FRIENDLY RATED" ? 0.60 : (m.type === "TRAINING" ? 0.00 : 0.90)));
+                const kFactor = 0.550;
+
+                if (typeWeight > 0) {
+                    [pA1, pA2].forEach(pName => {
+                        const provFactor = playerMatchCounts[pName] < 5 ? 1.25 : (playerMatchCounts[pName] < 10 ? 1.10 : 1.00);
+                        let delta = Math.max(-0.350, Math.min(0.350, gapA * kFactor * typeWeight * provFactor));
+                        playerRatings[pName] = Math.max(2.000, Math.min(8.000, playerRatings[pName] + delta));
+                        playerMatchCounts[pName]++;
+                        if (m.scoreA > m.scoreB) playerWins[pName]++; else if (m.scoreA < m.scoreB) playerLosses[pName]++;
+                    });
+
+                    [pB1, pB2].forEach(pName => {
+                        const provFactor = playerMatchCounts[pName] < 5 ? 1.25 : (playerMatchCounts[pName] < 10 ? 1.10 : 1.00);
+                        let delta = Math.max(-0.350, Math.min(0.350, gapB * kFactor * typeWeight * provFactor));
+                        playerRatings[pName] = Math.max(2.000, Math.min(8.000, playerRatings[pName] + delta));
+                        playerMatchCounts[pName]++;
+                        if (m.scoreB > m.scoreA) playerWins[pName]++; else if (m.scoreB < m.scoreA) playerLosses[pName]++;
+                    });
+                }
+            });
+
+            appState.computedStats = {};
+            appState.players.forEach(p => {
+                const count = playerMatchCounts[p.name] || 0;
+                const wins = playerWins[p.name] || 0;
+                const losses = playerLosses[p.name] || 0;
+                const winRate = count > 0 ? (wins / count) : 0;
+                const reliability = (Math.min(1, count / 20) * 0.40) + (Math.min(1, count / 10) * 0.25) + (Math.min(1, count / 15) * 0.20) + (0.9 * 0.15);
+                let status = count >= 10 ? "STABLE" : (count >= 5 ? "DEVELOPING" : (count > 0 ? "PROVISIONAL" : "CHƯA XẾP HẠNG"));
+
+                appState.computedStats[p.name] = {
+                    currentRating: playerRatings[p.name], matchCount: count, wins: wins, losses: losses, winRate: winRate,
+                    reliability: reliability, status: status
+                };
+            });
+
+            saveAppState();
+        }
+
+        // TIME-FILTERED FUND CALCULATOR
+        function getFilteredFundStats() {
+            const mode = document.getElementById('timeFilterMode').value;
+            let labelDisplay = "Tất Cả Thời Gian";
+            let filterMatchFn = () => true;
+
+            if (mode === "MONTH") {
+                const monthVal = document.getElementById('filterMonthVal').value || new Date().toISOString().slice(0, 7);
+                filterMatchFn = (m) => String(m.date || "").startsWith(monthVal);
+                labelDisplay = "Tháng " + monthVal.split('-').reverse().join('/');
+            } else if (mode === "QUARTER") {
+                const qVal = document.getElementById('filterQuarterVal').value;
+                const qYear = document.getElementById('filterQuarterYearVal').value;
+                labelDisplay = `${qVal} - Năm ${qYear}`;
+
+                let months = [];
+                if (qVal === "Q1") months = ["01", "02", "03"];
+                if (qVal === "Q2") months = ["04", "05", "06"];
+                if (qVal === "Q3") months = ["07", "08", "09"];
+                if (qVal === "Q4") months = ["10", "11", "12"];
+
+                filterMatchFn = (m) => {
+                    if (!String(m.date || "").startsWith(qYear)) return false;
+                    const mMonth = String(m.date || "").split('-')[1];
+                    return months.includes(mMonth);
+                };
+            } else if (mode === "YEAR") {
+                const yearVal = document.getElementById('filterYearVal').value || String(new Date().getFullYear());
+                filterMatchFn = (m) => String(m.date || "").startsWith(yearVal);
+                labelDisplay = "Năm " + yearVal;
+            }
+
+            let fundByPlayer = {};
+            let lossesByPlayer = {};
+            let drawsByPlayer = {};
+            let totalFundMatches = 0;
+
+            appState.players.forEach(p => {
+                fundByPlayer[p.name] = 0;
+                lossesByPlayer[p.name] = 0;
+                drawsByPlayer[p.name] = 0;
+            });
+
+            appState.matches.forEach(m => {
+                if (m.status && m.status === 'PENDING') return;
+                if (!filterMatchFn(m)) return;
+
+                if (m.scoreA < m.scoreB) {
+                    [m.a1, m.a2].forEach(pName => {
+                        if (fundByPlayer[pName] !== undefined) {
+                            fundByPlayer[pName] += 10000;
+                            lossesByPlayer[pName]++;
+                        }
+                    });
+                    totalFundMatches++;
+                } else if (m.scoreB < m.scoreA) {
+                    [m.b1, m.b2].forEach(pName => {
+                        if (fundByPlayer[pName] !== undefined) {
+                            fundByPlayer[pName] += 10000;
+                            lossesByPlayer[pName]++;
+                        }
+                    });
+                    totalFundMatches++;
+                } else {
+                    [m.a1, m.a2, m.b1, m.b2].forEach(pName => {
+                        if (fundByPlayer[pName] !== undefined) {
+                            fundByPlayer[pName] += 10000;
+                            drawsByPlayer[pName]++;
+                        }
+                    });
+                    totalFundMatches++;
+                }
+            });
+
+            return { fundByPlayer, lossesByPlayer, drawsByPlayer, totalFundMatches, labelDisplay };
+        }
+
+        function renderAllViews() {
+            populateDropdowns();
+            renderDashboard();
+            renderFundTab();
+            renderMatchesTable();
+            renderLeaderboard();
+            renderPlayersMasterTable();
+            renderPartnerMatrix();
+            renderH2H();
+        }
+
+        function renderDashboard() {
+            const validMatches = appState.matches.length;
+            const clubPlayers = appState.players.filter(p => p.type === "CLUB").length;
+
+            const fundStats = getFilteredFundStats();
+            const totalFund = Object.values(fundStats.fundByPlayer).reduce((a,b)=>a+b, 0);
+
+            document.getElementById('kpi-total-matches').textContent = validMatches;
+            document.getElementById('kpi-club-players').textContent = clubPlayers;
+            document.getElementById('kpi-monthly-fund').textContent = totalFund.toLocaleString('vi-VN') + " đ";
+            document.getElementById('dashTimeFilterLabel').textContent = fundStats.labelDisplay;
+
+            const sortedDonors = appState.players
+                .map(p => ({
+                    name: p.name,
+                    fund: fundStats.fundByPlayer[p.name] || 0,
+                    losses: fundStats.lossesByPlayer[p.name] || 0,
+                    draws: fundStats.drawsByPlayer[p.name] || 0
+                }))
+                .sort((a,b) => b.fund - a.fund)
+                .slice(0, 5);
+
+            const top5Container = document.getElementById('top5FundList');
+            top5Container.innerHTML = '';
+            const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
+            sortedDonors.forEach((d, idx) => {
+                top5Container.innerHTML += `
+                    <div class="flex items-center justify-between bg-white/10 p-2 rounded-xl text-sm font-semibold">
+                        <div class="flex items-center space-x-2">
+                            <span>${medals[idx]}</span>
+                            <span class="font-bold text-white">${d.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-extrabold text-yellow-200">${d.fund.toLocaleString('vi-VN')} đ</span>
+                            <span class="text-[10px] text-amber-100 block font-normal">(${d.losses} thua / ${d.draws} hòa)</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const sortedClubPlayers = appState.players
+                .filter(p => p.type === "CLUB")
+                .map(p => ({ name: p.name, ...appState.computedStats[p.name] }))
+                .sort((a,b) => b.currentRating - a.currentRating)
+                .slice(0, 10);
+
+            const top10Body = document.getElementById('top10TableBody');
+            top10Body.innerHTML = '';
+            sortedClubPlayers.forEach((p, idx) => {
+                top10Body.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 text-center font-bold text-slate-500">#${idx + 1}</td>
+                        <td class="p-3 font-bold text-slate-900">${p.name}</td>
+                        <td class="p-3 text-center font-bold text-blue-600">${p.currentRating.toFixed(3)}</td>
+                        <td class="p-3 text-center text-slate-600">${(p.reliability * 100).toFixed(1)}%</td>
+                        <td class="p-3 text-center text-slate-600">${p.matchCount}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(p.status)}">${p.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderFundTab() {
+            const fundStats = getFilteredFundStats();
+            document.getElementById('fundFilterLabelDisplay').textContent = "Kỳ Lọc: " + fundStats.labelDisplay;
+
+            const sortedDonors = appState.players
+                .map(p => ({
+                    name: p.name,
+                    fund: fundStats.fundByPlayer[p.name] || 0,
+                    losses: fundStats.lossesByPlayer[p.name] || 0,
+                    draws: fundStats.drawsByPlayer[p.name] || 0,
+                    totalPenaltyMatches: (fundStats.lossesByPlayer[p.name] || 0) + (fundStats.drawsByPlayer[p.name] || 0)
+                }))
+                .sort((a,b) => b.fund - a.fund);
+
+            const totalFundSum = sortedDonors.reduce((a,b) => a + b.fund, 0);
+
+            document.getElementById('fundTotalAmount').textContent = totalFundSum.toLocaleString('vi-VN') + " VNĐ";
+            document.getElementById('fundTotalMatchesCount').textContent = `${fundStats.labelDisplay}: Tổng ${fundStats.totalFundMatches} trận phát sinh phạt`;
+
+            if (sortedDonors.length > 0 && sortedDonors[0].fund > 0) {
+                document.getElementById('fundTopDonorName').textContent = sortedDonors[0].name + " 👑";
+                document.getElementById('fundTopDonorAmount').textContent = `${sortedDonors[0].fund.toLocaleString('vi-VN')} VNĐ (${sortedDonors[0].losses} thua / ${sortedDonors[0].draws} hòa)`;
+
+                const lowest = sortedDonors[sortedDonors.length - 1];
+                document.getElementById('fundLowestDonorName').textContent = lowest.name + " 🛡️";
+                document.getElementById('fundLowestDonorAmount').textContent = `${lowest.fund.toLocaleString('vi-VN')} VNĐ (${lowest.totalPenaltyMatches} trận phạt)`;
+            } else {
+                document.getElementById('fundTopDonorName').textContent = "-";
+                document.getElementById('fundTopDonorAmount').textContent = "0 VNĐ";
+                document.getElementById('fundLowestDonorName').textContent = "-";
+                document.getElementById('fundLowestDonorAmount').textContent = "0 VNĐ";
+            }
+
+            const body = document.getElementById('fullFundTableBody');
+            body.innerHTML = '';
+
+            sortedDonors.forEach((d, idx) => {
+                let badgeClass = "bg-slate-100 text-slate-600";
+                let badgeText = "Thành viên";
+
+                if (idx === 0 && d.fund > 0) { badgeClass = "bg-amber-500 text-white font-extrabold shadow"; badgeText = "🏆 VUA CỐNG HIẾN"; }
+                else if (idx < 5 && d.fund > 0) { badgeClass = "bg-amber-100 text-amber-800 font-bold"; badgeText = "Top " + (idx + 1) + " Cống Hiến"; }
+                else if (d.fund === 0) { badgeClass = "bg-emerald-100 text-emerald-800 font-bold"; badgeText = "🛡️ Bất Bại / Không Thua"; }
+
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3.5 text-center font-bold text-slate-500">#${idx + 1}</td>
+                        <td class="p-3.5 font-bold text-slate-900">${d.name}</td>
+                        <td class="p-3.5 text-center text-rose-600 font-semibold">${d.losses}</td>
+                        <td class="p-3.5 text-center text-amber-600 font-semibold">${d.draws}</td>
+                        <td class="p-3.5 text-center font-bold text-slate-800">${d.totalPenaltyMatches}</td>
+                        <td class="p-3.5 text-center font-extrabold text-amber-600 text-base">${d.fund.toLocaleString('vi-VN')} đ</td>
+                        <td class="p-3.5 text-center"><span class="px-2.5 py-1 rounded-full text-xs ${badgeClass}">${badgeText}</span></td>
+                    </tr>
+                `;
+            });
+            renderDashboard();
+        }
+
+        function renderMatchesTable() {
+            const body = document.getElementById('matchesTableBody');
+            body.innerHTML = '';
+            [...appState.matches].reverse().forEach(m => {
+                const winner = m.scoreA > m.scoreB ? "Đội A" : (m.scoreB > m.scoreA ? "Đội B" : "Hòa");
+                let penaltyText = "Đội B nộp 20k";
+                if (winner === "Đội A") penaltyText = "Đội B nộp 20k";
+                else if (winner === "Đội B") penaltyText = "Đội A nộp 20k";
+                else penaltyText = "Cả 2 Đội nộp 40k";
+
+                const isPending = m.status && m.status === 'PENDING';
+                const statusBadge = isPending 
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Chờ duyệt</span>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">✅ Đã duyệt</span>`;
+
+                const approveBtn = isPending
+                    ? `<button onclick="approveMatch(${m.id})" class="text-emerald-700 hover:text-emerald-900 px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 font-bold text-xs mr-1 inline-flex items-center gap-1.5 transition shadow-sm" title="Duyệt trận đấu"><i class="fa-solid fa-check"></i> Duyệt</button>`
+                    : '';
+
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50 ${isPending ? 'bg-amber-50/40' : ''}">
+                        <td class="p-3 text-slate-600">
+                            ${m.date}
+                            <div class="mt-1">${statusBadge}</div>
+                        </td>
+                        <td class="p-3 text-center font-bold text-slate-800">#${m.matchNum}</td>
+                        <td class="p-3"><span class="font-semibold text-blue-700">${m.a1}</span> & <span class="font-semibold text-blue-700">${m.a2}</span></td>
+                        <td class="p-3 text-center font-bold text-slate-900">${m.scoreA} - ${m.scoreB}</td>
+                        <td class="p-3"><span class="font-semibold text-rose-700">${m.b1}</span> & <span class="font-semibold text-rose-700">${m.b2}</span></td>
+                        <td class="p-3 text-center font-bold ${winner === 'Đội A' ? 'text-blue-600' : (winner==='Đội B'?'text-rose-600':'text-amber-600')}">${winner}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">${penaltyText}</span></td>
+                        <td class="p-3 text-center whitespace-nowrap">
+                            ${approveBtn}
+                            <button onclick="deleteMatch(${m.id})" class="text-rose-500 hover:text-rose-700 p-1.5 rounded bg-rose-50" title="Xóa trận đấu"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function approveAllPendingMatches() {
+            if (!await verifyAdminPin()) return;
+            const pendingMatches = appState.matches.filter(m => m.status === 'PENDING');
+            if (pendingMatches.length === 0) {
+                alert("ℹ️ Không có trận đấu nào đang ở trạng thái 'Chờ duyệt'!");
+                return;
+            }
+            if (confirm(`Bạn có chắc chắn muốn duyệt tất cả ${pendingMatches.length} trận đấu đang chờ?`)) {
+                pendingMatches.forEach(m => {
+                    m.status = 'APPROVED';
+                    m.notes = 'Đã được Admin duyệt hàng loạt';
+                });
+                recalculateDUPREngine();
+                renderAllViews();
+                alert(`✅ Đã duyệt thành công ${pendingMatches.length} trận đấu! Đã cập nhật Rating DUPR và Quỹ CLB.`);
+            }
+        }
+
+        async function approveMatch(id) {
+            if (!await verifyAdminPin()) return;
+            const match = appState.matches.find(m => m.id === id);
+            if (!match) return;
+            match.status = 'APPROVED';
+            match.notes = 'Đã được Admin duyệt';
+            recalculateDUPREngine();
+            renderAllViews();
+            alert("✅ Đã duyệt trận đấu thành công! Hệ thống đã tính điểm DUPR và Quỹ CLB.");
+        }
+
+        function renderLeaderboard() {
+            const filterType = document.getElementById('filterPlayerType').value;
+            const body = document.getElementById('fullLeaderboardBody');
+            body.innerHTML = '';
+
+            let list = appState.players.map(p => ({ ...p, ...appState.computedStats[p.name] }));
+            if (filterType !== "ALL") list = list.filter(p => p.type === filterType);
+            list.sort((a,b) => b.currentRating - a.currentRating);
+
+            list.forEach((p, idx) => {
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 text-center font-bold text-slate-500">#${idx + 1}</td>
+                        <td class="p-3 font-bold text-slate-900">${p.name}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold ${p.type==='CLUB'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${p.type}</span></td>
+                        <td class="p-3 text-center font-bold text-blue-600 text-base">${p.currentRating.toFixed(3)}</td>
+                        <td class="p-3 text-center text-slate-700 font-semibold">${(p.reliability * 100).toFixed(1)}%</td>
+                        <td class="p-3 text-center text-slate-800">${p.matchCount}</td>
+                        <td class="p-3 text-center text-slate-700">${p.wins} - ${p.losses}</td>
+                        <td class="p-3 text-center text-slate-700">${(p.winRate * 100).toFixed(1)}%</td>
+                        <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(p.status)}">${p.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderPlayersMasterTable() {
+            const body = document.getElementById('playersMasterTableBody');
+            body.innerHTML = '';
+            appState.players.forEach(p => {
+                const stats = appState.computedStats[p.name] || {};
+                const pStatus = p.status || 'ACTIVE';
+                let statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">Đang sinh hoạt</span>`;
+                if (pStatus === 'INACTIVE') statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">Tạm nghỉ</span>`;
+                if (pStatus === 'LEFT') statusBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-700">Đã rời CLB</span>`;
+
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 text-slate-500 font-semibold">${p.id}</td>
+                        <td class="p-3 font-bold text-slate-900">${p.name}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold ${p.type==='CLUB'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${p.type}</span></td>
+                        <td class="p-3 text-center text-slate-600">${p.gender}</td>
+                        <td class="p-3 text-center">${statusBadge}</td>
+                        <td class="p-3 text-center text-slate-600">${(p.initRating || 4.0).toFixed(3)}</td>
+                        <td class="p-3 text-center font-bold text-blue-600">${(stats.currentRating || 4.0).toFixed(3)}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="openEditPlayerModal('${p.id}')" class="text-purple-600 hover:text-purple-800 p-1.5 rounded bg-purple-50 mr-1" title="Sửa VĐV"><i class="fa-solid fa-user-pen"></i></button>
+                            <button onclick="deletePlayer('${p.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded bg-rose-50" title="Xóa VĐV"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderPartnerMatrix() {
+            const body = document.getElementById('partnerTableBody');
+            body.innerHTML = '';
+            let pairStats = {};
+
+            appState.matches.forEach(m => {
+                if (m.status && m.status === 'PENDING') return;
+                const pairA = [m.a1, m.a2].sort().join(' / ');
+                const pairB = [m.b1, m.b2].sort().join(' / ');
+
+                if (!pairStats[pairA]) pairStats[pairA] = { count: 0, wins: 0, losses: 0 };
+                if (!pairStats[pairB]) pairStats[pairB] = { count: 0, wins: 0, losses: 0 };
+
+                pairStats[pairA].count++; pairStats[pairB].count++;
+                if (m.scoreA > m.scoreB) { pairStats[pairA].wins++; pairStats[pairB].losses++; }
+                else if (m.scoreB > m.scoreA) { pairStats[pairB].wins++; pairStats[pairA].losses++; }
+            });
+
+            Object.keys(pairStats).forEach(pairName => {
+                const st = pairStats[pairName];
+                const winRate = st.count > 0 ? (st.wins / st.count) : 0;
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3.5 font-bold text-slate-900">${pairName}</td>
+                        <td class="p-3.5 text-center font-semibold text-slate-800">${st.count}</td>
+                        <td class="p-3.5 text-center text-slate-700">${st.wins} Thắng - ${st.losses} Thua</td>
+                        <td class="p-3.5 text-center font-bold text-blue-600">${(winRate * 100).toFixed(1)}%</td>
+                        <td class="p-3.5 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold ${st.count>=3?'bg-emerald-100 text-emerald-800':'bg-slate-100 text-slate-600'}">${st.count>=3?'ĐẠT CHUẨN':'CẦN THÊM TRẬN'}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderH2H() {
+            const pA = document.getElementById('h2hPlayerA').value;
+            const pB = document.getElementById('h2hPlayerB').value;
+
+            if (!pA || !pB || pA === pB) {
+                document.getElementById('h2hResults').innerHTML = `<div class="col-span-3 bg-white p-6 rounded-2xl text-center text-slate-400 border">Chọn 2 VĐV khác nhau để so sánh đối đầu</div>`;
+                return;
+            }
+
+            let totalH2H = 0, winsA = 0, winsB = 0;
+            appState.matches.forEach(m => {
+                if (m.status && m.status === 'PENDING') return;
+                const teamA = [m.a1, m.a2], teamB = [m.b1, m.b2];
+                if (teamA.includes(pA) && teamB.includes(pB)) {
+                    totalH2H++; if (m.scoreA > m.scoreB) winsA++; else if (m.scoreB > m.scoreA) winsB++;
+                } else if (teamA.includes(pB) && teamB.includes(pA)) {
+                    totalH2H++; if (m.scoreA > m.scoreB) winsB++; else if (m.scoreB > m.scoreA) winsA++;
+                }
+            });
+
+            document.getElementById('h2hResults').innerHTML = `
+                <div class="bg-white p-5 rounded-2xl border text-center"><p class="text-xs font-bold text-slate-400 uppercase">Tổng Trận Đối Đầu</p><p class="text-3xl font-extrabold text-slate-800 mt-2">${totalH2H}</p></div>
+                <div class="bg-blue-50 p-5 rounded-2xl border text-center"><p class="text-xs font-bold text-blue-600 uppercase">Số Trận ${pA} Thắng</p><p class="text-3xl font-extrabold text-blue-700 mt-2">${winsA}</p></div>
+                <div class="bg-rose-50 p-5 rounded-2xl border text-center"><p class="text-xs font-bold text-rose-600 uppercase">Số Trận ${pB} Thắng</p><p class="text-3xl font-extrabold text-rose-700 mt-2">${winsB}</p></div>
+            `;
+        }
+
+        function populateDropdowns() {
+            const matchSelects = document.querySelectorAll('.player-select');
+            matchSelects.forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '';
+                appState.players.filter(p => (p.status || 'ACTIVE') === 'ACTIVE').forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    opt.textContent = `${p.name} (${p.type})`;
+                    select.appendChild(opt);
+                });
+                if (currentVal) select.value = currentVal;
+            });
+
+            const h2hSelects = document.querySelectorAll('#h2hPlayerA, #h2hPlayerB');
+            h2hSelects.forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '';
+                appState.players.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    const statusTag = p.status && p.status !== 'ACTIVE' ? ` [${p.status}]` : '';
+                    opt.textContent = `${p.name} (${p.type})${statusTag}`;
+                    select.appendChild(opt);
+                });
+                if (currentVal) select.value = currentVal;
+            });
+        }
+
+        async function handleSaveMatch(e) {
+            e.preventDefault();
+            const a1 = document.getElementById('playerA1').value;
+            const a2 = document.getElementById('playerA2').value;
+            const b1 = document.getElementById('playerB1').value;
+            const b2 = document.getElementById('playerB2').value;
+
+            if (new Set([a1, a2, b1, b2]).size < 4) {
+                alert("❌ Lỗi: Trận đấu phải bao gồm 4 VĐV khác nhau hoàn toàn!");
+                return;
+            }
+
+            if ([a1, a2].some(p => [b1, b2].includes(p))) {
+                alert("❌ Lỗi: Vận động viên đã ở Đội A thì không thể đồng thời ở Đội B!");
+                return;
+            }
+
+            let isAutoApproved = false;
+            let inputPin = await requestAdminPin("🔒 NHẬP MÃ PIN ADMIN ĐỂ DUYỆT TRẬN LUÔN\n(Bấm Bỏ qua hoặc để trống nếu muốn gửi trận đấu ở trạng thái 'Chờ duyệt'):");
+            
+            if (inputPin === appState.adminPin) {
+                isAutoApproved = true;
+            } else if (inputPin !== null && inputPin !== "") {
+                alert("❌ Mã PIN không chính xác! Trận đấu sẽ được gửi vào danh sách 'Chờ duyệt'.");
+            }
+
+            const newMatch = {
+                id: Date.now(),
+                date: document.getElementById('matchDate').value,
+                matchNum: parseInt(document.getElementById('matchNum').value),
+                a1: a1, a2: a2, b1: b1, b2: b2,
+                scoreA: parseInt(document.getElementById('scoreA').value),
+                scoreB: parseInt(document.getElementById('scoreB').value),
+                type: document.getElementById('matchType').value,
+                status: isAutoApproved ? 'APPROVED' : 'PENDING',
+                notes: isAutoApproved ? 'Admin duyệt tự động' : 'Chờ BQL duyệt'
+            };
+
+            appState.matches.push(newMatch);
+            recalculateDUPREngine();
+            renderAllViews();
+            
+            if (isAutoApproved) {
+                alert("✅ Đã lưu và duyệt trận đấu thành công! Đã cập nhật Rating DUPR & Quỹ CLB.");
+            } else {
+                alert("⏳ Đã gửi trận đấu vào hàng đợi 'Chờ duyệt'. Trận đấu sẽ chưa tính điểm DUPR hay Quỹ cho đến khi Admin duyệt!");
+            }
+            
+            document.getElementById('matchNum').value = newMatch.matchNum + 1;
+            document.getElementById('matchForm').reset();
+            document.getElementById('matchDate').valueAsDate = new Date();
+        }
+
+        async function handleCreatePlayer(e) {
+            e.preventDefault();
+            const name = document.getElementById('newPlayerName').value.trim();
+            if (appState.players.some(p => p.name.trim().toLowerCase() === name.toLowerCase())) {
+                alert("Lỗi: Tên VĐV này đã tồn tại!"); return;
+            }
+
+            appState.players.push({
+                id: "P" + String(appState.players.length + 1).padStart(3, '0'),
+                name: name,
+                type: document.getElementById('newPlayerType').value,
+                gender: document.getElementById('newPlayerGender').value,
+                initRating: parseFloat(document.getElementById('newPlayerRating').value),
+                status: "ACTIVE",
+                notes: "",
+                historyLog: [`${new Date().toISOString().slice(0,10)}: Khởi tạo tài khoản VĐV`]
+            });
+
+            toggleNewPlayerModal();
+            recalculateDUPREngine();
+            renderAllViews();
+            alert(`✅ Đã thêm VĐV ${name} thành công!`);
+        }
+
+        async function deleteMatch(id) {
+            if (!await verifyAdminPin()) return;
+            if (confirm("Bạn có chắc chắn muốn xóa trận đấu này?")) {
+                appState.matches = appState.matches.filter(m => m.id !== id);
+                recalculateDUPREngine();
+                renderAllViews();
+                alert("✅ Đã xóa trận đấu thành công!");
+            }
+        }
+
+        async function deletePlayer(id) {
+            if (!await verifyAdminPin()) return;
+            const player = appState.players.find(p => p.id === id);
+            if (!player) return;
+
+            if (confirm(`Bạn có chắc chắn muốn xóa VĐV "${player.name}" khỏi hệ thống?`)) {
+                appState.players = appState.players.filter(p => p.id !== id);
+                recalculateDUPREngine();
+                renderAllViews();
+                alert(`✅ Đã xóa VĐV ${player.name} thành công!`);
+            }
+        }
+
+        function toggleNewPlayerModal() {
+            const modal = document.getElementById('newPlayerModal');
+            modal.classList.toggle('hidden'); modal.classList.toggle('flex');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                if (el.getAttribute('onclick') && el.getAttribute('onclick').includes(`'${tabId}'`)) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+
+        function getStatusBadgeClass(status) {
+            if (status === "STABLE") return "bg-emerald-100 text-emerald-800";
+            if (status === "DEVELOPING") return "bg-blue-100 text-blue-800";
+            if (status === "PROVISIONAL") return "bg-amber-100 text-amber-800";
+            return "bg-slate-100 text-slate-600";
+        }
+
+        function saveAppState() {
+            localStorage.setItem('pickleball_dupr_app_data', JSON.stringify(appState));
+            if (appState.googleScriptUrl) {
+                fetch(appState.googleScriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(appState)
+                }).catch(err => console.error("Error pushing to Google Sheets:", err));
+            }
+        }
+
+        function saveGoogleScriptUrl() {
+            appState.googleScriptUrl = document.getElementById('googleScriptUrl').value.trim();
+            saveAppState();
+            updateSyncBadge();
+            alert("Đã lưu URL Google Apps Script!");
+        }
+
+        function updateSyncBadge() {
+            const badge = document.getElementById('syncBadge');
+            if (appState.googleScriptUrl) {
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                badge.textContent = "Google Sheets Active";
+            } else {
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                badge.textContent = "Lưu Nội Bộ";
+            }
+        }
+
+        function syncFromGoogleSheets() {
+            if (!appState.googleScriptUrl) return;
+            fetch(appState.googleScriptUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.players && data.matches) {
+                        appState.players = data.players;
+                        appState.matches = data.matches;
+                        recalculateDUPREngine();
+                        renderAllViews();
+                        alert("✅ Đã đồng bộ dữ liệu từ Google Sheets thành công!");
+                    }
+                })
+                .catch(err => {
+                    console.error("Sync error:", err);
+                    alert("❌ Lỗi đồng bộ Google Sheets. Vui lòng kiểm tra lại URL Web App!");
+                });
+        }
+
+        async function clearAllData() {
+            if (!await verifyAdminPin()) return;
+            if (confirm("XÁC NHẬN XÓA HOÀN TOÀN DỮ LIỆU?\n\nHành động này sẽ xóa sạch toàn bộ VĐV, Lịch sử trận đấu và Quỹ trong bộ nhớ webApp về 0. Bạn có chắc chắn không?")) {
+                localStorage.removeItem('pickleball_dupr_app_data');
+                appState.players = [];
+                appState.matches = [];
+                appState.computedStats = {};
+                recalculateDUPREngine();
+                renderAllViews();
+                alert("Đã xóa sạch toàn bộ dữ liệu hệ thống về 0 thành công!");
+            }
+        }
+
+        async function saveAdminPin() {
+            if (!await verifyAdminPin()) return;
+            const newPin = document.getElementById('adminPinInput').value.trim();
+            if (newPin.length < 4) {
+                alert("Lỗi: Mã PIN Admin phải có ít nhất 4 ký tự!");
+                return;
+            }
+            appState.adminPin = newPin;
+            saveAppState();
+            alert("✅ Đã cập nhật thành công Mã PIN Admin mới!");
+            document.getElementById('adminPinInput').value = '';
+        }
+
+        async function openEditPlayerModal(pId) {
+            if (!await verifyAdminPin()) return;
+            const player = appState.players.find(p => p.id === pId);
+            if (!player) return;
+
+            document.getElementById('editPlayerId').value = player.id;
+            document.getElementById('editPlayerName').value = player.name;
+            document.getElementById('editPlayerType').value = player.type || 'CLUB';
+            document.getElementById('editPlayerGender').value = player.gender || 'M';
+            document.getElementById('editPlayerStatus').value = player.status || 'ACTIVE';
+            document.getElementById('editPlayerRating').value = player.initRating || 4.000;
+
+            const historyContainer = document.getElementById('editPlayerHistoryLog');
+            const history = player.historyLog || [`${player.joinDate || '2025-01-01'}: Khởi tạo tài khoản`];
+            historyContainer.innerHTML = history.map(h => `<div>• ${h}</div>`).join('');
+
+            toggleEditPlayerModal();
+        }
+
+        function toggleEditPlayerModal() {
+            const modal = document.getElementById('editPlayerModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function handleSaveEditedPlayer(e) {
+            e.preventDefault();
+            const pId = document.getElementById('editPlayerId').value;
+            const player = appState.players.find(p => p.id === pId);
+            if (!player) return;
+
+            const oldName = player.name;
+            const newName = document.getElementById('editPlayerName').value.trim();
+            const oldType = player.type;
+            const newType = document.getElementById('editPlayerType').value;
+            const oldStatus = player.status || 'ACTIVE';
+            const newStatus = document.getElementById('editPlayerStatus').value;
+            const newRating = parseFloat(document.getElementById('editPlayerRating').value);
+            const newGender = document.getElementById('editPlayerGender').value;
+
+            if (oldName !== newName && appState.players.some(p => p.name.trim().toLowerCase() === newName.toLowerCase())) {
+                alert("Lỗi: Tên VĐV này đã tồn tại!");
+                return;
+            }
+
+            const today = new Date().toISOString().slice(0, 10);
+            if (!player.historyLog) player.historyLog = [];
+
+            if (oldType !== newType) {
+                player.historyLog.push(`${today}: Chuyển phân loại [${oldType} ➔ ${newType}]`);
+            }
+            if (oldStatus !== newStatus) {
+                const statusNames = { 'ACTIVE': 'Đang sinh hoạt', 'INACTIVE': 'Tạm nghỉ', 'LEFT': 'Rời CLB' };
+                player.historyLog.push(`${today}: Đổi trạng thái sinh hoạt [${statusNames[oldStatus]} ➔ ${statusNames[newStatus]}]`);
+            }
+            if (oldName !== newName) {
+                player.historyLog.push(`${today}: Đổi tên VĐV [${oldName} ➔ ${newName}]`);
+                appState.matches.forEach(m => {
+                    if (m.a1 === oldName) m.a1 = newName;
+                    if (m.a2 === oldName) m.a2 = newName;
+                    if (m.b1 === oldName) m.b1 = newName;
+                    if (m.b2 === oldName) m.b2 = newName;
+                });
+            }
+
+            player.name = newName;
+            player.type = newType;
+            player.gender = newGender;
+            player.status = newStatus;
+            player.initRating = newRating;
+
+            toggleEditPlayerModal();
+            recalculateDUPREngine();
+            renderAllViews();
+            alert(`✅ Đã cập nhật thành công thông tin VĐV ${newName}!`);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
