@@ -5508,6 +5508,300 @@ const fieldLabels = {
         );
       }
 
+      function forcedPasswordChange(root) {
+        if (
+          !state.session ||
+          state.profile?.must_change_password !== true
+        ) {
+          return;
+        }
+
+        const section =
+          panel(
+            'Đổi mật khẩu lần đầu',
+            root
+          );
+
+        section.append(
+          el(
+            'p',
+            'Bạn cần đổi mật khẩu tạm trước khi sử dụng hệ thống.',
+            'notice'
+          )
+        );
+
+        const form =
+          el('form');
+
+        const grid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const makeField = (
+          id,
+          labelText
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          label.htmlFor = id;
+
+          const input =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          input.id = id;
+          input.type = 'password';
+          input.required = true;
+          input.minLength = 8;
+          input.autocomplete =
+            'new-password';
+
+          group.append(
+            label,
+            input
+          );
+
+          grid.append(
+            group
+          );
+
+          return input;
+        };
+
+        const password =
+          makeField(
+            'forced-new-password',
+            'Mật khẩu mới'
+          );
+
+        const confirmPassword =
+          makeField(
+            'forced-confirm-password',
+            'Nhập lại mật khẩu mới'
+          );
+
+        const message =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        message.hidden = true;
+        message.setAttribute(
+          'role',
+          'status'
+        );
+
+        const submit =
+          el(
+            'button',
+            'Đổi mật khẩu và tiếp tục',
+            'btn primary'
+          );
+
+        submit.type =
+          'submit';
+
+        const actions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        actions.append(
+          submit
+        );
+
+        form.append(
+          grid,
+          actions,
+          message
+        );
+
+        section.append(
+          form
+        );
+
+        form.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !state.session
+            ) {
+              return;
+            }
+
+            if (
+              password.value.length < 8
+            ) {
+              notice(
+                message,
+                'Mật khẩu mới cần ít nhất 8 ký tự.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              password.value !==
+              confirmPassword.value
+            ) {
+              notice(
+                message,
+                'Mật khẩu xác nhận không khớp.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              !form.reportValidity()
+            ) {
+              return;
+            }
+
+            state.writeBusy = true;
+
+            password.disabled = true;
+            confirmPassword.disabled = true;
+            submit.disabled = true;
+
+            submit.textContent =
+              'Đang cập nhật…';
+
+            notice(
+              message,
+              ''
+            );
+
+            try {
+              const {
+                data: updateData,
+                error: updateError
+              } =
+                await client.auth
+                  .updateUser({
+                    password:
+                      password.value
+                  });
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              if (
+                !updateData?.user ||
+                updateData.user.id !==
+                  state.session.user.id
+              ) {
+                throw new Error(
+                  'PASSWORD_UPDATE_NOT_CONFIRMED'
+                );
+              }
+
+              const {
+                data: completeData,
+                error: completeError
+              } =
+                await client.rpc(
+                  'complete_my_password_change'
+                );
+
+              if (completeError) {
+                throw completeError;
+              }
+
+              if (
+                completeData?.success !==
+                true
+              ) {
+                throw new Error(
+                  'PASSWORD_CHANGE_FLAG_NOT_CLEARED'
+                );
+              }
+
+              password.value = '';
+              confirmPassword.value = '';
+
+              await load();
+
+              render();
+
+              notice(
+                $('global-message'),
+                'Đã đổi mật khẩu thành công.',
+                false,
+                true
+              );
+
+            } catch (error) {
+              console.error(
+                'FORCED_PASSWORD_CHANGE_ERROR',
+                error
+              );
+
+              let text =
+                'Không đổi được mật khẩu. Vui lòng thử lại.';
+
+              if (
+                error?.code ===
+                'weak_password'
+              ) {
+                text =
+                  'Mật khẩu chưa đủ mạnh. Hãy chọn mật khẩu khó đoán hơn.';
+              } else if (
+                error?.code ===
+                'same_password'
+              ) {
+                text =
+                  'Mật khẩu mới phải khác mật khẩu hiện tại.';
+              }
+
+              notice(
+                message,
+                text,
+                true
+              );
+
+            } finally {
+              state.writeBusy = false;
+
+              password.disabled = false;
+              confirmPassword.disabled = false;
+              submit.disabled = false;
+
+              submit.textContent =
+                'Đổi mật khẩu và tiếp tục';
+            }
+          }
+        );
+      }
+
       function navigate(page) {
         state.page =
           modules.some(
@@ -5629,6 +5923,16 @@ const fieldLabels = {
             )
           );
 
+          return;
+        }
+
+
+        if (
+          state.profile
+            .must_change_password ===
+          true
+        ) {
+          forcedPasswordChange(root);
           return;
         }
 
@@ -12549,7 +12853,7 @@ const fieldLabels = {
                   'profiles'
                 )
                 .select(
-                  'id, full_name, role, is_active, can_collect_tournament_fee, player_id'
+                  'id, full_name, role, is_active, can_collect_tournament_fee, player_id, must_change_password'
                 )
                 .eq(
                   'id',
@@ -12593,6 +12897,14 @@ const fieldLabels = {
           if (
             result.data
               .is_active !==
+            true
+          ) {
+            return;
+          }
+
+          if (
+            result.data
+              .must_change_password ===
             true
           ) {
             return;
@@ -13571,40 +13883,82 @@ const fieldLabels = {
             );
 
             try {
+              const loginName =
+                $('login-name')
+                  .value
+                  .trim()
+                  .toLowerCase();
+
+              const password =
+                $('password')
+                  .value;
+
               const {
                 data,
                 error
               } =
-                await client.auth
-                  .signInWithPassword(
-                    {
-                      email:
-                        $('email')
-                          .value
-                          .trim(),
-                      password:
-                        $('password')
-                          .value
+                await client.functions.invoke(
+                  'login-by-nickname',
+                  {
+                    body: {
+                      login_name:
+                        loginName,
+                      password
                     }
-                  );
+                  }
+                );
 
               if (error) {
                 throw error;
               }
 
               if (
-                data.session
+                data?.ok !== true ||
+                !data?.session
+                  ?.access_token ||
+                !data?.session
+                  ?.refresh_token
               ) {
-                acceptSession(
-                  data.session
+                throw new Error(
+                  'INVALID_LOGIN'
                 );
               }
+
+              const {
+                data: sessionData,
+                error: sessionError
+              } =
+                await client.auth
+                  .setSession({
+                    access_token:
+                      data.session
+                        .access_token,
+                    refresh_token:
+                      data.session
+                        .refresh_token
+                  });
+
+              if (sessionError) {
+                throw sessionError;
+              }
+
+              if (
+                !sessionData?.session
+              ) {
+                throw new Error(
+                  'SESSION_NOT_CREATED'
+                );
+              }
+
+              acceptSession(
+                sessionData.session
+              );
             } catch (e) {
               notice(
                 $('login-message'),
                 e.code ===
                   'invalid_credentials'
-                  ? 'Email hoặc mật khẩu không đúng.'
+                  ? 'Nickname hoặc mật khẩu không đúng.'
                   : e.code ===
                       'email_not_confirmed'
                     ? 'Email chưa được xác nhận. Liên hệ quản trị viên.'
@@ -13920,8 +14274,7 @@ const fieldLabels = {
                       true,
                     autoRefreshToken:
                       true,
-                    detectSessionInUrl:
-                      false
+                    detectSessionInUrl: true
                   },
                   global: {
                     fetch: async (

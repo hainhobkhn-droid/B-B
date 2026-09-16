@@ -140,18 +140,21 @@
           class="auth-form"
         >
           <div class="form-group">
-            <label for="email">
-              Email
+            <label for="login-name">
+              Nickname
             </label>
 
             <input
-              id="email"
+              id="login-name"
               class="field"
-              type="email"
+              type="text"
               required
               autocomplete="username"
-              maxlength="254"
-              placeholder="ban@example.com"
+              minlength="3"
+              maxlength="32"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="Ví dụ: hainh"
             >
           </div>
 
@@ -645,6 +648,6 @@
   <script src="./matches.js?v=9"></script>
   <script src="./players.js?v=6"></script>
   <script src="./fund.js?v=11"></script>
-  <script src="./app.js?v=60"></script>
+  <script src="./app.js?v=62"></script>
 </body>
 </html>
