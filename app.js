@@ -14,8 +14,8 @@
         ['admin', '⚙', 'Quản trị']
       ];
 
-      const CURRENT_RATING_VERSION = 'V1.1';
-      const OFFICIAL_MIN_MATCHES = 5;
+      const FALLBACK_RATING_VERSION = 'V1.1';
+      const FALLBACK_OFFICIAL_MIN_MATCHES = 5;
 
       const tables = [
         'players',
@@ -128,6 +128,34 @@
 
       const rows = t =>
         state.data[t] || [];
+
+      const activeRatingSettings = () =>
+        rows('rating_settings')
+          .find(
+            item =>
+              item.is_active === true
+          ) ||
+        null;
+
+      const currentRatingVersion = () =>
+        String(
+          activeRatingSettings()
+            ?.algorithm_version ||
+          FALLBACK_RATING_VERSION
+        );
+
+      const officialMinMatches = () => {
+        const value =
+          Number(
+            activeRatingSettings()
+              ?.provisional_matches
+          );
+
+        return Number.isFinite(value) &&
+          value >= 0
+          ? value
+          : FALLBACK_OFFICIAL_MIN_MATCHES;
+      };
 
       const ready = (...ts) =>
         ts.every(
@@ -763,7 +791,7 @@ const canCollectTournamentFee = () =>
           .filter(
             event =>
               event.algorithm_version ===
-                CURRENT_RATING_VERSION &&
+                currentRatingVersion() &&
               event.player_id &&
               event.match_id
           )
@@ -825,7 +853,7 @@ const canCollectTournamentFee = () =>
               ) !==
                 null &&
               player.rated_matches >=
-                OFFICIAL_MIN_MATCHES
+                officialMinMatches()
           )
           .sort(
             (a, b) =>
@@ -2304,7 +2332,8 @@ const canCollectTournamentFee = () =>
       matchCode,
       load,
       render,
-        CURRENT_RATING_VERSION
+        CURRENT_RATING_VERSION:
+          currentRatingVersion()
       });
 
     playerModule.playersPage();
@@ -3868,7 +3897,9 @@ const fieldLabels = {
           )
         );
 
-        
+
+        adminSystemConfig(root);
+
         adminBirthdayReport(root);
 
         sources(
@@ -3893,6 +3924,1378 @@ const fieldLabels = {
         settings(
           root,
           'fund_rules'
+        );
+      }
+
+      function adminSystemConfig(root) {
+        if (!isAdmin()) return;
+
+        const section =
+          panel(
+            'Cấu hình hệ thống',
+            root
+          );
+
+        const weights =
+          rows('rating_match_weights');
+
+        const message =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        message.hidden = true;
+        message.setAttribute(
+          'role',
+          'status'
+        );
+
+        if (
+          state.errors.rating_match_weights ||
+          !Array.isArray(weights) ||
+          weights.length === 0
+        ) {
+          notice(
+            message,
+            'Chưa tải được cấu hình trọng số trận.',
+            true
+          );
+
+          section.append(message);
+          return;
+        }
+
+        const form =
+          el('form');
+
+        const grid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const makeGroup = (
+          labelText,
+          control
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          if (control.id) {
+            label.htmlFor =
+              control.id;
+          }
+
+          group.append(
+            label,
+            control
+          );
+
+          grid.append(group);
+
+          return control;
+        };
+
+        const typeSelect =
+          el(
+            'select',
+            null,
+            'field'
+          );
+
+        typeSelect.id =
+          'admin-rating-weight-type';
+
+        weights
+          .slice()
+          .sort(
+            (a, b) =>
+              String(
+                a.match_type
+              ).localeCompare(
+                String(
+                  b.match_type
+                )
+              )
+          )
+          .forEach(
+            item => {
+              const option =
+                el(
+                  'option',
+                  item.description
+                    ? item.match_type +
+                      ' — ' +
+                      item.description
+                    : item.match_type
+                );
+
+              option.value =
+                item.match_type;
+
+              typeSelect.append(
+                option
+              );
+            }
+          );
+
+        makeGroup(
+          'Loại trận',
+          typeSelect
+        );
+
+        const weightInput =
+          el(
+            'input',
+            null,
+            'field'
+          );
+
+        weightInput.id =
+          'admin-rating-weight-value';
+
+        weightInput.type =
+          'number';
+
+        weightInput.min =
+          '0';
+
+        weightInput.max =
+          '1';
+
+        weightInput.step =
+          '0.01';
+
+        weightInput.required =
+          true;
+
+        makeGroup(
+          'Trọng số (0–1)',
+          weightInput
+        );
+
+        const descriptionInput =
+          el(
+            'input',
+            null,
+            'field'
+          );
+
+        descriptionInput.id =
+          'admin-rating-weight-description';
+
+        descriptionInput.type =
+          'text';
+
+        makeGroup(
+          'Mô tả',
+          descriptionInput
+        );
+
+        const syncInputs = () => {
+          const current =
+            weights.find(
+              item =>
+                item.match_type ===
+                typeSelect.value
+            );
+
+          weightInput.value =
+            current?.weight == null
+              ? ''
+              : String(
+                  current.weight
+                );
+
+          descriptionInput.value =
+            current?.description ||
+            '';
+        };
+
+        typeSelect.addEventListener(
+          'change',
+          syncInputs
+        );
+
+        syncInputs();
+
+        const submit =
+          el(
+            'button',
+            'Lưu trọng số',
+            'btn'
+          );
+
+        submit.type =
+          'submit';
+
+        const actions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        actions.append(
+          submit
+        );
+
+        form.append(
+          el(
+            'p',
+            'Thay đổi trọng số sẽ áp dụng cho engine Rating khi rebuild các trận tính điểm.',
+            'muted'
+          ),
+          grid,
+          actions,
+          message
+        );
+
+        section.append(form);
+
+        const controls = [
+          typeSelect,
+          weightInput,
+          descriptionInput,
+          submit
+        ];
+
+        controls.forEach(
+          control => {
+            control.disabled =
+              state.writeBusy;
+          }
+        );
+
+        form.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !isAdmin()
+            ) {
+              return;
+            }
+
+            if (
+              !form.reportValidity()
+            ) {
+              return;
+            }
+
+            const weight =
+              Number(
+                weightInput.value
+              );
+
+            if (
+              !Number.isFinite(
+                weight
+              ) ||
+              weight < 0 ||
+              weight > 1
+            ) {
+              notice(
+                message,
+                'Trọng số phải nằm trong khoảng 0 đến 1.',
+                true
+              );
+
+              return;
+            }
+
+            const sessionUserId =
+              state.session?.user.id;
+
+            state.writeBusy =
+              true;
+
+            controls.forEach(
+              control => {
+                control.disabled =
+                  true;
+              }
+            );
+
+            submit.textContent =
+              'Đang lưu…';
+
+            notice(
+              message,
+              ''
+            );
+
+            let saved =
+              false;
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.rpc(
+                  'admin_update_rating_match_weight',
+                  {
+                    p_match_type:
+                      typeSelect.value,
+
+                    p_weight:
+                      weight,
+
+                    p_description:
+                      descriptionInput
+                        .value
+                        .trim() ||
+                      null
+                  }
+                );
+
+              if (error) {
+                throw error;
+              }
+
+              if (
+                data?.success !==
+                true
+              ) {
+                throw new Error(
+                  'Máy chủ chưa xác nhận cập nhật trọng số.'
+                );
+              }
+
+              saved = true;
+
+              if (
+                state.session
+                  ?.user.id !==
+                sessionUserId
+              ) {
+                return;
+              }
+
+              await load();
+
+            } catch (error) {
+              if (
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                notice(
+                  message.isConnected
+                    ? message
+                    : $('global-message'),
+
+                  'Không lưu được trọng số. ' +
+                    explain(error),
+
+                  true
+                );
+              }
+
+            } finally {
+              state.writeBusy =
+                false;
+
+              controls.forEach(
+                control => {
+                  control.disabled =
+                    false;
+                }
+              );
+
+              submit.textContent =
+                'Lưu trọng số';
+
+              if (
+                saved &&
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                render();
+
+                notice(
+                  $('global-message'),
+                  'Đã cập nhật trọng số loại trận.',
+                  false,
+                  true
+                );
+              }
+            }
+          }
+        );
+
+        const fundRules =
+          rows('fund_rules');
+
+        const fundForm =
+          el('form');
+
+        const fundGrid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const fundMessage =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        fundMessage.hidden =
+          true;
+
+        fundMessage.setAttribute(
+          'role',
+          'status'
+        );
+
+        const makeFundGroup = (
+          labelText,
+          control
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          if (control.id) {
+            label.htmlFor =
+              control.id;
+          }
+
+          group.append(
+            label,
+            control
+          );
+
+          fundGrid.append(
+            group
+          );
+
+          return control;
+        };
+
+        const fundType =
+          el(
+            'select',
+            null,
+            'field'
+          );
+
+        fundType.id =
+          'admin-fund-rule-type';
+
+        weights.forEach(
+          item => {
+            const option =
+              el(
+                'option',
+                item.description
+                  ? item.match_type +
+                    ' — ' +
+                    item.description
+                  : item.match_type
+              );
+
+            option.value =
+              item.match_type;
+
+            fundType.append(
+              option
+            );
+          }
+        );
+
+        makeFundGroup(
+          'Loại trận',
+          fundType
+        );
+
+        const makeMoneyInput = (
+          id,
+          label
+        ) => {
+          const input =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          input.id = id;
+          input.type = 'number';
+          input.min = '0';
+          input.step = '1000';
+          input.required = true;
+
+          makeFundGroup(
+            label,
+            input
+          );
+
+          return input;
+        };
+
+        const lossInput =
+          makeMoneyInput(
+            'admin-fund-loss',
+            'Thua'
+          );
+
+        const drawInput =
+          makeMoneyInput(
+            'admin-fund-draw',
+            'Hòa'
+          );
+
+        const winInput =
+          makeMoneyInput(
+            'admin-fund-win',
+            'Thắng'
+          );
+
+        const effectiveInput =
+          el(
+            'input',
+            null,
+            'field'
+          );
+
+        effectiveInput.id =
+          'admin-fund-effective-from';
+
+        effectiveInput.type =
+          'date';
+
+        effectiveInput.required =
+          true;
+
+        makeFundGroup(
+          'Hiệu lực từ',
+          effectiveInput
+        );
+
+        const syncFundInputs = () => {
+          const current =
+            fundRules
+              .filter(
+                item =>
+                  item.match_type ===
+                    fundType.value &&
+                  item.is_active === true &&
+                  item.effective_to == null
+              )
+              .sort(
+                (a, b) =>
+                  String(
+                    b.effective_from ||
+                    ''
+                  ).localeCompare(
+                    String(
+                      a.effective_from ||
+                      ''
+                    )
+                  )
+              )[0];
+
+          lossInput.value =
+            current?.amount_loss == null
+              ? '0'
+              : String(
+                  current.amount_loss
+                );
+
+          drawInput.value =
+            current?.amount_draw == null
+              ? '0'
+              : String(
+                  current.amount_draw
+                );
+
+          winInput.value =
+            current?.amount_win == null
+              ? '0'
+              : String(
+                  current.amount_win
+                );
+
+          effectiveInput.value =
+            current?.effective_from ||
+            new Date()
+              .toISOString()
+              .slice(0, 10);
+        };
+
+        fundType.addEventListener(
+          'change',
+          syncFundInputs
+        );
+
+        syncFundInputs();
+
+        const fundSubmit =
+          el(
+            'button',
+            'Tạo phiên bản quy định quỹ',
+            'btn'
+          );
+
+        fundSubmit.type =
+          'submit';
+
+        const fundActions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        fundActions.append(
+          fundSubmit
+        );
+
+        fundForm.append(
+          el(
+            'p',
+            'Quy định mới sẽ tạo phiên bản theo ngày hiệu lực; lịch sử cũ được giữ nguyên.',
+            'muted'
+          ),
+          fundGrid,
+          fundActions,
+          fundMessage
+        );
+
+        section.append(
+          fundForm
+        );
+
+        const fundControls = [
+          fundType,
+          lossInput,
+          drawInput,
+          winInput,
+          effectiveInput,
+          fundSubmit
+        ];
+
+        fundControls.forEach(
+          control => {
+            control.disabled =
+              state.writeBusy;
+          }
+        );
+
+        fundForm.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !isAdmin()
+            ) {
+              return;
+            }
+
+            if (
+              !fundForm.reportValidity()
+            ) {
+              return;
+            }
+
+            const amountLoss =
+              Number(
+                lossInput.value
+              );
+
+            const amountDraw =
+              Number(
+                drawInput.value
+              );
+
+            const amountWin =
+              Number(
+                winInput.value
+              );
+
+            if (
+              !Number.isFinite(
+                amountLoss
+              ) ||
+              !Number.isFinite(
+                amountDraw
+              ) ||
+              !Number.isFinite(
+                amountWin
+              ) ||
+              amountLoss < 0 ||
+              amountDraw < 0 ||
+              amountWin < 0
+            ) {
+              notice(
+                fundMessage,
+                'Mức tiền quỹ phải là số không âm.',
+                true
+              );
+
+              return;
+            }
+
+            const sessionUserId =
+              state.session?.user.id;
+
+            state.writeBusy =
+              true;
+
+            fundControls.forEach(
+              control => {
+                control.disabled =
+                  true;
+              }
+            );
+
+            fundSubmit.textContent =
+              'Đang lưu…';
+
+            notice(
+              fundMessage,
+              ''
+            );
+
+            let saved =
+              false;
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.rpc(
+                  'admin_create_fund_rule_version',
+                  {
+                    p_match_type:
+                      fundType.value,
+
+                    p_amount_loss:
+                      amountLoss,
+
+                    p_amount_draw:
+                      amountDraw,
+
+                    p_amount_win:
+                      amountWin,
+
+                    p_effective_from:
+                      effectiveInput.value
+                  }
+                );
+
+              if (error) {
+                throw error;
+              }
+
+              if (
+                data?.success !==
+                true
+              ) {
+                throw new Error(
+                  'Máy chủ chưa xác nhận tạo Fund Rule.'
+                );
+              }
+
+              saved = true;
+
+              if (
+                state.session
+                  ?.user.id !==
+                sessionUserId
+              ) {
+                return;
+              }
+
+              await load();
+
+            } catch (error) {
+              if (
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                notice(
+                  fundMessage.isConnected
+                    ? fundMessage
+                    : $('global-message'),
+
+                  'Không lưu được quy định quỹ. ' +
+                    explain(error),
+
+                  true
+                );
+              }
+
+            } finally {
+              state.writeBusy =
+                false;
+
+              fundControls.forEach(
+                control => {
+                  control.disabled =
+                    false;
+                }
+              );
+
+              fundSubmit.textContent =
+                'Tạo phiên bản quy định quỹ';
+
+              if (
+                saved &&
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                render();
+
+                notice(
+                  $('global-message'),
+                  'Đã cập nhật quy định quỹ.',
+                  false,
+                  true
+                );
+              }
+            }
+          }
+        );
+
+        const activeSettings =
+          activeRatingSettings();
+
+        const ratingForm =
+          el('form');
+
+        const ratingGrid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const ratingMessage =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        ratingMessage.hidden =
+          true;
+
+        ratingMessage.setAttribute(
+          'role',
+          'status'
+        );
+
+        const makeRatingInput = (
+          id,
+          labelText,
+          type,
+          value,
+          step = null
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          label.htmlFor = id;
+
+          const input =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          input.id = id;
+          input.type = type;
+          input.required = true;
+
+          if (value != null) {
+            input.value =
+              String(value);
+          }
+
+          if (step != null) {
+            input.step =
+              String(step);
+          }
+
+          group.append(
+            label,
+            input
+          );
+
+          ratingGrid.append(
+            group
+          );
+
+          return input;
+        };
+
+        const versionInput =
+          makeRatingInput(
+            'admin-rating-version',
+            'Phiên bản mới',
+            'text',
+            ''
+          );
+
+        versionInput.placeholder =
+          'Ví dụ: V1.2';
+
+        const initialInput =
+          makeRatingInput(
+            'admin-rating-initial',
+            'Điểm khởi tạo',
+            'number',
+            activeSettings?.initial_rating ?? 4,
+            0.001
+          );
+
+        const minInput =
+          makeRatingInput(
+            'admin-rating-min',
+            'Điểm tối thiểu',
+            'number',
+            activeSettings?.min_rating ?? 2,
+            0.001
+          );
+
+        const maxInput =
+          makeRatingInput(
+            'admin-rating-max',
+            'Điểm tối đa',
+            'number',
+            activeSettings?.max_rating ?? 8,
+            0.001
+          );
+
+        const kInput =
+          makeRatingInput(
+            'admin-rating-k',
+            'K-factor',
+            'number',
+            activeSettings?.k_factor ?? 0.55,
+            0.001
+          );
+
+        const sensitivityInput =
+          makeRatingInput(
+            'admin-rating-sensitivity',
+            'Expected sensitivity',
+            'number',
+            activeSettings?.expected_sensitivity ?? 0.9,
+            0.001
+          );
+
+        const provisionalInput =
+          makeRatingInput(
+            'admin-rating-provisional',
+            'Số trận provisional',
+            'number',
+            activeSettings?.provisional_matches ?? 5,
+            1
+          );
+
+        provisionalInput.min = '0';
+
+        const stableInput =
+          makeRatingInput(
+            'admin-rating-stable',
+            'Số trận stable',
+            'number',
+            activeSettings?.stable_matches ?? 10,
+            1
+          );
+
+        stableInput.min = '0';
+
+        const halfLifeInput =
+          makeRatingInput(
+            'admin-rating-half-life',
+            'Recency half-life (ngày)',
+            'number',
+            activeSettings?.recency_half_life_days ?? 60,
+            1
+          );
+
+        halfLifeInput.min = '1';
+
+        const recencyFloorInput =
+          makeRatingInput(
+            'admin-rating-recency-floor',
+            'Recency floor',
+            'number',
+            activeSettings?.recency_floor ?? 0.35,
+            0.01
+          );
+
+        recencyFloorInput.min = '0';
+        recencyFloorInput.max = '1';
+
+        const deltaCapInput =
+          makeRatingInput(
+            'admin-rating-delta-cap',
+            'Giới hạn thay đổi / trận',
+            'number',
+            activeSettings?.rating_delta_cap ?? 0.35,
+            0.001
+          );
+
+        const ratingSubmit =
+          el(
+            'button',
+            'Tạo phiên bản Rating mới',
+            'btn'
+          );
+
+        ratingSubmit.type =
+          'submit';
+
+        const ratingActions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        ratingActions.append(
+          ratingSubmit
+        );
+
+        ratingForm.append(
+          el(
+            'p',
+            'Phiên bản cũ được giữ nguyên. Phiên bản mới sẽ trở thành cấu hình Rating đang hoạt động.',
+            'muted'
+          ),
+          ratingGrid,
+          ratingActions,
+          ratingMessage
+        );
+
+        section.append(
+          ratingForm
+        );
+
+        const ratingControls = [
+          versionInput,
+          initialInput,
+          minInput,
+          maxInput,
+          kInput,
+          sensitivityInput,
+          provisionalInput,
+          stableInput,
+          halfLifeInput,
+          recencyFloorInput,
+          deltaCapInput,
+          ratingSubmit
+        ];
+
+        ratingControls.forEach(
+          control => {
+            control.disabled =
+              state.writeBusy;
+          }
+        );
+
+        ratingForm.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !isAdmin()
+            ) {
+              return;
+            }
+
+            if (
+              !ratingForm.reportValidity()
+            ) {
+              return;
+            }
+
+            const version =
+              versionInput.value.trim();
+
+            const initialRating =
+              Number(initialInput.value);
+
+            const minRating =
+              Number(minInput.value);
+
+            const maxRating =
+              Number(maxInput.value);
+
+            const kFactor =
+              Number(kInput.value);
+
+            const sensitivity =
+              Number(
+                sensitivityInput.value
+              );
+
+            const provisional =
+              Number(
+                provisionalInput.value
+              );
+
+            const stable =
+              Number(
+                stableInput.value
+              );
+
+            const halfLife =
+              Number(
+                halfLifeInput.value
+              );
+
+            const recencyFloor =
+              Number(
+                recencyFloorInput.value
+              );
+
+            const deltaCap =
+              Number(
+                deltaCapInput.value
+              );
+
+            if (
+              !version ||
+              !Number.isFinite(initialRating) ||
+              !Number.isFinite(minRating) ||
+              !Number.isFinite(maxRating) ||
+              !Number.isFinite(kFactor) ||
+              !Number.isFinite(sensitivity) ||
+              !Number.isInteger(provisional) ||
+              !Number.isInteger(stable) ||
+              !Number.isInteger(halfLife) ||
+              !Number.isFinite(recencyFloor) ||
+              !Number.isFinite(deltaCap)
+            ) {
+              notice(
+                ratingMessage,
+                'Vui lòng kiểm tra lại các tham số Rating.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              minRating >= maxRating ||
+              initialRating < minRating ||
+              initialRating > maxRating ||
+              kFactor <= 0 ||
+              sensitivity <= 0 ||
+              provisional < 0 ||
+              stable < provisional ||
+              halfLife <= 0 ||
+              recencyFloor < 0 ||
+              recencyFloor > 1 ||
+              deltaCap <= 0
+            ) {
+              notice(
+                ratingMessage,
+                'Các tham số Rating không hợp lệ.',
+                true
+              );
+
+              return;
+            }
+
+            const sessionUserId =
+              state.session?.user.id;
+
+            state.writeBusy =
+              true;
+
+            ratingControls.forEach(
+              control => {
+                control.disabled =
+                  true;
+              }
+            );
+
+            ratingSubmit.textContent =
+              'Đang lưu…';
+
+            notice(
+              ratingMessage,
+              ''
+            );
+
+            let saved =
+              false;
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.rpc(
+                  'admin_create_rating_settings_version',
+                  {
+                    p_algorithm_version:
+                      version,
+
+                    p_initial_rating:
+                      initialRating,
+
+                    p_min_rating:
+                      minRating,
+
+                    p_max_rating:
+                      maxRating,
+
+                    p_k_factor:
+                      kFactor,
+
+                    p_expected_sensitivity:
+                      sensitivity,
+
+                    p_provisional_matches:
+                      provisional,
+
+                    p_stable_matches:
+                      stable,
+
+                    p_recency_half_life_days:
+                      halfLife,
+
+                    p_recency_floor:
+                      recencyFloor,
+
+                    p_rating_delta_cap:
+                      deltaCap
+                  }
+                );
+
+              if (error) {
+                throw error;
+              }
+
+              if (
+                data?.success !==
+                true
+              ) {
+                throw new Error(
+                  'Máy chủ chưa xác nhận tạo Rating Settings version.'
+                );
+              }
+
+              saved = true;
+
+              if (
+                state.session
+                  ?.user.id !==
+                sessionUserId
+              ) {
+                return;
+              }
+
+              await load();
+
+            } catch (error) {
+              if (
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                notice(
+                  ratingMessage.isConnected
+                    ? ratingMessage
+                    : $('global-message'),
+
+                  'Không lưu được cấu hình Rating. ' +
+                    explain(error),
+
+                  true
+                );
+              }
+
+            } finally {
+              state.writeBusy =
+                false;
+
+              ratingControls.forEach(
+                control => {
+                  control.disabled =
+                    false;
+                }
+              );
+
+              ratingSubmit.textContent =
+                'Tạo phiên bản Rating mới';
+
+              if (
+                saved &&
+                state.session
+                  ?.user.id ===
+                sessionUserId
+              ) {
+                render();
+
+                notice(
+                  $('global-message'),
+                  'Đã tạo và kích hoạt phiên bản Rating mới.',
+                  false,
+                  true
+                );
+              }
+            }
+          }
         );
       }
 
@@ -4389,7 +5792,7 @@ const fieldLabels = {
                             (
                               !event.algorithm_version ||
                               event.algorithm_version ===
-                                CURRENT_RATING_VERSION
+                                currentRatingVersion()
                             )
                         )
                         .map(
@@ -4755,7 +6158,7 @@ const fieldLabels = {
                 (
                   !event.algorithm_version ||
                   event.algorithm_version ===
-                    CURRENT_RATING_VERSION
+                    currentRatingVersion()
                 )
             )
             .map(
@@ -11383,10 +12786,76 @@ const fieldLabels = {
             }
           }
         );
+      let signupRatingConfig =
+        null;
+
+      const loadSignupRatingConfig =
+        async () => {
+          const {
+            data,
+            error
+          } =
+            await client.rpc(
+              'get_signup_rating_config'
+            );
+
+          if (error) {
+            throw error;
+          }
+
+          const initialRating =
+            Number(
+              data?.initial_rating
+            );
+
+          const minRating =
+            Number(
+              data?.min_rating
+            );
+
+          const maxRating =
+            Number(
+              data?.max_rating
+            );
+
+          if (
+            !Number.isFinite(initialRating) ||
+            !Number.isFinite(minRating) ||
+            !Number.isFinite(maxRating) ||
+            minRating >= maxRating ||
+            initialRating < minRating ||
+            initialRating > maxRating
+          ) {
+            throw new Error(
+              'Cấu hình Rating đăng ký không hợp lệ.'
+            );
+          }
+
+          signupRatingConfig = {
+            initialRating,
+            minRating,
+            maxRating
+          };
+
+          const input =
+            $('signup-initial-rating');
+
+          input.min =
+            String(minRating);
+
+          input.max =
+            String(maxRating);
+
+          input.value =
+            initialRating.toFixed(3);
+
+          return signupRatingConfig;
+        };
+
       $('signup-open')
         .addEventListener(
           'click',
-          () => {
+          async () => {
             $('signup-panel').hidden =
               false;
 
@@ -11400,6 +12869,29 @@ const fieldLabels = {
               $('signup-message'),
               ''
             );
+
+            try {
+              await loadSignupRatingConfig();
+
+            } catch (error) {
+              signupRatingConfig =
+                null;
+
+              $('signup-submit').disabled =
+                true;
+
+              notice(
+                $('signup-message'),
+                'Không tải được cấu hình Rating đăng ký. ' +
+                  explain(error),
+                true
+              );
+
+              return;
+            }
+
+            $('signup-submit').disabled =
+              false;
           }
         );
 
@@ -11419,7 +12911,11 @@ const fieldLabels = {
             $('signup-form').reset();
 
             $('signup-initial-rating').value =
-              '4.000';
+              signupRatingConfig
+                ? signupRatingConfig
+                    .initialRating
+                    .toFixed(3)
+                : '';
 
             notice(
               $('signup-message'),
@@ -11479,14 +12975,36 @@ const fieldLabels = {
               ''
             );
 
+            if (!signupRatingConfig) {
+              notice(
+                $('signup-message'),
+                'Chưa tải được cấu hình Rating đăng ký.',
+                true
+              );
+
+              return;
+            }
+
             if (
               !Number.isFinite(rating) ||
-              rating < 2 ||
-              rating > 8
+              rating <
+                signupRatingConfig
+                  .minRating ||
+              rating >
+                signupRatingConfig
+                  .maxRating
             ) {
               notice(
                 $('signup-message'),
-                'Rating ban đầu phải nằm trong khoảng 2.000 đến 8.000.',
+                'Rating ban đầu phải nằm trong khoảng ' +
+                  signupRatingConfig
+                    .minRating
+                    .toFixed(3) +
+                  ' đến ' +
+                  signupRatingConfig
+                    .maxRating
+                    .toFixed(3) +
+                  '.',
                 true
               );
 
@@ -11550,7 +13068,11 @@ const fieldLabels = {
               $('signup-form').reset();
 
               $('signup-initial-rating').value =
-                '4.000';
+                signupRatingConfig
+                  ? signupRatingConfig
+                      .initialRating
+                      .toFixed(3)
+                  : '';
 
               notice(
                 $('signup-message'),

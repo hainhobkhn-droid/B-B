@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   'use strict';
 
   function create(context) {
@@ -280,6 +280,47 @@ function collapsibleAdminSection(
           .toISOString()
           .slice(0, 10);
 
+      const activeRatingSettings =
+        rows('rating_settings')
+          .find(
+            item =>
+              item.is_active === true
+          ) ||
+        null;
+
+      const ratingMin =
+        Number(
+          activeRatingSettings
+            ?.min_rating
+        );
+
+      const ratingMax =
+        Number(
+          activeRatingSettings
+            ?.max_rating
+        );
+
+      const ratingDefault =
+        Number(
+          activeRatingSettings
+            ?.initial_rating
+        );
+
+      const effectiveRatingMin =
+        Number.isFinite(ratingMin)
+          ? ratingMin
+          : 2;
+
+      const effectiveRatingMax =
+        Number.isFinite(ratingMax)
+          ? ratingMax
+          : 8;
+
+      const effectiveRatingDefault =
+        Number.isFinite(ratingDefault)
+          ? ratingDefault
+          : 4;
+
       const initialRating = el(
         'input',
         null,
@@ -292,13 +333,18 @@ function collapsibleAdminSection(
       initialRating.type =
         'number';
 
-      initialRating.min = '2';
-      initialRating.max = '8';
+      initialRating.min =
+        String(effectiveRatingMin);
+
+      initialRating.max =
+        String(effectiveRatingMax);
+
       initialRating.step =
         '0.001';
 
       initialRating.value =
-        '4.000';
+        effectiveRatingDefault
+          .toFixed(3);
 
       initialRating.required =
         true;
@@ -394,7 +440,8 @@ function collapsibleAdminSection(
             'CLUB';
 
           initialRating.value =
-            '4.000';
+            effectiveRatingDefault
+              .toFixed(3);
 
           notice(
             message,
@@ -459,12 +506,20 @@ function collapsibleAdminSection(
             !Number.isFinite(
               rating
             ) ||
-            rating < 2 ||
-            rating > 8
+            rating <
+              effectiveRatingMin ||
+            rating >
+              effectiveRatingMax
           ) {
             notice(
               message,
-              'Điểm khởi tạo phải từ 2.000 đến 8.000.',
+              'Điểm khởi tạo phải từ ' +
+                effectiveRatingMin
+                  .toFixed(3) +
+                ' đến ' +
+                effectiveRatingMax
+                  .toFixed(3) +
+                '.',
               true
             );
 

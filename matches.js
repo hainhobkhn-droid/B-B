@@ -4314,16 +4314,13 @@ function voidApprovedMatchForm(root) {
               const {
                 error
               } = await client.rpc(
-                'void_match',
+                'void_match_active',
                 {
                   p_match_id:
                     matchId,
 
                   p_reason:
-                    reasonText,
-
-                  p_algorithm_version:
-                    'V1.1'
+                    reasonText
                 }
               );
 
@@ -5377,13 +5374,10 @@ function voidApprovedMatchForm(root) {
               const {
                 error
               } = await client.rpc(
-                'approve_match',
+                'approve_match_active',
                 {
                   p_match_id:
-                    matchId,
-
-                  p_algorithm_version:
-                    'V1.1'
+                    matchId
                 }
               );
 
