@@ -13358,6 +13358,26 @@ const fieldLabels = {
           const { data, error } = await client.auth.updateUser({ password });
           if (error) throw error;
           if (!data?.user || data.user.id !== sessionData.session.user.id) throw new Error('USER_CONFIRMATION_MISSING');
+
+          const {
+            data: completeData,
+            error: completeError
+          } = await client.rpc(
+            'complete_my_password_change'
+          );
+
+          if (completeError) {
+            throw completeError;
+          }
+
+          if (
+            completeData?.success !== true
+          ) {
+            throw new Error(
+              'PASSWORD_CHANGE_FLAG_NOT_CLEARED'
+            );
+          }
+
           $('recovery-password').value = '';
           $('recovery-password-confirm').value = '';
           notice(message, 'Đã cập nhật mật khẩu. Đang mở lại ứng dụng…', false, true);
