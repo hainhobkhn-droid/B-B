@@ -3898,6 +3898,10 @@ const fieldLabels = {
         );
 
 
+
+
+        adminAccountVerification(root);
+
         adminSystemConfig(root);
 
         adminBirthdayReport(root);
@@ -3927,6 +3931,211 @@ const fieldLabels = {
         );
       }
 
+
+      function adminAccountVerification(root) {
+        if (!isAdmin()) return;
+
+        const section =
+          panel(
+            'Xác nhận tài khoản',
+            root
+          );
+
+        section.append(
+          el(
+            'p',
+            'Dùng cho tài khoản cũ đang chờ xác minh email.',
+            'muted'
+          )
+        );
+
+        const form = el('form');
+
+        const group =
+          el(
+            'div',
+            null,
+            'form-group'
+          );
+
+        const label =
+          el(
+            'label',
+            'User ID'
+          );
+
+        label.htmlFor =
+          'admin-confirm-user-id';
+
+        const input =
+          el(
+            'input',
+            null,
+            'field'
+          );
+
+        input.id =
+          'admin-confirm-user-id';
+
+        input.type =
+          'text';
+
+        input.required =
+          true;
+
+        input.placeholder =
+          'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+
+        group.append(
+          label,
+          input
+        );
+
+        const message =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        message.hidden =
+          true;
+
+        const submit =
+          el(
+            'button',
+            'Xác nhận email',
+            'btn primary'
+          );
+
+        submit.type =
+          'submit';
+
+        const actions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        actions.append(submit);
+
+        form.append(
+          group,
+          actions,
+          message
+        );
+
+        section.append(form);
+
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        form.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !isAdmin()
+            ) {
+              return;
+            }
+
+            const userId =
+              input.value.trim();
+
+            if (!uuidPattern.test(userId)) {
+              notice(
+                message,
+                'User ID không đúng định dạng UUID.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              !confirm(
+                'Xác nhận email cho tài khoản ' +
+                  userId +
+                  '?'
+              )
+            ) {
+              return;
+            }
+
+            state.writeBusy = true;
+            input.disabled = true;
+            submit.disabled = true;
+            submit.textContent =
+              'Đang xác nhận…';
+
+            notice(message, '');
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.functions.invoke(
+                  'admin-confirm-user',
+                  {
+                    body: {
+                      user_id: userId
+                    }
+                  }
+                );
+
+              if (error) {
+                throw error;
+              }
+
+              if (
+                !data ||
+                data.ok !== true
+              ) {
+                throw new Error(
+                  data?.error ||
+                  'UNKNOWN_ERROR'
+                );
+              }
+
+              notice(
+                message,
+                data.already_confirmed
+                  ? 'Tài khoản đã được xác nhận từ trước.'
+                  : 'Đã xác nhận email thành công.',
+                false,
+                true
+              );
+
+              input.value = '';
+
+            } catch (error) {
+              console.error(
+                'ADMIN_CONFIRM_USER_UI_ERROR',
+                error
+              );
+
+              notice(
+                message,
+                'Không xác nhận được tài khoản.',
+                true
+              );
+
+            } finally {
+              state.writeBusy = false;
+              input.disabled = false;
+              submit.disabled = false;
+              submit.textContent =
+                'Xác nhận email';
+            }
+          }
+        );
+      }
       function adminSystemConfig(root) {
         if (!isAdmin()) return;
 
@@ -12568,6 +12777,24 @@ const fieldLabels = {
           void load();
         }
       }
+      const navRoot =
+        $('nav');
+
+      const primaryMobilePages =
+        new Set([
+          'overview',
+          'matches',
+          'players',
+          'ranking',
+          'fund'
+        ]);
+
+      const secondaryMobilePages =
+        new Set([
+          'contribution',
+          'tournaments',
+          'admin'
+        ]);
 
       for (
         const [
@@ -12585,6 +12812,24 @@ const fieldLabels = {
 
         n.dataset.page =
           id;
+
+        if (
+          primaryMobilePages.has(
+            id
+          )
+        ) {
+          n.dataset.mobilePrimary =
+            'true';
+        }
+
+        if (
+          secondaryMobilePages.has(
+            id
+          )
+        ) {
+          n.dataset.mobileSecondary =
+            'true';
+        }
 
         const symbol =
           el(
@@ -12612,8 +12857,161 @@ const fieldLabels = {
           )
         );
 
-        $('nav').append(n);
+        navRoot.append(n);
       }
+
+      const moreWrapper =
+        el(
+          'div',
+          null,
+          'nav-more'
+        );
+
+      const moreButton =
+        button(
+          '',
+          () => {
+            const isOpen =
+              moreWrapper.classList
+                .toggle(
+                  'nav-more-open'
+                );
+
+            moreButton.setAttribute(
+              'aria-expanded',
+              isOpen
+                ? 'true'
+                : 'false'
+            );
+          },
+          'nav-item nav-more-button'
+        );
+
+      moreButton.type =
+        'button';
+
+      moreButton.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+
+      moreButton.setAttribute(
+        'aria-haspopup',
+        'menu'
+      );
+
+      const moreIcon =
+        el(
+          'span',
+          '•••',
+          'nav-icon'
+        );
+
+      moreIcon.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+
+      moreButton.append(
+        moreIcon,
+        el(
+          'span',
+          'Thêm'
+        )
+      );
+
+      const moreMenu =
+        el(
+          'div',
+          null,
+          'nav-more-menu'
+        );
+
+      moreMenu.setAttribute(
+        'role',
+        'menu'
+      );
+
+      [
+        [
+          'contribution',
+          '♡',
+          'Cống hiến'
+        ],
+        [
+          'tournaments',
+          '⚑',
+          'Giải đấu'
+        ],
+        [
+          'admin',
+          '⚙',
+          isAdmin()
+            ? 'Quản trị'
+            : 'Tài khoản'
+        ]
+      ].forEach(
+        ([
+          id,
+          icon,
+          label
+        ]) => {
+          const item =
+            button(
+              '',
+              () => {
+                moreWrapper.classList
+                  .remove(
+                    'nav-more-open'
+                  );
+
+                moreButton.setAttribute(
+                  'aria-expanded',
+                  'false'
+                );
+
+                navigate(id);
+              },
+              'nav-more-item'
+            );
+
+          item.type =
+            'button';
+
+          item.dataset.page =
+            id;
+
+          item.setAttribute(
+            'role',
+            'menuitem'
+          );
+
+          item.append(
+            el(
+              'span',
+              icon,
+              'nav-more-item-icon'
+            ),
+            el(
+              'span',
+              label
+            )
+          );
+
+          moreMenu.append(
+            item
+          );
+        }
+      );
+
+      moreWrapper.append(
+        moreButton,
+        moreMenu
+      );
+
+      navRoot.append(
+        moreWrapper
+      );
 
       $('refresh')
         .addEventListener(
@@ -13081,18 +13479,56 @@ const fieldLabels = {
                 true
               );
             } catch (e) {
+              console.error(
+                'SIGNUP_ERROR',
+                {
+                  code: e?.code || null,
+                  status: e?.status || null,
+                  message: e?.message || null
+                }
+              );
+
+              const signupErrorCode =
+                String(
+                  e?.code ||
+                  ''
+                );
+
+              const signupErrorMessage =
+                String(
+                  e?.message ||
+                  ''
+                );
+
               notice(
                 $('signup-message'),
-                e.code ===
+                signupErrorCode ===
                   'user_already_exists'
                   ? 'Email này đã được đăng ký.'
-                  : e.code ===
+                  : signupErrorCode ===
                       'over_email_send_rate_limit'
                     ? 'Hệ thống đang giới hạn gửi email. Vui lòng thử lại sau.'
-                    : e.code ===
+                    : signupErrorCode ===
                         'email_address_invalid'
                       ? 'Địa chỉ email không hợp lệ.'
-                      : 'Không thể tạo tài khoản. Kiểm tra thông tin và thử lại.',
+                      : 'Không thể tạo tài khoản.' +
+                        (
+                          signupErrorCode
+                            ? ' Mã lỗi: ' +
+                              signupErrorCode +
+                              '.'
+                            : ''
+                        ) +
+                        (
+                          signupErrorMessage
+                            ? ' Chi tiết: ' +
+                              signupErrorMessage.slice(
+                                0,
+                                180
+                              ) +
+                              '.'
+                            : ''
+                        ),
                 true
               );
             } finally {
@@ -13269,6 +13705,110 @@ const fieldLabels = {
             window.APP_CONFIG ||
             window.CONFIG ||
             {};
+          const appName =
+            String(
+              config.APP_NAME ||
+              'PICK'
+            ).trim() ||
+            'PICK';
+
+          const clubName =
+            String(
+              config.CLUB_NAME ||
+              appName
+            ).trim() ||
+            appName;
+
+          const clubTagline =
+            String(
+              config.CLUB_TAGLINE ||
+              'Cùng chơi • Cùng tiến bộ'
+            ).trim();
+
+          const clubLogo =
+            String(
+              config.CLUB_LOGO ||
+              ''
+            ).trim();
+
+          document.title =
+            clubName +
+            ' • Pickleball Club';
+
+          document
+            .querySelectorAll(
+              '.brand'
+            )
+            .forEach(
+              brand => {
+                brand.replaceChildren();
+
+                if (clubLogo) {
+                  const logo =
+                    document.createElement(
+                      'img'
+                    );
+
+                  logo.src =
+                    clubLogo;
+
+                  logo.alt =
+                    clubName;
+
+                  logo.className =
+                    'club-brand-logo';
+
+                  brand.append(
+                    logo
+                  );
+                }
+
+                const name =
+                  document.createElement(
+                    'span'
+                  );
+
+                name.className =
+                  'club-brand-name';
+
+                name.textContent =
+                  clubName;
+
+                brand.append(
+                  name
+                );
+              }
+            );
+
+          const sidebarKicker =
+            document.querySelector(
+              '.sidebar-kicker'
+            );
+
+          if (sidebarKicker) {
+            sidebarKicker.textContent =
+              clubTagline;
+          }
+
+          const mobileBrandTagline =
+            document.querySelector(
+              '.login-mobile-brand p'
+            );
+
+          if (mobileBrandTagline) {
+            mobileBrandTagline.textContent =
+              clubTagline;
+          }
+
+          const storyKicker =
+            document.querySelector(
+              '.login-story-kicker'
+            );
+
+          if (storyKicker) {
+            storyKicker.textContent =
+              clubName.toUpperCase();
+          }
 
           const url =
             config.SUPABASE_URL ||

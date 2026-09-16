@@ -2,9 +2,18 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+  <meta
+    name="color-scheme"
+    content="light"
+  >
+  <meta
+    name="referrer"
+    content="strict-origin-when-cross-origin"
+  >
 
   <title>PICK • Câu lạc bộ Pickleball</title>
 
@@ -12,23 +21,33 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./config.js"></script>
 
-  <link rel="stylesheet" href="./app.css?v=8">
+  <link
+    rel="stylesheet"
+    href="./app.css?v=12"
+  >
 </head>
 
 <body>
   <noscript>
-    <p style="padding:24px">
-      Vui lòng bật JavaScript để sử dụng ứng dụng.
-    </p>
+    <div class="noscript-box">
+      Vui lòng bật JavaScript để sử dụng ứng dụng PICK.
+    </div>
   </noscript>
 
   <div
     id="boot"
     role="status"
-    class="panel"
-    style="max-width:480px;margin:15vh auto"
+    class="boot-screen"
   >
-    Đang khởi động câu lạc bộ…
+    <div class="boot-card">
+      <div class="boot-brand">
+        PICK<span>.</span>
+      </div>
+
+      <p class="boot-text">
+        Đang khởi động câu lạc bộ…
+      </p>
+    </div>
   </div>
 
   <section
@@ -38,41 +57,77 @@
     aria-label="Đăng nhập"
   >
     <div class="login-story">
-      <div class="brand">
-        PICK<span>.</span>
-      </div>
+      <div class="login-story-inner">
+        <div class="brand brand-light">
+          PICK<span>.</span>
+        </div>
 
-      <div class="story-copy">
-        <p style="color:#d6f381;margin-top:60px;font-size:13px;letter-spacing:3px">
-          CÂU LẠC BỘ PICKLEBALL
-        </p>
+        <div class="story-copy">
+          <p class="login-story-kicker">
+            CÂU LẠC BỘ PICKLEBALL
+          </p>
 
-        <h1 style="font-size:clamp(36px,4vw,60px);font-weight:800;line-height:1.12;margin:20px 0">
-          Cùng ra sân.<br>
-          Cùng tiến bộ.
-        </h1>
+          <h1 class="login-story-title">
+            Cùng ra sân.<br>
+            Cùng tiến bộ.
+          </h1>
 
-        <p style="color:#c2d5c8;line-height:1.8;max-width:370px">
-          Theo dõi những trận đấu, hành trình của mỗi vận động viên và hoạt động của câu lạc bộ.
-        </p>
+          <p class="login-story-description">
+            Theo dõi trận đấu, Rating, quỹ,
+            giải đấu và hành trình của mỗi
+            thành viên trong cùng một không gian.
+          </p>
 
-        <div style="margin-top:55px;border-top:1px solid #ffffff25;padding-top:20px;color:#d6f381">
-          Kết nối đam mê • Gắn kết đồng đội
+          <div class="login-story-points">
+            <div class="login-story-point">
+              <span class="login-story-point-icon">✓</span>
+              <span>Quản lý trận đấu rõ ràng</span>
+            </div>
+
+            <div class="login-story-point">
+              <span class="login-story-point-icon">✓</span>
+              <span>Theo dõi Rating minh bạch</span>
+            </div>
+
+            <div class="login-story-point">
+              <span class="login-story-point-icon">✓</span>
+              <span>Kết nối hoạt động câu lạc bộ</span>
+            </div>
+          </div>
+
+          <div class="login-story-footer">
+            Kết nối đam mê • Gắn kết đồng đội
+          </div>
         </div>
       </div>
     </div>
 
     <div class="login-form">
       <div class="login-card">
-        <p class="muted">CHÀO MỪNG TRỞ LẠI</p>
+        <div class="login-mobile-brand">
+          <div class="brand">
+            PICK<span>.</span>
+          </div>
 
-        <h2 style="font-size:30px;margin-bottom:8px">
-          Đăng nhập câu lạc bộ
-        </h2>
+          <p>
+            Club Companion
+          </p>
+        </div>
 
-        <p class="muted" style="margin-bottom:28px">
-          Sử dụng tài khoản đã được quản trị viên cấp.
-        </p>
+        <div class="auth-heading">
+          <p class="auth-eyebrow">
+            CHÀO MỪNG TRỞ LẠI
+          </p>
+
+          <h2 class="auth-title">
+            Đăng nhập câu lạc bộ
+          </h2>
+
+          <p class="auth-description">
+            Đăng nhập để xem dữ liệu và các
+            chức năng phù hợp với tài khoản của bạn.
+          </p>
+        </div>
 
         <div
           id="login-message"
@@ -80,42 +135,44 @@
           hidden
         ></div>
 
-        <form id="login-form">
-          <label
-            for="email"
-            class="block text-sm font-semibold mb-2"
-          >
-            Email
-          </label>
+        <form
+          id="login-form"
+          class="auth-form"
+        >
+          <div class="form-group">
+            <label for="email">
+              Email
+            </label>
 
-          <input
-            id="email"
-            class="field mb-5"
-            type="email"
-            required
-            autocomplete="username"
-            maxlength="254"
-            placeholder="ban@example.com"
-          >
+            <input
+              id="email"
+              class="field"
+              type="email"
+              required
+              autocomplete="username"
+              maxlength="254"
+              placeholder="ban@example.com"
+            >
+          </div>
 
-          <label
-            for="password"
-            class="block text-sm font-semibold mb-2"
-          >
-            Mật khẩu
-          </label>
+          <div class="form-group">
+            <label for="password">
+              Mật khẩu
+            </label>
 
-          <input
-            id="password"
-            class="field mb-5"
-            type="password"
-            required
-            autocomplete="current-password"
-          >
+            <input
+              id="password"
+              class="field"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="Nhập mật khẩu"
+            >
+          </div>
 
           <button
             id="login-button"
-            class="btn primary w-full"
+            class="btn primary auth-primary-action"
             type="submit"
           >
             Đăng nhập
@@ -124,287 +181,331 @@
 
         <div
           id="auth-actions"
-          style="margin-top:22px;display:grid;gap:10px"
+          class="auth-secondary-actions"
         >
+          <div class="auth-divider">
+            <span>
+              Hoặc
+            </span>
+          </div>
+
           <button
             id="signup-open"
-            class="btn w-full"
+            class="btn auth-secondary-button"
             type="button"
           >
-            Đăng ký thành viên
+            Tạo tài khoản thành viên
           </button>
 
           <button
             id="forgot-password-open"
-            class="btn w-full"
+            class="btn auth-link-button"
             type="button"
           >
-            Quên mật khẩu
+            Quên mật khẩu?
           </button>
 
-          <p class="muted" style="line-height:1.7">
-            Thành viên có thể tự đăng ký tài khoản và tự đặt lại mật khẩu qua email.
+          <p class="auth-help">
+            Thành viên có thể tự đăng ký và
+            đặt lại mật khẩu qua email.
           </p>
         </div>
 
         <div
           id="signup-panel"
+          class="auth-panel"
           hidden
-          style="margin-top:22px"
         >
-          <form id="signup-form">
-            <h3 style="margin-bottom:16px">
+          <div class="auth-panel-heading">
+            <p class="auth-eyebrow">
+              THÀNH VIÊN MỚI
+            </p>
+
+            <h3>
               Đăng ký thành viên
             </h3>
 
+            <p class="auth-description">
+              Tạo tài khoản để tham gia các hoạt động
+              của câu lạc bộ.
+            </p>
+          </div>
+
+          <form
+            id="signup-form"
+            class="auth-form"
+          >
             <div
               id="signup-message"
               role="alert"
               hidden
             ></div>
 
-            <label
-              for="signup-full-name"
-              class="block text-sm font-semibold mb-2"
-            >
-              Họ và tên
-            </label>
+            <div class="form-group">
+              <label for="signup-full-name">
+                Họ và tên
+              </label>
 
-            <input
-              id="signup-full-name"
-              class="field mb-4"
-              type="text"
-              required
-              maxlength="120"
-              autocomplete="name"
-            >
+              <input
+                id="signup-full-name"
+                class="field"
+                type="text"
+                required
+                maxlength="120"
+                autocomplete="name"
+                placeholder="Nguyễn Văn A"
+              >
+            </div>
 
-            <label
-              for="signup-email"
-              class="block text-sm font-semibold mb-2"
-            >
-              Email
-            </label>
+            <div class="form-group">
+              <label for="signup-email">
+                Email
+              </label>
 
-            <input
-              id="signup-email"
-              class="field mb-4"
-              type="email"
-              required
-              maxlength="254"
-              autocomplete="email"
-            >
+              <input
+                id="signup-email"
+                class="field"
+                type="email"
+                required
+                maxlength="254"
+                autocomplete="email"
+                placeholder="ban@example.com"
+              >
+            </div>
 
-            <label
-              for="signup-phone"
-              class="block text-sm font-semibold mb-2"
-            >
-              Số điện thoại
-            </label>
+            <div class="form-grid auth-form-grid">
+              <div class="form-group">
+                <label for="signup-phone">
+                  Số điện thoại
+                </label>
 
-            <input
-              id="signup-phone"
-              class="field mb-4"
-              type="tel"
-              maxlength="30"
-              autocomplete="tel"
-            >
+                <input
+                  id="signup-phone"
+                  class="field"
+                  type="tel"
+                  maxlength="30"
+                  autocomplete="tel"
+                  placeholder="09xx xxx xxx"
+                >
+              </div>
 
-            <label
-              for="signup-date-of-birth"
-              class="block text-sm font-semibold mb-2"
-            >
-              Ngày sinh
-            </label>
+              <div class="form-group">
+                <label for="signup-date-of-birth">
+                  Ngày sinh
+                </label>
 
-            <input
-              id="signup-date-of-birth"
-              class="field mb-4"
-              type="date"
-              autocomplete="bday"
-            >
+                <input
+                  id="signup-date-of-birth"
+                  class="field"
+                  type="date"
+                  autocomplete="bday"
+                >
+              </div>
+            </div>
 
-            <label
-              for="signup-initial-rating"
-              class="block text-sm font-semibold mb-2"
-            >
-              Rating tự đánh giá ban đầu
-            </label>
+            <div class="form-group">
+              <label for="signup-initial-rating">
+                Rating tự đánh giá ban đầu
+              </label>
 
-            <input
-              id="signup-initial-rating"
-              class="field mb-2"
-              type="number"
-              required
-              step="0.001"
-            >
+              <input
+                id="signup-initial-rating"
+                class="field"
+                type="number"
+                required
+                step="0.001"
+              >
 
-            <p class="muted" style="margin-bottom:16px">
-              Đây là mức tự đánh giá ban đầu. Sau các trận Rated được duyệt,
-              hệ thống sẽ tự cập nhật Rating theo kết quả thi đấu.
-            </p>
+              <p class="field-help">
+                Rating ban đầu là mức tự đánh giá.
+                Sau các trận Rated được duyệt,
+                hệ thống sẽ tự cập nhật Rating.
+              </p>
+            </div>
 
-            <label
-              for="signup-password"
-              class="block text-sm font-semibold mb-2"
-            >
-              Mật khẩu
-            </label>
+            <div class="form-group">
+              <label for="signup-password">
+                Mật khẩu
+              </label>
 
-            <input
-              id="signup-password"
-              class="field mb-4"
-              type="password"
-              required
-              minlength="8"
-              autocomplete="new-password"
-            >
+              <input
+                id="signup-password"
+                class="field"
+                type="password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                placeholder="Tối thiểu 8 ký tự"
+              >
+            </div>
 
-            <label
-              for="signup-password-confirm"
-              class="block text-sm font-semibold mb-2"
-            >
-              Xác nhận mật khẩu
-            </label>
+            <div class="form-group">
+              <label for="signup-password-confirm">
+                Xác nhận mật khẩu
+              </label>
 
-            <input
-              id="signup-password-confirm"
-              class="field mb-5"
-              type="password"
-              required
-              minlength="8"
-              autocomplete="new-password"
-            >
+              <input
+                id="signup-password-confirm"
+                class="field"
+                type="password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                placeholder="Nhập lại mật khẩu"
+              >
+            </div>
 
-            <button
-              id="signup-submit"
-              class="btn primary w-full"
-              type="submit"
-            >
-              Tạo tài khoản thành viên
-            </button>
+            <div class="auth-panel-actions">
+              <button
+                id="signup-submit"
+                class="btn primary"
+                type="submit"
+              >
+                Tạo tài khoản thành viên
+              </button>
 
-            <button
-              id="signup-cancel"
-              class="btn w-full"
-              type="button"
-              style="margin-top:10px"
-            >
-              Quay lại đăng nhập
-            </button>
+              <button
+                id="signup-cancel"
+                class="btn"
+                type="button"
+              >
+                Quay lại đăng nhập
+              </button>
+            </div>
           </form>
         </div>
 
         <div
           id="forgot-password-panel"
+          class="auth-panel"
           hidden
-          style="margin-top:22px"
         >
-          <form id="forgot-password-form">
-            <h3 style="margin-bottom:16px">
+          <div class="auth-panel-heading">
+            <p class="auth-eyebrow">
+              KHÔI PHỤC TÀI KHOẢN
+            </p>
+
+            <h3>
               Quên mật khẩu
             </h3>
 
+            <p class="auth-description">
+              Nhập email đã đăng ký.
+              Hệ thống sẽ gửi liên kết để bạn
+              tự đặt mật khẩu mới.
+            </p>
+          </div>
+
+          <form
+            id="forgot-password-form"
+            class="auth-form"
+          >
             <div
               id="forgot-password-message"
               role="alert"
               hidden
             ></div>
 
-            <p class="muted" style="margin-bottom:16px;line-height:1.7">
-              Nhập email đã đăng ký. Hệ thống sẽ gửi liên kết để bạn tự đặt mật khẩu mới.
-            </p>
+            <div class="form-group">
+              <label for="forgot-password-email">
+                Email
+              </label>
 
-            <label
-              for="forgot-password-email"
-              class="block text-sm font-semibold mb-2"
-            >
-              Email
-            </label>
+              <input
+                id="forgot-password-email"
+                class="field"
+                type="email"
+                required
+                maxlength="254"
+                autocomplete="email"
+                placeholder="ban@example.com"
+              >
+            </div>
 
-            <input
-              id="forgot-password-email"
-              class="field mb-5"
-              type="email"
-              required
-              maxlength="254"
-              autocomplete="email"
-            >
+            <div class="auth-panel-actions">
+              <button
+                id="forgot-password-submit"
+                class="btn primary"
+                type="submit"
+              >
+                Gửi liên kết đặt lại mật khẩu
+              </button>
 
-            <button
-              id="forgot-password-submit"
-              class="btn primary w-full"
-              type="submit"
-            >
-              Gửi liên kết đặt lại mật khẩu
-            </button>
-
-            <button
-              id="forgot-password-cancel"
-              class="btn w-full"
-              type="button"
-              style="margin-top:10px"
-            >
-              Quay lại đăng nhập
-            </button>
+              <button
+                id="forgot-password-cancel"
+                class="btn"
+                type="button"
+              >
+                Quay lại đăng nhập
+              </button>
+            </div>
           </form>
         </div>
 
         <div
           id="recovery-password-panel"
+          class="auth-panel"
           hidden
-          style="margin-top:22px"
         >
-          <form id="recovery-password-form">
-            <h3 style="margin-bottom:16px">
+          <div class="auth-panel-heading">
+            <p class="auth-eyebrow">
+              BẢO MẬT TÀI KHOẢN
+            </p>
+
+            <h3>
               Đặt mật khẩu mới
             </h3>
 
+            <p class="auth-description">
+              Nhập mật khẩu mới cho tài khoản của bạn.
+            </p>
+          </div>
+
+          <form
+            id="recovery-password-form"
+            class="auth-form"
+          >
             <div
               id="recovery-password-message"
               role="alert"
               hidden
             ></div>
 
-            <p class="muted" style="margin-bottom:16px;line-height:1.7">
-              Nhập mật khẩu mới cho tài khoản của bạn.
-            </p>
+            <div class="form-group">
+              <label for="recovery-password">
+                Mật khẩu mới
+              </label>
 
-            <label
-              for="recovery-password"
-              class="block text-sm font-semibold mb-2"
-            >
-              Mật khẩu mới
-            </label>
+              <input
+                id="recovery-password"
+                class="field"
+                type="password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                placeholder="Tối thiểu 8 ký tự"
+              >
+            </div>
 
-            <input
-              id="recovery-password"
-              class="field mb-4"
-              type="password"
-              required
-              minlength="8"
-              autocomplete="new-password"
-            >
+            <div class="form-group">
+              <label for="recovery-password-confirm">
+                Xác nhận mật khẩu mới
+              </label>
 
-            <label
-              for="recovery-password-confirm"
-              class="block text-sm font-semibold mb-2"
-            >
-              Xác nhận mật khẩu mới
-            </label>
-
-            <input
-              id="recovery-password-confirm"
-              class="field mb-5"
-              type="password"
-              required
-              minlength="8"
-              autocomplete="new-password"
-            >
+              <input
+                id="recovery-password-confirm"
+                class="field"
+                type="password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                placeholder="Nhập lại mật khẩu"
+              >
+            </div>
 
             <button
               id="recovery-password-submit"
-              class="btn primary w-full"
+              class="btn primary auth-primary-action"
               type="submit"
             >
               Cập nhật mật khẩu
@@ -421,76 +522,88 @@
     hidden
   >
     <aside class="sidebar">
-      <div
-        class="brand"
-        style="color:white;padding:0 14px"
-      >
-        PICK<span>.</span>
-      </div>
+      <div class="sidebar-header">
+        <div class="brand brand-light">
+          PICK<span>.</span>
+        </div>
 
-      <p style="color:#96b7a3;font-size:11px;letter-spacing:2px;padding:0 14px;margin:5px 0 25px">
-        CLUB COMPANION
-      </p>
+        <p class="sidebar-kicker">
+          CLUB COMPANION
+        </p>
+      </div>
 
       <nav
         id="nav"
+        class="sidebar-nav"
         aria-label="Điều hướng chính"
       ></nav>
 
-      <div
-        class="sidebar-footer"
-        style="margin-top:auto;padding:22px 14px;color:#bed2c3;font-size:12px;line-height:1.8"
-      >
-        FRONTEND V1<br>
-        <span style="color:#d6f381">
-          ● RPC bảo vệ thao tác ghi
-        </span>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-dot"></div>
+
+        <div>
+          <strong>
+            PICK Club
+          </strong>
+
+          <span>
+            Cùng chơi • Cùng tiến bộ
+          </span>
+        </div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div>
-          <p class="muted mb-1">
+        <div class="topbar-heading">
+          <p class="topbar-eyebrow">
             Không gian câu lạc bộ
           </p>
 
           <h1
             id="page-title"
-            class="text-2xl font-bold mb-0"
+            class="page-title"
           >
             Tổng quan
           </h1>
         </div>
 
-        <div class="flex items-center gap-3 flex-wrap">
-          <div>
-            <div
-              id="user-name"
-              class="text-sm font-semibold"
-            ></div>
+        <div class="topbar-actions">
+          <div class="topbar-user">
+            <div class="topbar-avatar">
+              P
+            </div>
 
-            <div
-              id="user-role"
-              class="muted"
-            ></div>
+            <div class="topbar-user-copy">
+              <div
+                id="user-name"
+                class="topbar-user-name"
+              ></div>
+
+              <div
+                id="user-role"
+                class="topbar-user-role"
+              ></div>
+            </div>
           </div>
 
-          <button
-            id="refresh"
-            class="btn"
-            type="button"
-          >
-            Làm mới
-          </button>
+          <div class="topbar-buttons">
+            <button
+              id="refresh"
+              class="btn btn-compact"
+              type="button"
+            >
+              Làm mới
+            </button>
 
-          <button
-            id="logout"
-            class="btn"
-            type="button"
-          >
-            Đăng xuất
-          </button>
+            <button
+              id="logout"
+              class="btn btn-compact"
+              type="button"
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </header>
 
@@ -500,20 +613,31 @@
         hidden
       ></div>
 
-      <p
-        id="sync-status"
-        class="muted"
-        role="status"
-        aria-live="polite"
-      ></p>
+      <div class="sync-row">
+        <span class="sync-dot"></span>
+
+        <p
+          id="sync-status"
+          class="muted sync-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+      </div>
 
       <div
         id="content"
+        class="content"
         aria-busy="false"
       ></div>
 
-      <footer class="muted mt-8">
-        PICK • Dữ liệu được hiển thị theo quyền tài khoản của bạn.
+      <footer class="app-footer">
+        <span>
+          PICK
+        </span>
+
+        <span>
+          Dữ liệu được hiển thị theo quyền tài khoản của bạn.
+        </span>
       </footer>
     </main>
   </div>
@@ -521,25 +645,6 @@
   <script src="./matches.js?v=9"></script>
   <script src="./players.js?v=6"></script>
   <script src="./fund.js?v=11"></script>
-  <script src="./app.js?v=56"></script>
+  <script src="./app.js?v=60"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
