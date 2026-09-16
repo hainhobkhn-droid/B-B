@@ -13672,6 +13672,12 @@ const fieldLabels = {
                 .value
                 .trim();
 
+            const loginName =
+              $('signup-login-name')
+                .value
+                .trim()
+                .toLowerCase();
+
             const email =
               $('signup-email')
                 .value
@@ -13704,6 +13710,22 @@ const fieldLabels = {
               $('signup-message'),
               ''
             );
+
+            if (
+              loginName.length < 3 ||
+              loginName.length > 32 ||
+              !/^[a-z0-9._-]+$/.test(
+                loginName
+              )
+            ) {
+              notice(
+                $('signup-message'),
+                'Nickname phải dài 3–32 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.',
+                true
+              );
+
+              return;
+            }
 
             if (!signupRatingConfig) {
               notice(
@@ -13773,6 +13795,8 @@ const fieldLabels = {
                       data: {
                         full_name:
                           fullName,
+                        login_name:
+                          loginName,
                         phone:
                           phone || null,
                         date_of_birth:
@@ -13834,7 +13858,15 @@ const fieldLabels = {
 
               notice(
                 $('signup-message'),
-                signupErrorCode ===
+                signupErrorMessage.includes(
+                  'LOGIN_NAME_ALREADY_EXISTS'
+                )
+                  ? 'Nickname này đã được sử dụng. Hãy chọn nickname khác.'
+                  : signupErrorMessage.includes(
+                      'INVALID_LOGIN_NAME'
+                    )
+                    ? 'Nickname không hợp lệ.'
+                    : signupErrorCode ===
                   'user_already_exists'
                   ? 'Email này đã được đăng ký.'
                   : signupErrorCode ===

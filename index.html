@@ -261,6 +261,29 @@
             </div>
 
             <div class="form-group">
+              <label for="signup-login-name">
+                Nickname
+              </label>
+
+              <input
+                id="signup-login-name"
+                class="field"
+                type="text"
+                required
+                minlength="3"
+                maxlength="32"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck="false"
+                pattern="[A-Za-z0-9._-]{3,32}"
+                placeholder="Ví dụ: xuanhai"
+              >
+
+              <p class="field-help">
+                Dùng để đăng nhập. Chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.
+              </p>
+            </div>
+            <div class="form-group">
               <label for="signup-email">
                 Email
               </label>
@@ -648,6 +671,6 @@
   <script src="./matches.js?v=9"></script>
   <script src="./players.js?v=6"></script>
   <script src="./fund.js?v=11"></script>
-  <script src="./app.js?v=63"></script>
+  <script src="./app.js?v=64"></script>
 </body>
 </html>
