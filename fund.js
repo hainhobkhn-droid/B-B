@@ -461,6 +461,130 @@
         'notice'
       )
     );
+
+    // FUND ADMIN OBLIGATION VISIBILITY V1
+    if (isAdmin()) {
+      const recentFundObligations =
+        activeContributions
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(
+                b.created_at || 0
+              ).getTime() -
+              new Date(
+                a.created_at || 0
+              ).getTime()
+          )
+          .slice(
+            0,
+            50
+          );
+
+      root.append(
+        el(
+          'p',
+          recentFundObligations.length
+            ? `Đã ghi nhận ${recentFundObligations.length} nghĩa vụ quỹ gần nhất. Các nghĩa vụ mới sinh sau khi duyệt trận sẽ xuất hiện tại đây.`
+            : 'Chưa có nghĩa vụ quỹ nào được ghi nhận.',
+          'notice'
+        )
+      );
+
+      table(
+        root,
+        'Nghĩa vụ quỹ đã ghi nhận',
+        recentFundObligations
+          .map(
+            contribution => {
+              const match =
+                rows('matches')
+                  .find(
+                    item =>
+                      raw(item.id) ===
+                      raw(
+                        contribution.match_id
+                      )
+                  );
+
+              return {
+                ...contribution,
+                match_reference:
+                  match
+                    ? (
+                        'Trận ' +
+                        matchCode(match) +
+                        ' • ' +
+                        number(
+                          match.team_a_score
+                        ) +
+                        ' – ' +
+                        number(
+                          match.team_b_score
+                        )
+                      )
+                    : (
+                        contribution.match_id
+                          ? '#' +
+                            String(
+                              contribution.match_id
+                            ).slice(
+                              0,
+                              8
+                            )
+                          : '—'
+                      )
+              };
+            }
+          ),
+        [
+          [
+            'VĐV',
+            r =>
+              playerName(
+                r.player_id
+              )
+          ],
+          moneyCol(
+            'Số tiền',
+            'amount_due',
+            'amount'
+          ),
+          [
+            'Loại',
+            r =>
+              fundReasonLabel(
+                pick(
+                  r,
+                  'reason',
+                  'contribution_type',
+                  'type'
+                )
+              )
+          ],
+          statusCol,
+          [
+            'Trận liên quan',
+            r =>
+              r.match_reference ||
+              '—'
+          ],
+          dateCol(
+            'Ghi nhận',
+            'created_at'
+          )
+        ],
+        {
+          status: true,
+          unavailable:
+            !!state.errors
+              .fund_contributions ||
+            !!state.errors
+              .matches
+        }
+      );
+    }
+
     if (
       fundKnownCash.adjustmentCount > 0
     ) {
