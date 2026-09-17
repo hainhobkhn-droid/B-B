@@ -52,7 +52,8 @@
         const fundCollapse =
           (
             title,
-            renderContent
+            renderContent,
+            openByDefault = false
           ) => {
             const wrapper =
               el(
@@ -69,11 +70,13 @@
               );
 
             body.hidden =
-              true;
+              !openByDefault;
 
             const toggle =
               button(
-                `▶ ${title}`,
+                openByDefault
+                  ? `▼ Thu gọn ${title}`
+                  : `▶ ${title}`,
                 () => {
                   body.hidden =
                     !body.hidden;
@@ -2188,7 +2191,8 @@ collectionContent.append(
           );
 
           fillContributions();
-        }
+        },
+        true
       );
     }
 
@@ -2472,7 +2476,8 @@ collectionContent.append(
                 ) || 0
               )
             );
-          }
+          },
+          true
         );
 
         const getReportData =
