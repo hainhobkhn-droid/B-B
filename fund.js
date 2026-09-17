@@ -565,7 +565,7 @@
                 )
               )
           ],
-          statusCol,
+          col('Trạng thái', 'status'),
           [
             'Trận liên quan',
             r =>
@@ -3824,7 +3824,7 @@ fundCollapse(
                       )
                     )
                 ],
-                statusCol,
+                col('Trạng thái', 'status'),
                 dateCol(
                   'Ghi nhận',
                   'created_at'
