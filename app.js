@@ -3900,6 +3900,8 @@ const fieldLabels = {
 
 
 
+        adminCreateMember(root);
+
         adminAccountVerification(root);
 
         adminSystemConfig(root);
@@ -3931,6 +3933,471 @@ const fieldLabels = {
         );
       }
 
+
+      function adminCreateMember(root) {
+        if (!isAdmin()) return;
+
+        const section =
+          panel(
+            'Tạo tài khoản thành viên',
+            root
+          );
+
+        section.append(
+          el(
+            'p',
+            'Tạo MEMBER mới với mật khẩu tạm. Thành viên sẽ phải đổi mật khẩu ở lần đăng nhập đầu tiên.',
+            'muted'
+          )
+        );
+
+        const form =
+          el('form');
+
+        const grid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const makeField = (
+          id,
+          labelText,
+          type = 'text'
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          label.htmlFor = id;
+
+          const input =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          input.id = id;
+          input.type = type;
+          input.required = true;
+
+          group.append(
+            label,
+            input
+          );
+
+          grid.append(
+            group
+          );
+
+          return input;
+        };
+
+        const fullName =
+          makeField(
+            'admin-create-member-name',
+            'Họ và tên'
+          );
+
+        fullName.maxLength = 120;
+        fullName.autocomplete = 'off';
+
+        const loginName =
+          makeField(
+            'admin-create-member-login',
+            'Nickname'
+          );
+
+        loginName.minLength = 3;
+        loginName.maxLength = 32;
+        loginName.pattern =
+          '[A-Za-z0-9._-]{3,32}';
+        loginName.autocapitalize =
+          'none';
+        loginName.spellcheck =
+          false;
+        loginName.placeholder =
+          'Ví dụ: nguyenvana';
+
+        const email =
+          makeField(
+            'admin-create-member-email',
+            'Email',
+            'email'
+          );
+
+        email.maxLength = 254;
+        email.autocomplete = 'off';
+
+        const password =
+          makeField(
+            'admin-create-member-password',
+            'Mật khẩu tạm',
+            'password'
+          );
+
+        password.minLength = 8;
+        password.autocomplete =
+          'new-password';
+        password.placeholder =
+          'Tối thiểu 8 ký tự';
+
+        const rating =
+          makeField(
+            'admin-create-member-rating',
+            'Rating ban đầu',
+            'number'
+          );
+
+        rating.step = '0.001';
+
+        if (signupRatingConfig) {
+          rating.min =
+            String(
+              signupRatingConfig
+                .minRating
+            );
+
+          rating.max =
+            String(
+              signupRatingConfig
+                .maxRating
+            );
+
+          rating.value =
+            signupRatingConfig
+              .initialRating
+              .toFixed(3);
+        } else {
+          rating.value = '4.000';
+        }
+
+        const message =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        message.hidden = true;
+        message.setAttribute(
+          'role',
+          'status'
+        );
+
+        const submit =
+          el(
+            'button',
+            'Tạo tài khoản',
+            'btn primary'
+          );
+
+        submit.type =
+          'submit';
+
+        const actions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        actions.append(submit);
+
+        form.append(
+          grid,
+          actions,
+          message
+        );
+
+        section.append(form);
+
+        form.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !isAdmin()
+            ) {
+              return;
+            }
+
+            const normalizedLoginName =
+              loginName.value
+                .trim()
+                .toLowerCase();
+
+            const initialRating =
+              Number(
+                rating.value
+              );
+
+            if (
+              normalizedLoginName.length < 3 ||
+              normalizedLoginName.length > 32 ||
+              !/^[a-z0-9._-]+$/.test(
+                normalizedLoginName
+              )
+            ) {
+              notice(
+                message,
+                'Nickname phải dài 3–32 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              !Number.isFinite(
+                initialRating
+              )
+            ) {
+              notice(
+                message,
+                'Rating ban đầu không hợp lệ.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              signupRatingConfig &&
+              (
+                initialRating <
+                  signupRatingConfig
+                    .minRating ||
+                initialRating >
+                  signupRatingConfig
+                    .maxRating
+              )
+            ) {
+              notice(
+                message,
+                'Rating ban đầu phải nằm trong khoảng ' +
+                  signupRatingConfig
+                    .minRating
+                    .toFixed(3) +
+                  ' đến ' +
+                  signupRatingConfig
+                    .maxRating
+                    .toFixed(3) +
+                  '.',
+                true
+              );
+
+              return;
+            }
+
+            if (!form.reportValidity()) {
+              return;
+            }
+
+            state.writeBusy = true;
+
+            Array.from(
+              form.elements
+            ).forEach(control => {
+              control.disabled = true;
+            });
+
+            submit.textContent =
+              'Đang tạo…';
+
+            notice(
+              message,
+              ''
+            );
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.functions
+                  .invoke(
+                    'admin-create-member',
+                    {
+                      body: {
+                        full_name:
+                          fullName.value
+                            .trim(),
+                        login_name:
+                          normalizedLoginName,
+                        email:
+                          email.value
+                            .trim()
+                            .toLowerCase(),
+                        password:
+                          password.value,
+                        initial_rating:
+                          initialRating
+                      }
+                    }
+                  );
+
+              let functionErrorCode =
+                '';
+
+              if (
+                error?.context instanceof
+                  Response
+              ) {
+                try {
+                  const errorBody =
+                    await error.context
+                      .clone()
+                      .json();
+
+                  functionErrorCode =
+                    String(
+                      errorBody?.error ||
+                      ''
+                    );
+                } catch {
+                  // Keep generic error.
+                }
+              }
+
+              if (error) {
+                error.functionErrorCode =
+                  functionErrorCode;
+
+                throw error;
+              }
+
+              if (
+                data?.ok !== true ||
+                !data?.user_id
+              ) {
+                throw new Error(
+                  data?.error ||
+                  'CREATE_MEMBER_FAILED'
+                );
+              }
+
+              const createdLoginName =
+                data.login_name ||
+                normalizedLoginName;
+
+              form.reset();
+
+              if (signupRatingConfig) {
+                rating.value =
+                  signupRatingConfig
+                    .initialRating
+                    .toFixed(3);
+              } else {
+                rating.value =
+                  '4.000';
+              }
+
+              notice(
+                message,
+                'Đã tạo tài khoản "' +
+                  createdLoginName +
+                  '". Thành viên phải đổi mật khẩu ở lần đăng nhập đầu tiên.',
+                false,
+                true
+              );
+
+            } catch (error) {
+              console.error(
+                'ADMIN_CREATE_MEMBER_UI_ERROR',
+                error
+              );
+
+              const code =
+                String(
+                  error
+                    ?.functionErrorCode ||
+                  error?.message ||
+                  ''
+                );
+
+              let text =
+                'Không tạo được tài khoản thành viên.';
+
+              if (
+                code.includes(
+                  'LOGIN_NAME_ALREADY_EXISTS'
+                )
+              ) {
+                text =
+                  'Nickname này đã được sử dụng.';
+              } else if (
+                code.includes(
+                  'EMAIL_ALREADY_EXISTS'
+                )
+              ) {
+                text =
+                  'Email này đã có tài khoản.';
+              } else if (
+                code.includes(
+                  'INVALID_LOGIN_NAME'
+                )
+              ) {
+                text =
+                  'Nickname không hợp lệ.';
+              } else if (
+                code.includes(
+                  'INVALID_EMAIL'
+                )
+              ) {
+                text =
+                  'Email không hợp lệ.';
+              } else if (
+                code.includes(
+                  'WEAK_PASSWORD'
+                )
+              ) {
+                text =
+                  'Mật khẩu tạm cần ít nhất 8 ký tự.';
+              } else if (
+                code.includes(
+                  'FORBIDDEN'
+                )
+              ) {
+                text =
+                  'Tài khoản hiện tại không có quyền tạo thành viên.';
+              }
+
+              notice(
+                message,
+                text,
+                true
+              );
+
+            } finally {
+              state.writeBusy = false;
+
+              Array.from(
+                form.elements
+              ).forEach(control => {
+                control.disabled = false;
+              });
+
+              submit.textContent =
+                'Tạo tài khoản';
+            }
+          }
+        );
+      }
 
       function adminAccountVerification(root) {
         if (!isAdmin()) return;
