@@ -2184,6 +2184,205 @@ function collapsibleAdminSection(
       );
     }
 
+    // P0.4F: read-only preview; the RPC remains the final transactional guard.
+    function promoteGuestForm(root) {
+      if (!isAdmin()) return;
+      const actor = state.session?.user?.id;
+      const generation = state.generation;
+      const section = panel('Chuyển VĐV khách thành thành viên', root);
+      const message = el('div');
+      message.setAttribute('role', 'status');
+      const preview = el('div', null, 'grid gap-3 mt-3');
+      preview.setAttribute('aria-live', 'polite');
+      const account = el('select', null, 'field');
+      const guest = el('select', null, 'field');
+      account.id = 'promote-member-account';
+      guest.id = 'promote-guest-player';
+      const fields = el('div', null, 'form-grid');
+      [[account, 'Tài khoản thành viên'], [guest, 'VĐV khách được giữ']].forEach(([input, text]) => {
+        const group = el('div', null, 'form-group');
+        const label = el('label', text);
+        label.htmlFor = input.id;
+        group.append(label, input);
+        fields.append(group);
+      });
+      let members = [], guests = [], checked = null;
+      let reading = false, saving = false, version = 0, committed = false;
+      const current = () => root.isConnected && isAdmin() &&
+        state.profile?.is_active === true && state.session?.user?.id === actor &&
+        state.generation === generation && !state.busy;
+      const reload = button('Tải danh sách thành viên và khách', loadChoices, 'btn');
+      const submit = button('Xác nhận chuyển thành viên', promote, 'btn');
+      reload.type = submit.type = 'button';
+      const controls = el('div', null, 'flex flex-wrap gap-3 mt-3');
+      controls.append(reload, submit);
+      section.append(el('p',
+        'Chọn đúng tài khoản và VĐV của cùng một người. Giữ nguyên ID, Rating và toàn bộ lịch sử của khách; hồ sơ VĐV tạm sẽ ngừng hoạt động. Tên và thông tin liên hệ không tự sao chép.',
+        'notice'), fields, preview, message, controls);
+
+      function sync() {
+        const locked = reading || saving || committed || !current() || state.writeBusy;
+        account.disabled = guest.disabled = reload.disabled = locked;
+        submit.disabled = locked || !checked || checked.blocked;
+        submit.textContent = saving ? 'Đang chuyển…' : 'Xác nhận chuyển thành viên';
+      }
+      function options(input, data, placeholder) {
+        input.replaceChildren(new Option(placeholder, ''));
+        data.forEach(item => input.append(new Option(
+          `${item.full_name || 'Chưa có tên'} • ${item.id}`, item.id)));
+      }
+      async function allRows(tableName, columns, filters) {
+        const result = [];
+        for (let offset = 0; ; offset += 500) {
+          let query = client.from(tableName).select(columns).order('id').range(offset, offset + 499);
+          for (const [key, value] of filters) query = query.eq(key, value);
+          const { data, error } = await query;
+          if (error) throw error;
+          if (!Array.isArray(data)) throw new Error('Không đọc được danh sách.');
+          result.push(...data);
+          if (data.length < 500) return result;
+        }
+      }
+      async function loadChoices() {
+        if (!current() || reading || saving || committed || state.writeBusy) return;
+        reading = true; checked = null; const token = ++version;
+        preview.replaceChildren(); sync();
+        notice(message, 'Đang tải danh sách…');
+        try {
+          const result = await Promise.all([
+            allRows('profiles', 'id,full_name,role,is_active,player_id', [['role', 'MEMBER'], ['is_active', true]]),
+            allRows('players', 'id,full_name,player_type,status,current_rating', [['player_type', 'GUEST'], ['status', 'ACTIVE']])
+          ]);
+          if (!current() || token !== version) return;
+          members = result[0].filter(item => item.player_id);
+          guests = result[1];
+          options(account, members, '— Chọn tài khoản MEMBER —');
+          options(guest, guests, '— Chọn GUEST ACTIVE —');
+          notice(message, !members.length ? 'Không có MEMBER đang hoạt động có Player liên kết.' :
+            !guests.length ? 'Không có VĐV khách đang hoạt động.' : 'Chọn hai hồ sơ để kiểm tra trước khi chuyển.');
+        } catch (error) {
+          if (current()) {
+            members = []; guests = [];
+            options(account, [], '— Chưa tải được —'); options(guest, [], '— Chưa tải được —');
+            notice(message, 'Không tải được danh sách. ' + explain(error), true);
+          }
+        } finally { reading = false; sync(); }
+      }
+      async function one(tableName, id, columns) {
+        const { data, error } = await client.from(tableName).select(columns).eq('id', id).maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('Hồ sơ không còn tồn tại hoặc không có quyền đọc.');
+        return data;
+      }
+      async function count(tableName, playerId, partner = false) {
+        let query = client.from(tableName).select('*', { count: 'exact', head: true });
+        query = partner ? query.or(`player_id.eq.${playerId},partner_player_id.eq.${playerId}`) : query.eq('player_id', playerId);
+        const { count: total, error } = await query;
+        if (error) throw error;
+        if (!Number.isInteger(total) || total < 0) throw new Error('Chưa xác minh được dữ liệu nghiệp vụ.');
+        return total;
+      }
+      async function inspect(profileId, guestId) {
+        const columns = 'id,full_name,player_type,status,current_rating';
+        const profile = await one('profiles', profileId, 'id,full_name,role,is_active,player_id');
+        if (profile.role !== 'MEMBER' || profile.is_active !== true || !profile.player_id)
+          throw new Error('Tài khoản phải là MEMBER đang hoạt động và có Player tạm.');
+        const [temp, target] = await Promise.all([
+          one('players', profile.player_id, columns), one('players', guestId, columns)
+        ]);
+        if (temp.player_type !== 'CLUB' || temp.status !== 'ACTIVE')
+          throw new Error('Player hiện tại phải là CLUB ACTIVE.');
+        if (target.player_type !== 'GUEST' || target.status !== 'ACTIVE' || temp.id === target.id)
+          throw new Error('VĐV khách không còn đủ điều kiện. Hãy tải lại danh sách.');
+        const tables = ['match_players', 'rating_events', 'rating_adjustments', 'rating_adjustment_events',
+          'fund_contributions', 'fund_payments', 'fund_transactions', 'tournament_registrations', 'tournament_payments', 'awards'];
+        const [counts, matches, ratings, links] = await Promise.all([
+          Promise.all(tables.map(name => count(name, temp.id, name === 'tournament_registrations'))),
+          count('match_players', target.id), count('rating_events', target.id), count('profiles', target.id)
+        ]);
+        return { profile, temp, target, counts, matches, ratings, blocked: links > 0 || counts.some(n => n > 0), links };
+      }
+      function show(info) {
+        preview.replaceChildren();
+        const rating = player => player.current_rating == null ? '—' : String(player.current_rating);
+        [
+          `Tài khoản: ${info.profile.full_name} • ${info.profile.id}`,
+          `Player hiện tại: ${info.temp.full_name} • ${info.temp.id} • CLUB / ACTIVE • Rating ${rating(info.temp)} • ${info.counts[0]} lượt tham gia trận • ${info.counts[1]} Rating events`,
+          `Guest được giữ: ${info.target.full_name} • ${info.target.id} • GUEST / ACTIVE • Rating ${rating(info.target)} • ${info.matches} lượt tham gia trận • ${info.ratings} Rating events`,
+          info.links ? 'Không thể chuyển: Guest đã liên kết với một tài khoản.' : info.blocked ?
+            'Không thể chuyển tự động: Player hiện tại đã có dữ liệu thi đấu, Rating, quỹ, giải đấu hoặc thành tích.' :
+            'Chưa phát hiện dữ liệu nghiệp vụ ở Player tạm trong phạm vi quyền đọc. Hệ thống sẽ kiểm tra lại khi xác nhận.'
+        ].forEach(text => preview.append(el('p', text, 'notice')));
+      }
+      async function selectionChanged() {
+        checked = null; const token = ++version; preview.replaceChildren(); sync();
+        if (!current() || !account.value || !guest.value) return;
+        const profileId = account.value, guestId = guest.value;
+        notice(message, 'Đang kiểm tra hồ sơ và dữ liệu nghiệp vụ…');
+        try {
+          const result = await inspect(profileId, guestId);
+          if (!current() || token !== version) return;
+          checked = result; show(result); notice(message, '');
+        } catch (error) {
+          if (current() && token === version) notice(message, 'Chưa thể xác nhận. ' + explain(error), true);
+        } finally { if (token === version) sync(); }
+      }
+      async function promote() {
+        if (!current() || state.writeBusy || saving || committed || !checked || checked.blocked || submit.disabled) return;
+        const before = checked;
+        saving = true; state.writeBusy = true; ++version; sync();
+        try {
+          // Recheck before confirmation; concurrent writes are still guarded by the RPC.
+          const fresh = await inspect(before.profile.id, before.target.id);
+          if (!current()) return;
+          checked = fresh; show(fresh);
+          if (fresh.blocked) { notice(message, 'Không thể chuyển: dữ liệu nghiệp vụ đã thay đổi.', true); return; }
+          if (fresh.temp.id !== before.temp.id) {
+            notice(message, 'Liên kết Player đã thay đổi. Hãy kiểm tra preview mới và xác nhận lại.', true); return;
+          }
+          if (!window.confirm(`Chuyển tài khoản ${fresh.profile.full_name} (${fresh.profile.id}) sang ${fresh.target.full_name} (${fresh.target.id})?\nGiữ nguyên Rating ${fresh.target.current_rating} và toàn bộ lịch sử Guest.\nPlayer ${fresh.temp.full_name} (${fresh.temp.id}) sẽ thành INACTIVE.\nBạn đã xác minh đây là cùng một người?`)) return;
+          if (!current()) return;
+          const { data, error } = await client.rpc('promote_guest_player_to_member', {
+            p_profile_id: fresh.profile.id, p_guest_player_id: fresh.target.id
+          });
+          if (error) throw error;
+          // Never enable a retry after a successful RPC, even if refreshing fails.
+          committed = true; checked = null;
+          if (!data?.ok) throw new Error('Phản hồi chưa xác định; tải lại dữ liệu để kiểm tra trước khi thao tác tiếp.');
+          if (!current()) return;
+          state.writeBusy = false;
+          await load();
+          if (state.session?.user?.id !== actor || !isAdmin()) return;
+          const incomplete = state.busy || state.errors?.players || state.partial?.players ||
+            !rows('players').some(p => p.id === fresh.target.id && p.player_type === 'CLUB') ||
+            !rows('players').some(p => p.id === fresh.temp.id && p.status === 'INACTIVE');
+          notice($('global-message'), incomplete ?
+            'Đã chuyển thành công nhưng dữ liệu hiển thị chưa tải đầy đủ. Hãy tải lại trang; không gửi lại thao tác.' :
+            'Đã chuyển thành viên thành công. Giữ nguyên Player ID, Rating và lịch sử của khách.', !!incomplete, !incomplete);
+        } catch (error) {
+          checked = null;
+          if (state.session?.user?.id === actor && isAdmin()) {
+            const text = String(error?.message || '');
+            const detail = text.includes('TEMP_PLAYER_HAS_BUSINESS_DATA') ? 'Player hiện tại đã có dữ liệu nghiệp vụ.' : explain(error);
+            notice(root.isConnected ? message : $('global-message'), committed ?
+              'RPC đã trả phản hồi; chưa xác minh được dữ liệu sau chuyển. Hãy tải lại trang, không gửi lại thao tác. ' + detail :
+              'Chưa xác nhận chuyển thành công. Tải lại danh sách để kiểm tra trước khi thử lại. ' + detail, true);
+          }
+        } finally {
+          saving = false;
+          if (state.session?.user?.id === actor) state.writeBusy = false;
+          sync();
+        }
+      }
+      account.addEventListener('change', selectionChanged);
+      guest.addEventListener('change', selectionChanged);
+      options(account, [], '— Tải danh sách để chọn —');
+      options(guest, [], '— Tải danh sách để chọn —');
+      sync();
+      return loadChoices;
+    }
+
+
     function playersPage() {
       const root =
         $('content');
@@ -2220,6 +2419,17 @@ function collapsibleAdminSection(
           },
           'info'
         );
+      }
+
+      if (isAdmin()) {
+        let loadPromotion;
+        const promotion = collapsibleAdminSection(
+          root, 'Chuyển VĐV khách thành thành viên',
+          container => { loadPromotion = promoteGuestForm(container); }, 'info'
+        );
+        promotion.toggle.addEventListener('click', () => {
+          if (!promotion.body.hidden) loadPromotion?.();
+        });
       }
 
       playerDetailSection(root);

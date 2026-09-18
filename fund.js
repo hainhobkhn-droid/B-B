@@ -2522,6 +2522,42 @@ collectionContent.append(
             const playerMap =
               new Map();
 
+            // DEBT REPORT DEBUG TEMP
+            const debugContributions = rows('fund_contributions');
+
+            console.log(
+              '[DEBT DEBUG] total fund_contributions:',
+              debugContributions.length
+            );
+
+            console.table(
+              debugContributions
+                .map(contribution => {
+                  const match =
+                    matchMap.get(contribution.match_id);
+
+                  return {
+                    contribution_id: contribution.id,
+                    player_id: contribution.player_id,
+                    match_id: contribution.match_id,
+                    played_at: match?.played_at,
+                    playedDate: match ? vnDateKey(match.played_at) : null,
+                    match_status: match?.status,
+                    status: contribution.status,
+                    reason: contribution.reason,
+                    amount_due: contribution.amount_due,
+                    paid: paymentTotals.get(contribution.id) || 0,
+                    remaining: Math.max(
+                      0,
+                      (num(contribution.amount_due) || 0) -
+                      (paymentTotals.get(contribution.id) || 0)
+                    )
+                  };
+                })
+                .filter(item => item.playedDate === '2026-09-03')
+            );
+            // END DEBT REPORT DEBUG TEMP
+
             rows(
               'fund_contributions'
             ).forEach(
@@ -2695,6 +2731,68 @@ collectionContent.append(
                 );
               }
             );
+
+            // PLAYERMAP DEBUG TEMP
+            const debugPlayerMap =
+              Array.from(
+                playerMap.values()
+              ).map(player => {
+                const sep03Items =
+                  player.items.filter(
+                    item =>
+                      vnDateKey(
+                        item.match.played_at
+                      ) === '2026-09-03'
+                  );
+
+                return {
+                  player_id: player.playerId,
+                  name: player.name,
+                  total_items: player.items.length,
+                  sep03_items: sep03Items.length,
+                  sep03_due: sep03Items.reduce(
+                    (sum, item) => sum + item.due,
+                    0
+                  ),
+                  sep03_paid: sep03Items.reduce(
+                    (sum, item) => sum + item.paid,
+                    0
+                  ),
+                  sep03_remaining: sep03Items.reduce(
+                    (sum, item) => sum + item.remaining,
+                    0
+                  ),
+                  total_due: player.due,
+                  total_paid: player.paid,
+                  total_remaining: player.remaining
+                };
+              }).filter(
+                player => player.sep03_items > 0
+              );
+
+            console.log(
+              '[PLAYERMAP DEBUG] players with 03/09:',
+              debugPlayerMap.length
+            );
+
+            console.log(
+              '[PLAYERMAP DEBUG] 03/09 item count:',
+              debugPlayerMap.reduce(
+                (sum, player) => sum + player.sep03_items,
+                0
+              )
+            );
+
+            console.log(
+              '[PLAYERMAP DEBUG] 03/09 remaining:',
+              debugPlayerMap.reduce(
+                (sum, player) => sum + player.sep03_remaining,
+                0
+              )
+            );
+
+            console.table(debugPlayerMap);
+            // END PLAYERMAP DEBUG TEMP
 
             let players =
               Array.from(
@@ -3134,7 +3232,13 @@ collectionContent.append(
                       row.append(
                         el(
                           'div',
-                          matchCode(
+                          (
+                            vnDateKey(
+                              item.match.played_at
+                            ) || 'Không rõ ngày'
+                          ) +
+                            ' • ' +
+                            matchCode(
                             item.match
                           ) +
                             ' • ' +
