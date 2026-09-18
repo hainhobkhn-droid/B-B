@@ -4340,3 +4340,55 @@ td:first-child{
     width:100%;
   }
 }
+
+
+/* =========================================================
+   PICK MOBILE PLAYER CARD V1
+   Stable VDV card layout on real mobile devices
+   ========================================================= */
+
+@media (max-width:700px){
+
+  .player-card-header{
+    display:grid!important;
+    grid-template-columns:
+      minmax(0,1fr)
+      auto;
+    grid-template-areas:
+      "identity rating"
+      "action action";
+    align-items:start!important;
+    gap:8px 12px!important;
+  }
+
+  .player-card-identity{
+    grid-area:identity;
+    min-width:0;
+  }
+
+  .player-card-name{
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+
+  .player-card-meta{
+    margin-top:4px;
+    line-height:1.35;
+  }
+
+  .player-card-rating{
+    grid-area:rating;
+    align-self:start;
+    justify-self:end;
+    white-space:nowrap;
+    text-align:right;
+    line-height:1.25;
+  }
+
+  .player-card-toggle{
+    grid-area:action;
+    justify-self:start;
+    margin-top:4px;
+    min-height:38px;
+  }
+}

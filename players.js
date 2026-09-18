@@ -1571,16 +1571,19 @@ function collapsibleAdminSection(
               'rounded-xl border p-4'
             );
 
+          // PICK MOBILE PLAYER CARD V1
           const header =
             el(
               'div',
               null,
-              'flex flex-wrap items-center justify-between gap-3'
+              'flex flex-wrap items-center justify-between gap-3 player-card-header'
             );
 
           const identity =
             el(
-              'div'
+              'div',
+              null,
+              'player-card-identity'
             );
 
           identity.append(
@@ -1589,7 +1592,7 @@ function collapsibleAdminSection(
               playerName(
                 player.id
               ),
-              'font-semibold'
+              'font-semibold player-card-name'
             ),
             el(
               'div',
@@ -1612,7 +1615,7 @@ function collapsibleAdminSection(
               `Rating ${number(
                 player.current_rating
               )}`,
-              'font-semibold'
+              'font-semibold player-card-rating'
             );
 
           const detail =
@@ -1637,7 +1640,7 @@ function collapsibleAdminSection(
                     ? 'Xem chi tiết'
                     : 'Thu gọn';
               },
-              'border rounded-lg px-3 py-1 text-sm'
+              'border rounded-lg px-3 py-1 text-sm player-card-toggle'
             );
 
           toggle.type =
