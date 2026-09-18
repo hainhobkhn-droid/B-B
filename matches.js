@@ -37,9 +37,14 @@
           root
         );
 
+        section.classList.add(
+          'match-action-card',
+          'match-action-create'
+        );
+
         const description = el(
           'p',
-          'Bước này chỉ tạo bản nháp PENDING. Sau khi tạo, bạn sẽ bổ sung 4 VĐV và duyệt trận ở các bước tiếp theo.',
+          'Chọn đủ 4 VĐV, nhập kết quả và tạo trận PENDING. Trận chỉ được tính Rating/Quỹ sau khi được duyệt.',
           'notice'
         );
 
@@ -148,10 +153,7 @@
             'FRIENDLY_RATED',
             'FRIENDLY_RATED • Giao hữu tính Rating'
           ],
-          [
-            'SELF_REPORTED',
-            'SELF_REPORTED • Tự khai báo'
-          ],
+
           [
             'TRAINING',
             'TRAINING • Tập luyện'
@@ -216,7 +218,153 @@
           scoreMode
         );
 
-        const scoreAGroup = el(
+        const activePlayers =
+      rows('players')
+        .filter(
+          player =>
+            raw(player.status)
+              .trim()
+              .toUpperCase() ===
+            'ACTIVE'
+        )
+        .slice()
+        .sort(
+          (a, b) =>
+            raw(a.full_name)
+              .localeCompare(
+                raw(b.full_name),
+                'vi'
+              )
+        );
+
+    const makeCreatePlayerGroup =
+      (id, labelText) => {
+        const group = el(
+          'div',
+          null,
+          'form-group'
+        );
+
+        const label = el(
+          'label',
+          labelText
+        );
+
+        label.htmlFor = id;
+
+        const select = el(
+          'select',
+          null,
+          'field'
+        );
+
+        select.id = id;
+        select.required = true;
+
+        group.append(
+          label,
+          select
+        );
+
+        return {
+          group,
+          select
+        };
+      };
+
+    const teamA1 =
+      makeCreatePlayerGroup(
+        'create-team-a-1',
+        'VĐV A1'
+      );
+
+    const teamA2 =
+      makeCreatePlayerGroup(
+        'create-team-a-2',
+        'VĐV A2'
+      );
+
+    const teamB1 =
+      makeCreatePlayerGroup(
+        'create-team-b-1',
+        'VĐV B1'
+      );
+
+    const teamB2 =
+      makeCreatePlayerGroup(
+        'create-team-b-2',
+        'VĐV B2'
+      );
+
+    const rebuildCreatePlayerOptions =
+      () => {
+        const currentValues = [
+          teamA1.select.value,
+          teamA2.select.value,
+          teamB1.select.value,
+          teamB2.select.value
+        ];
+
+        const leagueOnly =
+          matchType.value ===
+          'LEAGUE';
+
+        const allowedPlayers =
+          activePlayers.filter(
+            player =>
+              !leagueOnly ||
+              raw(player.player_type)
+                .trim()
+                .toUpperCase() ===
+              'CLUB'
+          );
+
+        [
+          teamA1.select,
+          teamA2.select,
+          teamB1.select,
+          teamB2.select
+        ].forEach(
+          (select, index) => {
+            select.replaceChildren(
+              new Option(
+                '— Chọn VĐV —',
+                ''
+              )
+            );
+
+            allowedPlayers.forEach(
+              player => {
+                const type =
+                  raw(player.player_type)
+                    .trim()
+                    .toUpperCase();
+
+                select.append(
+                  new Option(
+                    `${raw(player.full_name) || raw(player.id)}${type ? ` • ${type}` : ''}`,
+                    raw(player.id)
+                  )
+                );
+              }
+            );
+
+            if (
+              currentValues[index] &&
+              allowedPlayers.some(
+                player =>
+                  raw(player.id) ===
+                  currentValues[index]
+              )
+            ) {
+              select.value =
+                currentValues[index];
+            }
+          }
+        );
+      };
+
+    const scoreAGroup = el(
           'div',
           null,
           'form-group'
@@ -430,18 +578,170 @@
           );
 
         tournamentGroup.append(
-          tournamentLabel,
-          tournament
-        );
+      tournamentLabel,
+      tournament
+    );
 
-        grid.append(
-          playedGroup,
-          matchTypeGroup,
-          scoreModeGroup,
-          scoreAGroup,
-          scoreBGroup,
-          tournamentGroup
+    // LEAGUE ATTACH FRONTEND P1.1
+    const leagueGroup = el(
+      'div',
+      null,
+      'form-group'
+    );
+
+    const leagueLabel = el(
+      'label',
+      'Giải nội bộ'
+    );
+
+    const league = el(
+      'select',
+      null,
+      'field'
+    );
+
+    league.id =
+      'create-league';
+
+    leagueLabel.htmlFor =
+      league.id;
+
+    const attachableLeagueStatuses =
+      new Set([
+        'DU_KIEN',
+        'DANG_DIEN_RA'
+      ]);
+
+    const leagueStatusLabel =
+      status => {
+        const labels = {
+          DU_KIEN: 'Dự kiến',
+          DANG_DIEN_RA: 'Đang diễn ra',
+          DA_KET_THUC: 'Đã kết thúc',
+          HUY: 'Đã hủy'
+        };
+
+        return (
+          labels[raw(status)] ||
+          raw(status) ||
+          'Không rõ trạng thái'
         );
+      };
+
+    league.append(
+      new Option(
+        'Chọn giải nội bộ',
+        ''
+      )
+    );
+
+    rows('leagues')
+      .slice()
+      .sort(
+        (a, b) =>
+          raw(a.name).localeCompare(
+            raw(b.name),
+            'vi'
+          )
+      )
+      .filter(
+        item =>
+          attachableLeagueStatuses.has(
+            raw(item.status)
+          )
+      )
+      .forEach(
+        item => {
+          const name =
+            raw(item.name) ||
+            'Giải nội bộ';
+
+          const code =
+            raw(item.code);
+
+          const label =
+            name +
+            (
+              code
+                ? ` (${code})`
+                : ''
+            ) +
+            ` — ${leagueStatusLabel(
+              item.status
+            )}`;
+
+          league.append(
+            new Option(
+              label,
+              item.id
+            )
+          );
+        }
+      );
+
+    leagueGroup.append(
+      leagueLabel,
+      league
+    );
+
+    function applyCompetitionType() {
+      const type =
+        raw(matchType.value)
+          .trim()
+          .toUpperCase();
+
+      const isTournament =
+        type === 'TOURNAMENT';
+
+      const isLeague =
+        type === 'LEAGUE';
+
+      tournamentGroup.hidden =
+        !isTournament;
+
+      leagueGroup.hidden =
+        !isLeague;
+
+      tournament.required =
+        isTournament;
+
+      league.required =
+        isLeague;
+
+      if (!isTournament) {
+        tournament.value = '';
+      }
+
+      if (!isLeague) {
+        league.value = '';
+      }
+    }
+
+    matchType.addEventListener(
+      'change',
+      () => {
+        applyCompetitionType();
+        rebuildCreatePlayerOptions();
+      }
+    );
+
+    applyCompetitionType();
+    rebuildCreatePlayerOptions();
+
+    grid.append(
+      playedGroup,
+      matchTypeGroup,
+      scoreModeGroup,
+      el('div'),
+      teamA1.group,
+      teamB1.group,
+      teamA2.group,
+      teamB2.group,
+      scoreAGroup,
+      scoreBGroup,
+      tournamentGroup,
+      leagueGroup
+    );
 
         const notesGroup = el(
           'div',
@@ -518,6 +818,12 @@
 
             scoreA.value = '0';
             scoreB.value = '0';
+
+            tournament.value = '';
+            league.value = '';
+
+            applyCompetitionType();
+            rebuildCreatePlayerOptions();
 
             notice(
               message,
@@ -666,6 +972,41 @@
             }
 
 
+            const selectedPlayerIds = [
+              raw(teamA1.select.value),
+              raw(teamA2.select.value),
+              raw(teamB1.select.value),
+              raw(teamB2.select.value)
+            ];
+
+            if (
+              selectedPlayerIds.some(
+                id => !id
+              )
+            ) {
+              notice(
+                message,
+                'Phải chọn đủ 4 VĐV.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              new Set(
+                selectedPlayerIds
+              ).size !== 4
+            ) {
+              notice(
+                message,
+                '4 vị trí phải là 4 VĐV khác nhau.',
+                true
+              );
+
+              return;
+            }
+
             state.writeBusy = true;
 
             submit.disabled = true;
@@ -688,8 +1029,21 @@
                 p_team_b_score:
                   scoreBValue,
                 p_tournament_id:
-                  tournament.value ||
-                  null,
+                  matchType.value ===
+                    'TOURNAMENT'
+                    ? (
+                        tournament.value ||
+                        null
+                      )
+                    : null,
+                p_league_id:
+                  matchType.value ===
+                    'LEAGUE'
+                    ? (
+                        league.value ||
+                        null
+                      )
+                    : null,
                 p_notes:
                   notes.value.trim() ||
                   null
@@ -705,6 +1059,43 @@
 
               if (error) {
                 throw error;
+              }
+
+              const createdMatchId =
+                raw(data?.match_id);
+
+              if (!createdMatchId) {
+                throw new Error(
+                  'CREATE_MATCH_ID_MISSING'
+                );
+              }
+
+              const {
+                error: playersError
+              } = await client.rpc(
+                'set_pending_match_players',
+                {
+                  p_match_id:
+                    createdMatchId,
+                  p_team_a_player_1:
+                    selectedPlayerIds[0],
+                  p_team_a_player_2:
+                    selectedPlayerIds[1],
+                  p_team_b_player_1:
+                    selectedPlayerIds[2],
+                  p_team_b_player_2:
+                    selectedPlayerIds[3]
+                }
+              );
+
+              if (playersError) {
+                throw new Error(
+                  'MATCH_CREATED_PLAYER_ASSIGN_FAILED: ' +
+                  String(
+                    playersError.message ||
+                    playersError
+                  )
+                );
               }
 
               notice(
@@ -723,7 +1114,7 @@
 
               notice(
                 $('global-message'),
-                'Đã tạo trận PENDING thành công.',
+                'Đã tạo trận PENDING và xếp đủ 4 VĐV.',
                 false,
                 true
               );
@@ -732,6 +1123,24 @@
                 explain(error);
 
               if (
+                String(
+                  error?.message || ''
+                ).includes(
+                  'MATCH_CREATED_PLAYER_ASSIGN_FAILED'
+                )
+              ) {
+                text =
+                  'Trận PENDING đã được tạo nhưng chưa gán được 4 VĐV. Không tạo lại trận; hãy dùng Xếp VĐV để hoàn thiện.';
+              } else if (
+                String(
+                  error?.message || ''
+                ).includes(
+                  'CREATE_MATCH_ID_MISSING'
+                )
+              ) {
+                text =
+                  'Máy chủ có thể đã tạo trận nhưng không trả match_id. Không tạo lại ngay; hãy tải lại danh sách để kiểm tra trước.';
+              } else if (
                 error?.message
               ) {
                 text =
@@ -940,10 +1349,7 @@
             'FRIENDLY_RATED',
             'Giao hữu tính Rating'
           ],
-          [
-            'SELF_REPORTED',
-            'Tự khai báo'
-          ],
+
           [
             'TRAINING',
             'Tập luyện'
@@ -1690,6 +2096,11 @@
         const section = panel(
           'Xếp VĐV cho trận PENDING',
           root
+        );
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-lineup'
         );
 
         const description = el(
@@ -2510,9 +2921,102 @@
                   )
               );
 
+        const attachableLeagueStatuses =
+          new Set([
+            'DU_KIEN',
+            'DANG_DIEN_RA'
+          ]);
+
+        const leagueStatusLabel =
+          status => {
+            const labels = {
+              DU_KIEN: 'Dự kiến',
+              DANG_DIEN_RA: 'Đang diễn ra',
+              DA_KET_THUC: 'Đã kết thúc',
+              HUY: 'Đã hủy'
+            };
+
+            return (
+              labels[raw(status)] ||
+              raw(status) ||
+              'Không rõ trạng thái'
+            );
+          };
+
+        const leagueOptionLabel =
+          (item, current = false) => {
+            const name =
+              raw(
+                pick(
+                  item,
+                  'name',
+                  'league_name',
+                  'title'
+                )
+              ) ||
+              'Giải nội bộ';
+
+            const code =
+              raw(
+                pick(
+                  item,
+                  'code',
+                  'league_code'
+                )
+              );
+
+            return (
+              name +
+              (
+                code
+                  ? ` (${code})`
+                  : ''
+              ) +
+              ` — ${leagueStatusLabel(
+                item.status
+              )}` +
+              (
+                current
+                  ? ' — hiện tại'
+                  : ''
+              )
+            );
+          };
+
+        const sortedLeagues =
+          () =>
+            rows('leagues')
+              .slice()
+              .sort(
+                (a, b) =>
+                  raw(
+                    pick(
+                      a,
+                      'name',
+                      'league_name',
+                      'title'
+                    )
+                  ).localeCompare(
+                    raw(
+                      pick(
+                        b,
+                        'name',
+                        'league_name',
+                        'title'
+                      )
+                    ),
+                    'vi'
+                  )
+              );
+
         const section = panel(
           'Sửa trận PENDING',
           root
+        );
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-edit'
         );
 
         const description = el(
@@ -2728,10 +3232,7 @@
             'FRIENDLY_RATED',
             'FRIENDLY_RATED • Giao hữu tính Rating'
           ],
-          [
-            'SELF_REPORTED',
-            'SELF_REPORTED • Tự khai báo'
-          ],
+
           [
             'TRAINING',
             'TRAINING • Tập luyện'
@@ -2790,7 +3291,7 @@
           scoreMode
         );
 
-        const scoreAGroup = el(
+            const scoreAGroup = el(
           'div',
           null,
           'form-group'
@@ -2980,6 +3481,150 @@
           tournament
         );
 
+        const leagueGroup = el(
+          'div',
+          null,
+          'form-group'
+        );
+
+        const leagueLabel = el(
+          'label',
+          'Giải nội bộ'
+        );
+
+        const league = el(
+          'select',
+          null,
+          'field'
+        );
+
+        league.id =
+          'edit-league';
+
+        leagueLabel.htmlFor =
+          league.id;
+
+        function rebuildEditLeagueOptions(
+          currentLeagueId = ''
+        ) {
+          const currentId =
+            raw(currentLeagueId);
+
+          league.replaceChildren();
+
+          league.append(
+            new Option(
+              'Chọn giải nội bộ',
+              ''
+            )
+          );
+
+          sortedLeagues()
+            .filter(
+              item =>
+                attachableLeagueStatuses.has(
+                  raw(item.status)
+                )
+            )
+            .forEach(
+              item => {
+                league.append(
+                  new Option(
+                    leagueOptionLabel(
+                      item
+                    ),
+                    item.id
+                  )
+                );
+              }
+            );
+
+          if (currentId) {
+            const currentLeague =
+              rows('leagues').find(
+                item =>
+                  raw(item.id) ===
+                  currentId
+              );
+
+            const alreadyListed =
+              Array.from(
+                league.options
+              ).some(
+                option =>
+                  option.value ===
+                  currentId
+              );
+
+            if (
+              currentLeague &&
+              !alreadyListed
+            ) {
+              league.append(
+                new Option(
+                  leagueOptionLabel(
+                    currentLeague,
+                    true
+                  ),
+                  currentLeague.id
+                )
+              );
+            }
+          }
+
+          league.value =
+            currentId;
+
+          if (
+            currentId &&
+            league.value !== currentId
+          ) {
+            league.value = '';
+          }
+        }
+
+        rebuildEditLeagueOptions();
+
+        leagueGroup.append(
+          leagueLabel,
+          league
+        );
+
+        function applyEditCompetitionType() {
+          const type =
+            raw(
+              matchType.value
+            )
+              .trim()
+              .toUpperCase();
+
+          const isTournament =
+            type === 'TOURNAMENT';
+
+          const isLeague =
+            type === 'LEAGUE';
+
+          tournamentGroup.hidden =
+            !isTournament;
+
+          leagueGroup.hidden =
+            !isLeague;
+
+          tournament.required =
+            isTournament;
+
+          league.required =
+            isLeague;
+
+          if (!isTournament) {
+            tournament.value = '';
+          }
+
+          if (!isLeague) {
+            league.value = '';
+          }
+        }
+
         grid.append(
           matchGroup,
           playedGroup,
@@ -2988,7 +3633,8 @@
           scoreModeGroup,
           scoreAGroup,
           scoreBGroup,
-          tournamentGroup
+          tournamentGroup,
+          leagueGroup
         );
 
         const notesGroup = el(
@@ -3194,6 +3840,13 @@
             ''
           );
 
+          rebuildEditLeagueOptions(
+            match.league_id ||
+            ''
+          );
+
+          applyEditCompetitionType();
+
           notes.value =
             raw(
               match.notes
@@ -3217,6 +3870,11 @@
         scoreMode.addEventListener(
           'change',
           applyScoreMode
+        );
+
+        matchType.addEventListener(
+          'change',
+          applyEditCompetitionType
         );
 
         fillSelectedMatch();
@@ -3407,8 +4065,22 @@
                     scoreBValue,
 
                   p_tournament_id:
-                    tournament.value ||
-                    null,
+                    matchType.value ===
+                      'TOURNAMENT'
+                      ? (
+                          tournament.value ||
+                          null
+                        )
+                      : null,
+
+                  p_league_id:
+                    matchType.value ===
+                      'LEAGUE'
+                      ? (
+                          league.value ||
+                          null
+                        )
+                      : null,
 
                   p_notes:
                     notes.value.trim() ||
@@ -3529,6 +4201,11 @@
         const section = panel(
           'Từ chối trận PENDING',
           root
+        );
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-reject'
         );
 
         const description = el(
@@ -3897,6 +4574,11 @@ function voidApprovedMatchForm(root) {
         const section = panel(
           'Hủy trận đã duyệt',
           root
+        );
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-void'
         );
 
         const description = el(
@@ -5075,6 +5757,11 @@ function voidApprovedMatchForm(root) {
           root
         );
 
+        section.classList.add(
+          'match-action-card',
+          'match-action-approve'
+        );
+
         const description = el(
           'p',
           'Chỉ các trận PENDING đã đủ đội hình 2A + 2B mới xuất hiện. Khi duyệt, backend sẽ tự tính Rating và Quỹ theo cấu hình hiện hành.',
@@ -5608,6 +6295,7 @@ function voidApprovedMatchForm(root) {
             label: 'Chờ duyệt',
             badge:
               'bg-amber-100 text-amber-800',
+            panel: 'border-amber-200 bg-amber-50/60',
             open: true
           },
 
@@ -5615,6 +6303,7 @@ function voidApprovedMatchForm(root) {
             label: 'Đã duyệt',
             badge:
               'bg-emerald-100 text-emerald-800',
+            panel: 'border-emerald-200 bg-emerald-50/50',
             open: false
           },
 
@@ -5622,6 +6311,7 @@ function voidApprovedMatchForm(root) {
             label: 'Không hợp lệ',
             badge:
               'bg-rose-100 text-rose-800',
+            panel: 'border-rose-200 bg-rose-50/50',
             open: false
           },
 
@@ -5629,6 +6319,7 @@ function voidApprovedMatchForm(root) {
             label: 'Đã hủy',
             badge:
               'bg-slate-200 text-slate-700',
+            panel: 'border-slate-300 bg-slate-100/70',
             open: false
           }
         };
@@ -5636,7 +6327,7 @@ function voidApprovedMatchForm(root) {
         const center =
           makeNode(
             'div',
-            'space-y-4'
+            'space-y-3'
           );
 
         root.append(center);
@@ -6237,8 +6928,14 @@ function voidApprovedMatchForm(root) {
             const group =
               makeNode(
                 'details',
-                'rounded-2xl border border-slate-200 bg-slate-50/70 shadow-sm'
+                'rounded-2xl border shadow-sm ' +
+                  info.panel
               );
+
+            group.classList.add(
+              'match-status-group',
+              `match-status-${status.toLowerCase()}`
+            );
 
             group.open =
               info.open;
@@ -6246,33 +6943,58 @@ function voidApprovedMatchForm(root) {
             const summary =
               makeNode(
                 'summary',
-                'cursor-pointer select-none list-none px-5 py-4'
+                'match-status-summary cursor-pointer select-none list-none'
               );
 
             const summaryRow =
               makeNode(
                 'div',
-                'flex items-center justify-between gap-3'
+                'match-status-summary-row flex items-center justify-between gap-3'
+              );
+
+            const statusIcons = {
+              PENDING: '\u23F3',
+              APPROVED: '\u2713',
+              INVALID: '\u00D7',
+              VOIDED: '\u21B6'
+            };
+
+            const labelWrap =
+              makeNode(
+                'div',
+                'match-status-label-wrap'
+              );
+
+            const icon =
+              makeNode(
+                'span',
+                'match-status-icon',
+                statusIcons[status] || '\u2022'
               );
 
             const label =
               makeNode(
                 'div',
-                'font-semibold text-slate-900',
+                'match-status-label font-semibold text-slate-900',
                 info.label
               );
+
+            labelWrap.append(
+              icon,
+              label
+            );
 
             const count =
               makeNode(
                 'span',
-                'rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-sm',
+                'match-status-count rounded-full text-xs font-semibold',
                 String(
                   matches.length
                 )
               );
 
             summaryRow.append(
-              label,
+              labelWrap,
               count
             );
 
@@ -6326,7 +7048,8 @@ function voidApprovedMatchForm(root) {
             'matches',
             'match_players',
             'players',
-            'tournaments'
+            'tournaments',
+            'leagues'
           ]
         );
 

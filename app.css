@@ -3504,3 +3504,332 @@ td:first-child{
     animation:none;
   }
 }
+
+/* =========================================================
+   MATCH ACTION CARDS
+   Visual language aligned with shared app-action system
+   ========================================================= */
+
+.match-action-card{
+  overflow:hidden;
+
+  border-left-width:4px;
+
+  transition:
+    transform var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.match-action-card:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-2);
+}
+
+.match-action-card > h2:first-child{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  min-height:49px;
+
+  margin:
+    -22px -22px 18px;
+  padding:
+    11px 17px;
+
+  border-bottom:1px solid #edf1ee;
+
+  font-size:15px;
+  line-height:1.25;
+}
+
+.match-action-card > h2:first-child::before{
+  display:grid;
+  place-items:center;
+
+  width:27px;
+  height:27px;
+  flex:0 0 27px;
+
+  border-radius:8px;
+
+  font-size:16px;
+  font-weight:800;
+  line-height:1;
+}
+
+/* Create / Approve = success */
+
+.match-action-create,
+.match-action-approve{
+  border-left-color:#459b66;
+}
+
+.match-action-create > h2:first-child,
+.match-action-approve > h2:first-child{
+  background:#f3faf5;
+  color:#276641;
+}
+
+.match-action-create > h2:first-child::before,
+.match-action-approve > h2:first-child::before{
+  background:#dff2e4;
+  color:#25814c;
+}
+
+.match-action-create > h2:first-child::before{
+  content:"\002B";
+}
+
+.match-action-approve > h2:first-child::before{
+  content:"\2713";
+}
+
+/* Edit = info */
+
+.match-action-edit{
+  border-left-color:#4e7fd1;
+}
+
+.match-action-edit > h2:first-child{
+  background:#f3f7fd;
+  color:#315ca1;
+}
+
+.match-action-edit > h2:first-child::before{
+  content:"\270E";
+
+  background:#e2ebfa;
+  color:#3569bb;
+}
+
+/* Lineup = neutral/info */
+
+.match-action-lineup{
+  border-left-color:#87978e;
+}
+
+.match-action-lineup > h2:first-child{
+  background:#f7f9f8;
+  color:#50665b;
+}
+
+.match-action-lineup > h2:first-child::before{
+  content:"\21C4";
+
+  background:#e7eeea;
+  color:#60736a;
+}
+
+/* Reject = danger */
+
+.match-action-reject{
+  border-left-color:#c85a50;
+}
+
+.match-action-reject > h2:first-child{
+  background:#fff5f4;
+  color:#913f37;
+}
+
+.match-action-reject > h2:first-child::before{
+  content:"\00D7";
+
+  background:#fae9e7;
+  color:#a2463a;
+}
+
+/* Void = neutral warning */
+
+.match-action-void{
+  border-left-color:#87978e;
+}
+
+.match-action-void > h2:first-child{
+  background:#f7f9f8;
+  color:#56685f;
+}
+
+.match-action-void > h2:first-child::before{
+  content:"\21B6";
+
+  background:#e7eeea;
+  color:#60736a;
+}
+
+/* Keep action panels visually aligned */
+
+.match-action-card .form-actions{
+  min-height:42px;
+  align-items:center;
+}
+
+.match-action-card .form-actions .btn{
+  min-height:38px;
+}
+
+@media (max-width:700px){
+  .match-action-card > h2:first-child{
+    min-height:47px;
+
+    margin:
+      -18px -18px 16px;
+    padding:
+      10px 13px;
+  }
+}
+
+
+/* =========================================================
+   MATCH STATUS ACCORDION
+   Compact visual rhythm aligned with VDV action cards
+   ========================================================= */
+
+.match-status-group{
+  overflow:hidden;
+
+  border-left-width:4px!important;
+  border-radius:14px!important;
+
+  transition:
+    transform var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.match-status-group:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-2);
+}
+
+.match-status-summary{
+  display:flex;
+  align-items:center;
+
+  min-height:58px;
+  padding:9px 14px;
+}
+
+.match-status-summary-row{
+  width:100%;
+  min-width:0;
+}
+
+.match-status-label-wrap{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  min-width:0;
+}
+
+.match-status-icon{
+  display:grid;
+  place-items:center;
+
+  width:32px;
+  height:32px;
+  flex:0 0 32px;
+
+  border-radius:9px;
+
+  font-size:17px;
+  font-weight:850;
+  line-height:1;
+}
+
+.match-status-label{
+  font-size:14px;
+  line-height:1.25;
+}
+
+.match-status-count{
+  display:grid;
+  place-items:center;
+
+  min-width:30px;
+  height:30px;
+
+  padding:0 9px;
+
+  border:1px solid transparent;
+
+  box-shadow:0 1px 3px rgba(30,55,43,.06);
+}
+
+/* Pending */
+
+.match-status-pending{
+  border-left-color:#d5a83b!important;
+}
+
+.match-status-pending .match-status-icon,
+.match-status-pending .match-status-count{
+  border-color:#f0d98b;
+  background:#fff3dc;
+  color:#97631c;
+}
+
+/* Approved */
+
+.match-status-approved{
+  border-left-color:#459b66!important;
+}
+
+.match-status-approved .match-status-icon,
+.match-status-approved .match-status-count{
+  border-color:#bfe0ca;
+  background:#e5f4e9;
+  color:#267046;
+}
+
+/* Invalid */
+
+.match-status-invalid{
+  border-left-color:#c85a50!important;
+}
+
+.match-status-invalid .match-status-icon,
+.match-status-invalid .match-status-count{
+  border-color:#edc8c4;
+  background:#fae9e7;
+  color:#a2463a;
+}
+
+/* Voided */
+
+.match-status-voided{
+  border-left-color:#87978e!important;
+}
+
+.match-status-voided .match-status-icon,
+.match-status-voided .match-status-count{
+  border-color:#d2ddd7;
+  background:#e7eeea;
+  color:#60736a;
+}
+
+.match-status-group[open]{
+  box-shadow:var(--shadow-1);
+}
+
+@media (max-width:700px){
+  .match-status-summary{
+    min-height:54px;
+    padding:8px 11px;
+  }
+
+  .match-status-icon{
+    width:29px;
+    height:29px;
+    flex-basis:29px;
+
+    font-size:15px;
+  }
+
+  .match-status-count{
+    min-width:28px;
+    height:28px;
+  }
+}
