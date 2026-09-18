@@ -27,6 +27,400 @@
       matchCols,
       matchCode
     } = ctx;
+
+      // ============================================================
+      // PICK MATCH UI V1 HELPERS
+      // PICK UI System v1
+      // ============================================================
+
+      function makeMatchActionAccordion(
+        section,
+        initiallyOpen = false
+      ) {
+        if (!section) {
+          return;
+        }
+
+        section.classList.add(
+          'match-action-collapsible'
+        );
+
+        const heading =
+          section.querySelector(
+            ':scope > h2:first-child'
+          );
+
+        if (!heading) {
+          return;
+        }
+
+        heading.classList.add(
+          'match-action-toggle'
+        );
+
+        heading.tabIndex = 0;
+        heading.setAttribute(
+          'role',
+          'button'
+        );
+
+        const setOpen = open => {
+          section.classList.toggle(
+            'is-open',
+            !!open
+          );
+
+          heading.setAttribute(
+            'aria-expanded',
+            open
+              ? 'true'
+              : 'false'
+          );
+        };
+
+        const toggle = () => {
+          setOpen(
+            !section.classList.contains(
+              'is-open'
+            )
+          );
+        };
+
+        heading.addEventListener(
+          'click',
+          toggle
+        );
+
+        heading.addEventListener(
+          'keydown',
+          event => {
+            if (
+              event.key === 'Enter' ||
+              event.key === ' '
+            ) {
+              event.preventDefault();
+              toggle();
+            }
+          }
+        );
+
+        setOpen(initiallyOpen);
+      }
+
+      function prepareMatchFormLayout(
+        section,
+        mode
+      ) {
+        if (!section) {
+          return;
+        }
+
+        const isAdminCreate =
+          mode === 'create';
+
+        const ids =
+          isAdminCreate
+            ? {
+                played:
+                  'create-played-at',
+                type:
+                  'create-match-type',
+                scoreMode:
+                  'create-score-mode',
+                a1:
+                  'create-team-a-1',
+                a2:
+                  'create-team-a-2',
+                b1:
+                  'create-team-b-1',
+                b2:
+                  'create-team-b-2',
+                scoreA:
+                  'create-score-a',
+                scoreB:
+                  'create-score-b'
+              }
+            : {
+                played:
+                  'my-match-played-at',
+                type:
+                  'my-match-type',
+                scoreMode:
+                  'my-match-score-mode',
+                a1:
+                  'my-match-a1',
+                a2:
+                  'my-match-a2',
+                b1:
+                  'my-match-b1',
+                b2:
+                  'my-match-b2',
+                scoreA:
+                  'my-match-score-a',
+                scoreB:
+                  'my-match-score-b'
+              };
+
+        const firstControl =
+          section.querySelector(
+            `#${ids.played}`
+          );
+
+        const grid =
+          firstControl?.closest(
+            '.form-grid'
+          );
+
+        if (!grid) {
+          return;
+        }
+
+        grid.classList.add(
+          'match-form-grid'
+        );
+
+        const mark =
+          (id, className) => {
+            const control =
+              section.querySelector(
+                `#${id}`
+              );
+
+            const group =
+              control?.closest(
+                '.form-group'
+              );
+
+            if (group) {
+              group.classList.add(
+                className
+              );
+            }
+
+            return group;
+          };
+
+        mark(
+          ids.played,
+          'match-field-info'
+        );
+
+        mark(
+          ids.type,
+          'match-field-info'
+        );
+
+        mark(
+          ids.scoreMode,
+          'match-field-info'
+        );
+
+        mark(
+          ids.a1,
+          'match-field-a1'
+        );
+
+        mark(
+          ids.a2,
+          'match-field-a2'
+        );
+
+        mark(
+          ids.b1,
+          'match-field-b1'
+        );
+
+        mark(
+          ids.b2,
+          'match-field-b2'
+        );
+
+        mark(
+          ids.scoreA,
+          'match-field-score-a'
+        );
+
+        mark(
+          ids.scoreB,
+          'match-field-score-b'
+        );
+
+        grid
+          .querySelectorAll(
+            '.match-team-heading'
+          )
+          .forEach(
+            node => node.remove()
+          );
+
+        const teamAHeading = el(
+          'div',
+          '\u0110\u1ed9i A',
+          'match-team-heading match-team-heading-a'
+        );
+
+        const teamBHeading = el(
+          'div',
+          '\u0110\u1ed9i B',
+          'match-team-heading match-team-heading-b'
+        );
+
+        grid.append(
+          teamAHeading,
+          teamBHeading
+        );
+      }
+
+      function matchPlayerNames(match) {
+        const matchId =
+          raw(match?.id);
+
+        const playerMap =
+          new Map(
+            rows('players').map(
+              player => [
+                raw(player.id),
+                raw(player.full_name) ||
+                  raw(player.id)
+              ]
+            )
+          );
+
+        const linked =
+          rows('match_players')
+            .filter(
+              item =>
+                raw(item.match_id) ===
+                matchId
+            )
+            .slice();
+
+        const sideOf = item =>
+          raw(
+            pick(
+              item,
+              'team',
+              'team_code',
+              'side'
+            )
+          )
+            .trim()
+            .toUpperCase();
+
+        const orderOf = item => {
+          const value =
+            Number(
+              pick(
+                item,
+                'slot',
+                'position',
+                'team_position',
+                'player_slot',
+                'order_no'
+              )
+            );
+
+          return Number.isFinite(value)
+            ? value
+            : 999;
+        };
+
+        const namesFor =
+          side =>
+            linked
+              .filter(
+                item =>
+                  sideOf(item) ===
+                  side
+              )
+              .sort(
+                (a, b) =>
+                  orderOf(a) -
+                  orderOf(b)
+              )
+              .map(
+                item =>
+                  playerMap.get(
+                    raw(
+                      pick(
+                        item,
+                        'player_id',
+                        'player'
+                      )
+                    )
+                  ) ||
+                  raw(
+                    pick(
+                      item,
+                      'player_name'
+                    )
+                  ) ||
+                  '\u2014'
+              );
+
+        let teamA =
+          namesFor('A');
+
+        let teamB =
+          namesFor('B');
+
+        // Defensive fallback for older rows without explicit side.
+        if (
+          teamA.length === 0 &&
+          teamB.length === 0 &&
+          linked.length >= 4
+        ) {
+          const ordered =
+            linked
+              .slice()
+              .sort(
+                (a, b) =>
+                  orderOf(a) -
+                  orderOf(b)
+              )
+              .map(
+                item =>
+                  playerMap.get(
+                    raw(
+                      pick(
+                        item,
+                        'player_id',
+                        'player'
+                      )
+                    )
+                  ) ||
+                  raw(
+                    pick(
+                      item,
+                      'player_name'
+                    )
+                  ) ||
+                  '\u2014'
+              );
+
+          teamA =
+            ordered.slice(0, 2);
+
+          teamB =
+            ordered.slice(2, 4);
+        }
+
+        while (teamA.length < 2) {
+          teamA.push('\u2014');
+        }
+
+        while (teamB.length < 2) {
+          teamB.push('\u2014');
+        }
+
+        return {
+          teamA:
+            teamA.slice(0, 2),
+          teamB:
+            teamB.slice(0, 2)
+        };
+      }
+
       function createMatchForm(root) {
         if (!isAdmin()) {
           return;
@@ -40,6 +434,19 @@
         section.classList.add(
           'match-action-card',
           'match-action-create'
+        );
+
+        makeMatchActionAccordion(
+          section,
+          false
+        );
+
+        queueMicrotask(
+          () =>
+            prepareMatchFormLayout(
+              section,
+              'create'
+            )
         );
 
         const description = el(
@@ -1190,6 +1597,25 @@
         const section = panel(
           'Tạo trận của tôi',
           root
+        );
+
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-create'
+        );
+
+        makeMatchActionAccordion(
+          section,
+          false
+        );
+
+        queueMicrotask(
+          () =>
+            prepareMatchFormLayout(
+              section,
+              'member'
+            )
         );
 
         const description = el(
@@ -7039,6 +7465,1331 @@ function voidApprovedMatchForm(root) {
           }
         );
       }
+
+      // ============================================================
+      // PICK P1.2B MEMBER REJECT UI
+      // Opponent confirm / reject + creator edit / resubmit
+      // ============================================================
+
+      function memberOpponentConfirmationPanel(root) {
+        if (
+          isAdmin() ||
+          raw(state.profile?.role)
+            .trim()
+            .toUpperCase() !==
+            'MEMBER'
+        ) {
+          return;
+        }
+
+        const section = panel(
+          '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
+          root
+        );
+
+        section.classList.add(
+          'match-action-card',
+          'match-action-approve',
+          'match-confirm-section'
+        );
+
+        makeMatchActionAccordion(
+          section,
+          false
+        );
+
+        const heading =
+          section.querySelector(
+            ':scope > h2:first-child'
+          );
+
+        const message = el(
+          'div',
+          '\u0110\u0061\u006e\u0067 \u006b\u0069\u1ec3\u006d \u0074\u0072\u0061 \u0063\u00e1\u0063 \u0074\u0072\u1ead\u006e \u0063\u1ea7\u006e \u0078\u1eed \u006c\u00fd\u2026',
+          'notice'
+        );
+
+        const list = el(
+          'div',
+          null,
+          'match-confirm-list'
+        );
+
+        section.append(
+          message,
+          list
+        );
+
+        const currentUserId =
+          raw(
+            state.profile?.id
+          );
+
+        const activePlayers =
+          rows('players')
+            .filter(
+              player =>
+                raw(player.status)
+                  .trim()
+                  .toUpperCase() ===
+                'ACTIVE'
+            )
+            .slice()
+            .sort(
+              (a, b) =>
+                raw(a.full_name)
+                  .localeCompare(
+                    raw(b.full_name),
+                    'vi'
+                  )
+            );
+
+        const playerName =
+          id => {
+            const player =
+              rows('players').find(
+                item =>
+                  raw(item.id) ===
+                  raw(id)
+              );
+
+            return (
+              raw(player?.full_name) ||
+              raw(id) ||
+              '\u2014'
+            );
+          };
+
+        const matchPlayerIds =
+          (matchId, team) =>
+            rows('match_players')
+              .filter(
+                item =>
+                  raw(item.match_id) ===
+                    raw(matchId) &&
+                  raw(item.team)
+                    .trim()
+                    .toUpperCase() ===
+                    team
+              )
+              .map(
+                item =>
+                  raw(item.player_id)
+              )
+              .filter(Boolean);
+
+        const playedTextOf =
+          match => {
+            const played =
+              match.played_at
+                ? new Date(
+                    match.played_at
+                  )
+                : null;
+
+            return (
+              played &&
+              Number.isFinite(
+                played.getTime()
+              )
+            )
+              ? played.toLocaleString(
+                  'vi-VN',
+                  {
+                    dateStyle:
+                      'short',
+                    timeStyle:
+                      'short'
+                  }
+                )
+              : '\u2014';
+          };
+
+        const makeTeamCard =
+          (
+            side,
+            names
+          ) => {
+            const teamNode = el(
+              'div',
+              null,
+              `match-confirm-team match-confirm-team-${side.toLowerCase()}`
+            );
+
+            teamNode.append(
+              el(
+                'div',
+                `\u0110\u1ed9i ${side}`,
+                'match-confirm-team-title'
+              ),
+              el(
+                'div',
+                names[0] || '\u2014',
+                'match-confirm-player'
+              ),
+              el(
+                'div',
+                names[1] || '\u2014',
+                'match-confirm-player'
+              )
+            );
+
+            return teamNode;
+          };
+
+        const makeSummary =
+          (
+            match,
+            badgeText,
+            badgeClass
+          ) => {
+            const {
+              teamA,
+              teamB
+            } =
+              matchPlayerNames(
+                match
+              );
+
+            const card = el(
+              'article',
+              null,
+              'match-confirm-card'
+            );
+
+            const top = el(
+              'div',
+              null,
+              'match-confirm-top'
+            );
+
+            const identity = el(
+              'div',
+              null,
+              'match-confirm-identity'
+            );
+
+            identity.append(
+              el(
+                'strong',
+                matchCode(match),
+                'match-confirm-code'
+              ),
+              el(
+                'div',
+                `${playedTextOf(match)} \u2022 ${raw(match.match_type)}`,
+                'muted match-confirm-meta'
+              )
+            );
+
+            const badge = el(
+              'span',
+              badgeText,
+              badgeClass
+            );
+
+            top.append(
+              identity,
+              badge
+            );
+
+            const versus = el(
+              'div',
+              null,
+              'match-confirm-versus'
+            );
+
+            const score = el(
+              'div',
+              `${raw(match.team_a_score)} \u2013 ${raw(match.team_b_score)}`,
+              'match-confirm-score'
+            );
+
+            versus.append(
+              makeTeamCard(
+                'A',
+                teamA
+              ),
+              score,
+              makeTeamCard(
+                'B',
+                teamB
+              )
+            );
+
+            card.append(
+              top,
+              versus
+            );
+
+            return card;
+          };
+
+        const reloadAfterWrite =
+          async text => {
+            notice(
+              $('global-message'),
+              text,
+              false,
+              true
+            );
+
+            await load();
+            render();
+          };
+
+        const renderConfirmable =
+          (
+            item,
+            match
+          ) => {
+            const card =
+              makeSummary(
+                match,
+                'PENDING',
+                'status pending'
+              );
+
+            const rejectEditor = el(
+              'div',
+              null,
+              'match-reject-editor'
+            );
+
+            rejectEditor.hidden =
+              true;
+
+            const rejectLabel = el(
+              'label',
+              '\u004c\u00fd \u0064\u006f \u0074\u1eeb \u0063\u0068\u1ed1\u0069'
+            );
+
+            const rejectReason = el(
+              'textarea',
+              null,
+              'field'
+            );
+
+            rejectReason.rows = 3;
+            rejectReason.maxLength =
+              1000;
+
+            rejectReason.placeholder =
+              '\u0056\u00ed \u0064\u1ee5\u003a \u0054\u1ef7 \u0073\u1ed1 \u0063\u0068\u01b0\u0061 \u0111\u00fa\u006e\u0067\u002c \u006b\u1ebf\u0074 \u0071\u0075\u1ea3 \u0074\u0068\u1ef1\u0063 \u0074\u1ebf \u006c\u00e0\u2026';
+
+            rejectLabel.htmlFor =
+              `reject-${match.id}`;
+
+            rejectReason.id =
+              `reject-${match.id}`;
+
+            const rejectMessage =
+              el(
+                'div'
+              );
+
+            rejectMessage.hidden =
+              true;
+
+            const rejectEditorActions =
+              el(
+                'div',
+                null,
+                'form-actions match-reject-editor-actions'
+              );
+
+            const cancelReject =
+              button(
+                '\u0048\u1ee7\u0079',
+                () => {
+                  rejectEditor.hidden =
+                    true;
+
+                  notice(
+                    rejectMessage,
+                    ''
+                  );
+                },
+                'btn'
+              );
+
+            const submitReject =
+              button(
+                '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0074\u1eeb \u0063\u0068\u1ed1\u0069',
+                async () => {
+                  if (
+                    state.writeBusy
+                  ) {
+                    return;
+                  }
+
+                  const reason =
+                    rejectReason.value.trim();
+
+                  if (
+                    reason.length < 3
+                  ) {
+                    notice(
+                      rejectMessage,
+                      '\u0056\u0075\u0069 \u006c\u00f2\u006e\u0067 \u006e\u0068\u1ead\u0070 \u006c\u00fd \u0064\u006f \u0074\u1eeb \u0063\u0068\u1ed1\u0069 \u00ed\u0074 \u006e\u0068\u1ea5\u0074 \u0033 \u006b\u00fd \u0074\u1ef1\u002e',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  submitReject.disabled =
+                    true;
+
+                  try {
+                    const {
+                      error
+                    } =
+                      await client.rpc(
+                        'reject_match_by_opponent',
+                        {
+                          p_match_id:
+                            match.id,
+                          p_reason:
+                            reason
+                        }
+                      );
+
+                    if (error) {
+                      const text =
+                        String(
+                          error.message ||
+                          error
+                        );
+
+                      if (
+                        text.includes(
+                          'MATCH_NOT_PENDING'
+                        ) ||
+                        text.includes(
+                          'MATCH_ALREADY_REJECTED'
+                        )
+                      ) {
+                        await reloadAfterWrite(
+                          '\u0054\u0072\u1ead\u006e \u0111\u00e3 \u0111\u01b0\u1ee3\u0063 \u0078\u1eed \u006c\u00fd \u0074\u0072\u01b0\u1edb\u0063 \u0111\u00f3\u002e \u0110\u0061\u006e\u0067 \u0074\u1ea3\u0069 \u006c\u1ea1\u0069\u2026'
+                        );
+
+                        return;
+                      }
+
+                      throw error;
+                    }
+
+                    await reloadAfterWrite(
+                      '\u0110\u00e3 \u0074\u1eeb \u0063\u0068\u1ed1\u0069 \u0078\u00e1\u0063 \u006e\u0068\u1ead\u006e\u002e \u004c\u00fd \u0064\u006f \u0111\u00e3 \u0111\u01b0\u1ee3\u0063 \u0067\u1eedi \u0063\u0068\u006f \u006e\u0067\u01b0\u1eddi \u0074\u1ea1\u006f \u0074\u0072\u1ead\u006e\u002e'
+                    );
+                  } catch (
+                    error
+                  ) {
+                    notice(
+                      rejectMessage,
+                      explain(error),
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    submitReject.disabled =
+                      false;
+                  }
+                },
+                'btn match-reject-submit'
+              );
+
+            rejectEditorActions.append(
+              cancelReject,
+              submitReject
+            );
+
+            rejectEditor.append(
+              rejectLabel,
+              rejectReason,
+              rejectMessage,
+              rejectEditorActions
+            );
+
+            const actions = el(
+              'div',
+              null,
+              'form-actions match-confirm-actions'
+            );
+
+            const confirmAction =
+              button(
+                '\u2713 \u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
+                async () => {
+                  if (
+                    state.writeBusy
+                  ) {
+                    return;
+                  }
+
+                  const ok =
+                    window.confirm(
+                      '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u006b\u1ebf\u0074 \u0071\u0075\u1ea3 \u0074\u0072\u1ead\u006e \u006e\u00e0\u0079\u003f'
+                    );
+
+                  if (!ok) {
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  confirmAction.disabled =
+                    true;
+
+                  try {
+                    const {
+                      error
+                    } =
+                      await client.rpc(
+                        'confirm_match_by_opponent',
+                        {
+                          p_match_id:
+                            match.id
+                        }
+                      );
+
+                    if (error) {
+                      const text =
+                        String(
+                          error.message ||
+                          error
+                        );
+
+                      if (
+                        text.includes(
+                          'MATCH_NOT_PENDING'
+                        )
+                      ) {
+                        await reloadAfterWrite(
+                          '\u0054\u0072\u1ead\u006e \u0111\u00e3 \u0111\u01b0\u1ee3\u0063 \u0078\u1eed \u006c\u00fd \u0074\u0072\u01b0\u1edb\u0063 \u0111\u00f3\u002e \u0110\u0061\u006e\u0067 \u0074\u1ea3\u0069 \u006c\u1ea1\u0069\u2026'
+                        );
+
+                        return;
+                      }
+
+                      throw error;
+                    }
+
+                    await reloadAfterWrite(
+                      '\u0110\u00e3 \u0078\u00e1\u0063 \u006e\u0068\u1ead\u006e \u006b\u1ebf\u0074 \u0071\u0075\u1ea3\u002e \u0054\u0072\u1ead\u006e \u0111\u00e3 \u0111\u01b0\u1ee3\u0063 \u0064\u0075\u0079\u1ec7\u0074\u002e'
+                    );
+                  } catch (
+                    error
+                  ) {
+                    notice(
+                      message,
+                      explain(error),
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    confirmAction.disabled =
+                      false;
+                  }
+                },
+                'btn primary'
+              );
+
+            const rejectAction =
+              button(
+                '\u2715 \u0054\u1eeb \u0063\u0068\u1ed1\u0069',
+                () => {
+                  rejectEditor.hidden =
+                    !rejectEditor.hidden;
+
+                  if (
+                    !rejectEditor.hidden
+                  ) {
+                    rejectReason.focus();
+                  }
+                },
+                'btn match-reject-button'
+              );
+
+            actions.append(
+              confirmAction,
+              rejectAction
+            );
+
+            card.append(
+              actions,
+              rejectEditor
+            );
+
+            list.append(
+              card
+            );
+          };
+
+        const renderRejectedCreator =
+          (
+            item,
+            match
+          ) => {
+            const card =
+              makeSummary(
+                match,
+                '\u0042\u1eca \u0054\u1eea \u0043\u0048\u1ed0\u0049',
+                'status invalid'
+              );
+
+            card.classList.add(
+              'match-rejected-card'
+            );
+
+            const reasonBox = el(
+              'div',
+              null,
+              'match-rejection-reason'
+            );
+
+            const rejectedAt =
+              item.opponent_rejected_at
+                ? new Date(
+                    item.opponent_rejected_at
+                  )
+                : null;
+
+            const rejectedAtText =
+              rejectedAt &&
+              Number.isFinite(
+                rejectedAt.getTime()
+              )
+                ? rejectedAt.toLocaleString(
+                    'vi-VN',
+                    {
+                      dateStyle:
+                        'short',
+                      timeStyle:
+                        'short'
+                    }
+                  )
+                : '\u2014';
+
+            reasonBox.append(
+              el(
+                'strong',
+                '\u0110\u1ed1\u0069 \u0074\u0068\u1ee7 \u0074\u1eeb \u0063\u0068\u1ed1\u0069 \u0078\u00e1\u0063 \u006e\u0068\u1ead\u006e'
+              ),
+              el(
+                'div',
+                item.opponent_rejection_reason ||
+                  '\u004b\u0068\u00f4\u006e\u0067 \u0063\u00f3 \u006c\u00fd \u0064\u006f\u002e',
+                'match-rejection-reason-text'
+              ),
+              el(
+                'div',
+                `${raw(item.opponent_rejector_name) || '\u0110\u1ed1\u0069 \u0074\u0068\u1ee7'} \u2022 ${rejectedAtText}`,
+                'muted match-rejection-meta'
+              )
+            );
+
+            const editor = el(
+              'div',
+              null,
+              'match-rejected-edit'
+            );
+
+            editor.hidden =
+              true;
+
+            const form = el(
+              'form'
+            );
+
+            const playedAt = el(
+              'input',
+              null,
+              'field'
+            );
+
+            playedAt.type =
+              'datetime-local';
+
+            const sourceDate =
+              match.played_at
+                ? new Date(
+                    match.played_at
+                  )
+                : new Date();
+
+            const offset =
+              sourceDate.getTimezoneOffset() *
+              60000;
+
+            playedAt.value =
+              new Date(
+                sourceDate.getTime() -
+                  offset
+              )
+                .toISOString()
+                .slice(0, 16);
+
+            const matchType = el(
+              'select',
+              null,
+              'field'
+            );
+
+            [
+              [
+                'CLUB_RATED',
+                '\u0054\u0072\u1ead\u006e \u0074\u00ed\u006e\u0068 \u0052\u0061\u0074\u0069\u006e\u0067 \u0043\u004c\u0042'
+              ],
+              [
+                'FRIENDLY_RATED',
+                '\u0047\u0069\u0061\u006f \u0068\u1eefu \u0074\u00ed\u006e\u0068 \u0052\u0061\u0074\u0069\u006e\u0067'
+              ],
+              [
+                'TRAINING',
+                '\u0054\u1ead\u0070 \u006c\u0075\u0079\u1ec7\u006e'
+              ]
+            ].forEach(
+              ([value, text]) =>
+                matchType.append(
+                  new Option(
+                    text,
+                    value
+                  )
+                )
+            );
+
+            matchType.value =
+              raw(match.match_type);
+
+            const scoreMode = el(
+              'select',
+              null,
+              'field'
+            );
+
+            scoreMode.append(
+              new Option(
+                'POINTS',
+                'POINTS'
+              ),
+              new Option(
+                'RESULT',
+                'RESULT'
+              )
+            );
+
+            scoreMode.value =
+              raw(match.score_mode) ||
+              'POINTS';
+
+            const scoreA = el(
+              'input',
+              null,
+              'field'
+            );
+
+            scoreA.type =
+              'number';
+            scoreA.min = '0';
+            scoreA.step = '1';
+            scoreA.value =
+              raw(
+                match.team_a_score
+              ) || '0';
+
+            const scoreB = el(
+              'input',
+              null,
+              'field'
+            );
+
+            scoreB.type =
+              'number';
+            scoreB.min = '0';
+            scoreB.step = '1';
+            scoreB.value =
+              raw(
+                match.team_b_score
+              ) || '0';
+
+            const makePlayerSelect =
+              currentId => {
+                const select = el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+                activePlayers.forEach(
+                  player => {
+                    select.append(
+                      new Option(
+                        raw(
+                          player.full_name
+                        ) ||
+                          raw(
+                            player.id
+                          ),
+                        raw(
+                          player.id
+                        )
+                      )
+                    );
+                  }
+                );
+
+                select.value =
+                  raw(currentId);
+
+                return select;
+              };
+
+            const teamAIds =
+              matchPlayerIds(
+                match.id,
+                'A'
+              );
+
+            const teamBIds =
+              matchPlayerIds(
+                match.id,
+                'B'
+              );
+
+            const teamA1 =
+              makePlayerSelect(
+                teamAIds[0]
+              );
+
+            const teamA2 =
+              makePlayerSelect(
+                teamAIds[1]
+              );
+
+            const teamB1 =
+              makePlayerSelect(
+                teamBIds[0]
+              );
+
+            const teamB2 =
+              makePlayerSelect(
+                teamBIds[1]
+              );
+
+            const notes = el(
+              'textarea',
+              null,
+              'field'
+            );
+
+            notes.rows = 3;
+            notes.maxLength =
+              2000;
+
+            notes.value =
+              raw(match.notes);
+
+            const makeGroup =
+              (
+                labelText,
+                control,
+                className = ''
+              ) => {
+                const group = el(
+                  'div',
+                  null,
+                  `form-group ${className}`.trim()
+                );
+
+                group.append(
+                  el(
+                    'label',
+                    labelText
+                  ),
+                  control
+                );
+
+                return group;
+              };
+
+            const grid = el(
+              'div',
+              null,
+              'match-rejected-edit-grid'
+            );
+
+            grid.append(
+              makeGroup(
+                '\u0054\u0068\u1eddi \u0067\u0069\u0061\u006e \u0074\u0068\u0069 \u0111\u1ea5\u0075',
+                playedAt,
+                'match-edit-info'
+              ),
+              makeGroup(
+                '\u004c\u006f\u1ea1\u0069 \u0074\u0072\u1ead\u006e',
+                matchType,
+                'match-edit-info'
+              ),
+              makeGroup(
+                '\u0043\u00e1\u0063\u0068 \u0074\u00ed\u006e\u0068 \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
+                scoreMode,
+                'match-edit-info'
+              ),
+              el(
+                'div',
+                '\u0110\u1ed9\u0069 \u0041',
+                'match-team-heading match-edit-team-a-title'
+              ),
+              el(
+                'div',
+                '\u0110\u1ed9\u0069 \u0042',
+                'match-team-heading match-edit-team-b-title'
+              ),
+              makeGroup(
+                '\u0056\u0110\u0056 \u0041\u0031',
+                teamA1,
+                'match-edit-a1'
+              ),
+              makeGroup(
+                '\u0056\u0110\u0056 \u0042\u0031',
+                teamB1,
+                'match-edit-b1'
+              ),
+              makeGroup(
+                '\u0056\u0110\u0056 \u0041\u0032',
+                teamA2,
+                'match-edit-a2'
+              ),
+              makeGroup(
+                '\u0056\u0110\u0056 \u0042\u0032',
+                teamB2,
+                'match-edit-b2'
+              ),
+              makeGroup(
+                '\u0110\u0069\u1ec3\u006d \u0111\u1ed9\u0069 \u0041',
+                scoreA,
+                'match-edit-score-a'
+              ),
+              makeGroup(
+                '\u0110\u0069\u1ec3\u006d \u0111\u1ed9\u0069 \u0042',
+                scoreB,
+                'match-edit-score-b'
+              )
+            );
+
+            const notesGroup =
+              makeGroup(
+                '\u0047\u0068\u0069 \u0063\u0068\u00fa',
+                notes
+              );
+
+            notesGroup.classList.add(
+              'match-edit-notes'
+            );
+
+            const editMessage =
+              el('div');
+
+            editMessage.hidden =
+              true;
+
+            const editorActions =
+              el(
+                'div',
+                null,
+                'form-actions match-rejected-editor-actions'
+              );
+
+            const cancel =
+              button(
+                '\u0048\u1ee7\u0079',
+                () => {
+                  editor.hidden =
+                    true;
+
+                  notice(
+                    editMessage,
+                    ''
+                  );
+                },
+                'btn'
+              );
+
+            const submit = el(
+              'button',
+              '\u004c\u01b0\u0075 \u0076\u00e0 \u0067\u1eedi \u006c\u1ea1\u0069',
+              'btn primary'
+            );
+
+            submit.type =
+              'submit';
+
+            editorActions.append(
+              cancel,
+              submit
+            );
+
+            form.append(
+              grid,
+              notesGroup,
+              editMessage,
+              editorActions
+            );
+
+            editor.append(
+              form
+            );
+
+            const actions = el(
+              'div',
+              null,
+              'form-actions match-confirm-actions'
+            );
+
+            const openEditor =
+              button(
+                '\u270e \u0053\u1eeda \u0076\u00e0 \u0067\u1eedi \u006c\u1ea1\u0069',
+                () => {
+                  editor.hidden =
+                    !editor.hidden;
+                },
+                'btn primary'
+              );
+
+            actions.append(
+              openEditor
+            );
+
+            form.addEventListener(
+              'submit',
+              async event => {
+                event.preventDefault();
+
+                if (
+                  state.writeBusy
+                ) {
+                  return;
+                }
+
+                notice(
+                  editMessage,
+                  ''
+                );
+
+                const playerIds = [
+                  teamA1.value,
+                  teamA2.value,
+                  teamB1.value,
+                  teamB2.value
+                ];
+
+                if (
+                  playerIds.some(
+                    id => !id
+                  ) ||
+                  new Set(
+                    playerIds
+                  ).size !== 4
+                ) {
+                  notice(
+                    editMessage,
+                    '\u0050\u0068\u1ea3\u0069 \u0063\u0068\u1ecdn \u0111\u00fa\u006e\u0067 \u0034 \u0056\u0110\u0056 \u006b\u0068\u00e1\u0063 \u006e\u0068\u0061\u0075\u002e',
+                    true
+                  );
+
+                  return;
+                }
+
+                const localDate =
+                  new Date(
+                    playedAt.value
+                  );
+
+                if (
+                  !playedAt.value ||
+                  !Number.isFinite(
+                    localDate.getTime()
+                  )
+                ) {
+                  notice(
+                    editMessage,
+                    '\u0054\u0068\u1eddi \u0067\u0069\u0061\u006e \u0074\u0068\u0069 \u0111\u1ea5\u0075 \u006b\u0068\u00f4\u006e\u0067 \u0068\u1ee3\u0070 \u006c\u1ec7\u002e',
+                    true
+                  );
+
+                  return;
+                }
+
+                const scoreAValue =
+                  Number(
+                    scoreA.value
+                  );
+
+                const scoreBValue =
+                  Number(
+                    scoreB.value
+                  );
+
+                if (
+                  !Number.isInteger(
+                    scoreAValue
+                  ) ||
+                  !Number.isInteger(
+                    scoreBValue
+                  ) ||
+                  scoreAValue < 0 ||
+                  scoreBValue < 0
+                ) {
+                  notice(
+                    editMessage,
+                    '\u0054\u1ef7 \u0073\u1ed1 \u006b\u0068\u00f4\u006e\u0067 \u0068\u1ee3\u0070 \u006c\u1ec7\u002e',
+                    true
+                  );
+
+                  return;
+                }
+
+                state.writeBusy =
+                  true;
+
+                submit.disabled =
+                  true;
+
+                submit.textContent =
+                  '\u0110\u0061\u006e\u0067 \u0067\u1eedi \u006c\u1ea1\u0069\u2026';
+
+                try {
+                  const {
+                    error:
+                      updateError
+                  } =
+                    await client.rpc(
+                      'update_my_rejected_pending_match',
+                      {
+                        p_match_id:
+                          match.id,
+
+                        p_played_at:
+                          localDate.toISOString(),
+
+                        p_match_type:
+                          matchType.value,
+
+                        p_score_mode:
+                          scoreMode.value,
+
+                        p_team_a_score:
+                          scoreAValue,
+
+                        p_team_b_score:
+                          scoreBValue,
+
+                        p_team_a_player_1:
+                          teamA1.value,
+
+                        p_team_a_player_2:
+                          teamA2.value,
+
+                        p_team_b_player_1:
+                          teamB1.value,
+
+                        p_team_b_player_2:
+                          teamB2.value,
+
+                        p_notes:
+                          notes.value.trim() ||
+                          null
+                      }
+                    );
+
+                  if (updateError) {
+                    throw updateError;
+                  }
+
+                  const {
+                    error:
+                      resubmitError
+                  } =
+                    await client.rpc(
+                      'resubmit_my_rejected_match',
+                      {
+                        p_match_id:
+                          match.id
+                      }
+                    );
+
+                  if (
+                    resubmitError
+                  ) {
+                    notice(
+                      editMessage,
+                      '\u0110\u00e3 \u006c\u01b0\u0075 \u006e\u1ed9\u0069 \u0064\u0075\u006e\u0067 \u0073\u1eeda\u002c \u006e\u0068\u01b0\u006e\u0067 \u0063\u0068\u01b0\u0061 \u0067\u1eedi \u006c\u1ea1\u0069 \u0111\u01b0\u1ee3\u0063\u002e \u0056\u0075\u0069 \u006c\u00f2\u006e\u0067 \u0074\u0068\u1eed \u006c\u1ea1\u0069\u002e',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  await reloadAfterWrite(
+                    '\u0110\u00e3 \u0073\u1eeda \u0076\u00e0 \u0067\u1eedi \u006c\u1ea1\u0069 \u0074\u0072\u1ead\u006e \u0063\u0068\u006f \u0111\u1ed1\u0069 \u0074\u0068\u1ee7 \u0078\u00e1\u0063 \u006e\u0068\u1ead\u006e\u002e'
+                  );
+                } catch (
+                  error
+                ) {
+                  notice(
+                    editMessage,
+                    explain(error),
+                    true
+                  );
+                } finally {
+                  state.writeBusy =
+                    false;
+
+                  submit.disabled =
+                    false;
+
+                  submit.textContent =
+                    '\u004c\u01b0\u0075 \u0076\u00e0 \u0067\u1eedi \u006c\u1ea1\u0069';
+                }
+              }
+            );
+
+            card.append(
+              reasonBox,
+              actions,
+              editor
+            );
+
+            list.append(
+              card
+            );
+          };
+
+        const loadConfirmations =
+          async () => {
+            const {
+              data,
+              error
+            } = await client.rpc(
+              'get_my_pending_match_confirmations'
+            );
+
+            if (error) {
+              section.hidden =
+                false;
+
+              notice(
+                message,
+                explain(error),
+                true
+              );
+
+              return;
+            }
+
+            const records =
+              Array.isArray(data)
+                ? data
+                : [];
+
+            const actionable =
+              records.filter(
+                item => {
+                  const isConfirmable =
+                    item?.can_confirm ===
+                    true;
+
+                  const isRejectedCreator =
+                    raw(item?.created_by) ===
+                      currentUserId &&
+                    !!item
+                      ?.opponent_rejected_by;
+
+                  return (
+                    isConfirmable ||
+                    isRejectedCreator
+                  );
+                }
+              );
+
+            list.replaceChildren();
+
+            if (
+              actionable.length === 0
+            ) {
+              section.hidden =
+                true;
+
+              return;
+            }
+
+            section.hidden =
+              false;
+
+            if (heading) {
+              heading.textContent =
+                `\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3 (${actionable.length})`;
+            }
+
+            notice(
+              message,
+              actionable.length === 1
+                ? '\u0043\u00f3 \u0031 \u0074\u0072\u1ead\u006e \u0063\u1ea7\u006e \u0062\u1ea1\u006e \u0078\u1eed \u006c\u00fd\u002e'
+                : `\u0043\u00f3 ${actionable.length} \u0074\u0072\u1ead\u006e \u0063\u1ea7\u006e \u0062\u1ea1\u006e \u0078\u1eed \u006c\u00fd\u002e`,
+              false
+            );
+
+            actionable.forEach(
+              item => {
+                const match =
+                  rows('matches').find(
+                    row =>
+                      raw(row.id) ===
+                      raw(item.match_id)
+                  );
+
+                if (!match) {
+                  return;
+                }
+
+                if (
+                  item.can_confirm ===
+                  true
+                ) {
+                  renderConfirmable(
+                    item,
+                    match
+                  );
+
+                  return;
+                }
+
+                if (
+                  raw(item.created_by) ===
+                    currentUserId &&
+                  item.opponent_rejected_by
+                ) {
+                  renderRejectedCreator(
+                    item,
+                    match
+                  );
+                }
+              }
+            );
+          };
+
+        loadConfirmations();
+      }
+
       function matchesPage() {
         const root = $('content');
 
@@ -7057,6 +8808,7 @@ function voidApprovedMatchForm(root) {
           adminMatchCenter(root);
         } else {
           createMyPendingMatchForm(root);
+          memberOpponentConfirmationPanel(root);
 
           table(
             root,

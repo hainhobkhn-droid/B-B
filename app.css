@@ -3833,3 +3833,510 @@ td:first-child{
     height:28px;
   }
 }
+/* =========================================================
+   PICK MATCH UI V1
+   Shared ADMIN + MEMBER / Desktop + Mobile
+   docs/PICK-UI-SYSTEM-V1.md
+   ========================================================= */
+
+.match-action-collapsible{
+  position:relative;
+}
+
+.match-action-collapsible > h2:first-child{
+  cursor:pointer;
+  user-select:none;
+}
+
+.match-action-collapsible > h2:first-child::after{
+  content:"\203A";
+  margin-left:auto;
+  font-size:24px;
+  font-weight:700;
+  line-height:1;
+  opacity:.55;
+  transform:rotate(90deg);
+  transition:transform var(--ease);
+}
+
+.match-action-collapsible.is-open > h2:first-child::after{
+  transform:rotate(-90deg);
+}
+
+.match-action-collapsible:not(.is-open) > :not(h2:first-child){
+  display:none!important;
+}
+
+.match-action-collapsible:not(.is-open){
+  padding-bottom:0!important;
+}
+
+.match-action-collapsible:not(.is-open) > h2:first-child{
+  margin-bottom:0!important;
+  border-bottom:0;
+}
+
+.match-form-grid{
+  align-items:start;
+}
+
+.match-form-grid > .form-group{
+  order:5;
+}
+
+.match-form-grid > .match-field-info{
+  order:1;
+}
+
+.match-team-heading{
+  display:none;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:#475569;
+}
+
+.match-form-grid > .match-field-a1,
+.match-form-grid > .match-field-a2,
+.match-form-grid > .match-field-score-a{
+  grid-column:1;
+}
+
+.match-form-grid > .match-field-b1,
+.match-form-grid > .match-field-b2,
+.match-form-grid > .match-field-score-b{
+  grid-column:2;
+}
+
+.match-form-grid > .match-field-a1,
+.match-form-grid > .match-field-b1{
+  order:11;
+}
+
+.match-form-grid > .match-field-a2,
+.match-form-grid > .match-field-b2{
+  order:12;
+}
+
+.match-form-grid > .match-field-score-a,
+.match-form-grid > .match-field-score-b{
+  order:13;
+}
+
+/* MEMBER confirmation */
+
+.match-confirm-list{
+  display:grid;
+  gap:10px;
+}
+
+.match-confirm-card{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fff;
+  padding:14px;
+  box-shadow:var(--shadow-1);
+}
+
+.match-confirm-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.match-confirm-code{
+  display:block;
+  color:#0f172a;
+  font-size:15px;
+}
+
+.match-confirm-meta{
+  margin-top:3px;
+}
+
+.match-confirm-versus{
+  display:grid;
+  grid-template-columns:
+    minmax(0,1fr)
+    auto
+    minmax(0,1fr);
+  align-items:center;
+  gap:14px;
+}
+
+.match-confirm-team{
+  min-width:0;
+  padding:11px 12px;
+  border-radius:10px;
+  background:#f8fafc;
+  border:1px solid #eef2f7;
+}
+
+.match-confirm-team-title{
+  margin-bottom:6px;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:#64748b;
+}
+
+.match-confirm-player{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:650;
+  color:#0f172a;
+}
+
+.match-confirm-player + .match-confirm-player{
+  margin-top:4px;
+}
+
+.match-confirm-score{
+  min-width:78px;
+  text-align:center;
+  font-size:22px;
+  line-height:1;
+  font-weight:800;
+  color:#0f172a;
+  white-space:nowrap;
+}
+
+.match-confirm-actions{
+  margin-top:12px;
+  min-height:38px!important;
+  justify-content:flex-end;
+}
+
+.match-confirm-actions .btn{
+  min-height:38px;
+}
+
+/* Keep action and status headers within the same visual rhythm */
+
+.match-action-card > h2:first-child{
+  min-height:54px;
+}
+
+.match-status-summary{
+  min-height:54px;
+}
+
+@media (min-width:701px){
+  .match-form-grid{
+    grid-template-columns:
+      minmax(0,1fr)
+      minmax(0,1fr);
+  }
+
+  .match-form-grid > .match-team-heading{
+    display:block;
+    order:10;
+    margin-top:4px;
+    padding:6px 2px 2px;
+  }
+
+  .match-form-grid > .match-team-heading-a{
+    grid-column:1;
+  }
+
+  .match-form-grid > .match-team-heading-b{
+    grid-column:2;
+  }
+}
+
+@media (max-width:700px){
+  .match-action-card > h2:first-child,
+  .match-status-summary{
+    min-height:52px;
+  }
+
+  .match-form-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+
+  .match-form-grid > .form-group{
+    grid-column:1!important;
+  }
+
+  .match-form-grid > .match-team-heading{
+    display:block;
+    grid-column:1!important;
+    padding:9px 2px 3px;
+  }
+
+  .match-form-grid > .match-team-heading-a{
+    order:10;
+  }
+
+  .match-form-grid > .match-field-a1{
+    order:11;
+  }
+
+  .match-form-grid > .match-field-a2{
+    order:12;
+  }
+
+  .match-form-grid > .match-field-score-a{
+    order:13;
+  }
+
+  .match-form-grid > .match-team-heading-b{
+    order:20;
+    margin-top:5px;
+  }
+
+  .match-form-grid > .match-field-b1{
+    order:21;
+  }
+
+  .match-form-grid > .match-field-b2{
+    order:22;
+  }
+
+  .match-form-grid > .match-field-score-b{
+    order:23;
+  }
+
+  .match-confirm-card{
+    padding:12px;
+  }
+
+  .match-confirm-versus{
+    grid-template-columns:minmax(0,1fr);
+    gap:8px;
+  }
+
+  .match-confirm-team{
+    padding:10px 11px;
+  }
+
+  .match-confirm-team-a{
+    order:1;
+  }
+
+  .match-confirm-score{
+    order:2;
+    min-width:0;
+    padding:3px 0;
+    font-size:20px;
+  }
+
+  .match-confirm-team-b{
+    order:3;
+  }
+
+  .match-confirm-player{
+    white-space:normal;
+  }
+
+  .match-confirm-actions{
+    justify-content:stretch;
+  }
+
+  .match-confirm-actions .btn{
+    width:100%;
+  }
+}
+
+/* =========================================================
+   PICK P1.2B MEMBER REJECT UI
+   Opponent reject + creator edit/resubmit
+   ========================================================= */
+
+.match-confirm-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.match-confirm-actions .btn{
+  flex:0 0 auto;
+}
+
+.match-reject-button{
+  border-color:#fecaca;
+  background:#fff7f7;
+  color:#b42318;
+}
+
+.match-reject-button:hover{
+  background:#fef2f2;
+  border-color:#fca5a5;
+}
+
+.match-reject-editor{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  background:#fffafa;
+}
+
+.match-reject-editor > label{
+  display:block;
+  margin-bottom:6px;
+  font-weight:700;
+  color:#991b1b;
+}
+
+.match-reject-editor-actions{
+  margin-top:10px;
+}
+
+.match-reject-submit{
+  border-color:#dc2626;
+  background:#dc2626;
+  color:#fff;
+}
+
+.match-reject-submit:hover{
+  background:#b91c1c;
+}
+
+.match-rejected-card{
+  border-left:4px solid #ef4444;
+}
+
+.match-rejection-reason{
+  margin-top:12px;
+  padding:11px 12px;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  background:#fff7f7;
+}
+
+.match-rejection-reason > strong{
+  display:block;
+  margin-bottom:5px;
+  color:#991b1b;
+}
+
+.match-rejection-reason-text{
+  color:#7f1d1d;
+  white-space:pre-wrap;
+}
+
+.match-rejection-meta{
+  margin-top:5px;
+}
+
+.match-rejected-edit{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #e5e7eb;
+}
+
+.match-rejected-edit-grid{
+  display:grid;
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(0,1fr);
+  gap:12px 14px;
+  align-items:start;
+}
+
+.match-rejected-edit-grid .match-team-heading{
+  display:block;
+  margin-top:4px;
+  padding:6px 2px 2px;
+}
+
+.match-edit-team-a-title{
+  grid-column:1;
+}
+
+.match-edit-team-b-title{
+  grid-column:2;
+}
+
+.match-edit-a1,
+.match-edit-a2,
+.match-edit-score-a{
+  grid-column:1;
+}
+
+.match-edit-b1,
+.match-edit-b2,
+.match-edit-score-b{
+  grid-column:2;
+}
+
+.match-edit-notes{
+  margin-top:12px;
+}
+
+.match-rejected-editor-actions{
+  margin-top:12px;
+}
+
+@media (max-width:700px){
+  .match-confirm-actions{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+  }
+
+  .match-confirm-actions .btn{
+    width:100%;
+  }
+
+  .match-rejected-edit-grid{
+    grid-template-columns:minmax(0,1fr);
+  }
+
+  .match-rejected-edit-grid > *{
+    grid-column:1!important;
+  }
+
+  .match-rejected-edit-grid > .match-edit-info{
+    order:1;
+  }
+
+  .match-edit-team-a-title{
+    order:10;
+  }
+
+  .match-edit-a1{
+    order:11;
+  }
+
+  .match-edit-a2{
+    order:12;
+  }
+
+  .match-edit-score-a{
+    order:13;
+  }
+
+  .match-edit-team-b-title{
+    order:20;
+    margin-top:5px;
+  }
+
+  .match-edit-b1{
+    order:21;
+  }
+
+  .match-edit-b2{
+    order:22;
+  }
+
+  .match-edit-score-b{
+    order:23;
+  }
+
+  .match-reject-editor-actions,
+  .match-rejected-editor-actions{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+  }
+
+  .match-reject-editor-actions .btn,
+  .match-rejected-editor-actions .btn{
+    width:100%;
+  }
+}
