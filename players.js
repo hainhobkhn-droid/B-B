@@ -2270,44 +2270,17 @@ function collapsibleAdminSection(
           }
         } finally { reading = false; sync(); }
       }
-      async function one(tableName, id, columns) {
-        const { data, error } = await client.from(tableName).select(columns).eq('id', id).maybeSingle();
-        if (error) throw error;
-        if (!data) throw new Error('Hồ sơ không còn tồn tại hoặc không có quyền đọc.');
-        return data;
-      }
-      async function count(tableName, playerId, partner = false) {
-        let query = client.from(tableName).select('*', { count: 'exact', head: true });
-        query = partner ? query.or(`player_id.eq.${playerId},partner_player_id.eq.${playerId}`) : query.eq('player_id', playerId);
-        const { count: total, error } = await query;
-        if (error) throw error;
-        if (!Number.isInteger(total) || total < 0) throw new Error('Chưa xác minh được dữ liệu nghiệp vụ.');
-        return total;
-      }
       async function inspect(profileId, guestId) {
-        const columns = 'id,full_name,player_type,status,current_rating';
-        const { data: profileRows, error: profileError } = await client.rpc('get_admin_member_promotion_candidates');
-        if (profileError) throw profileError;
-        if (!Array.isArray(profileRows)) throw new Error('Không đọc được danh sách MEMBER.');
-        const candidate = profileRows.find(item => item.profile_id === profileId);
-        if (!candidate) throw new Error('Tài khoản MEMBER không còn đủ điều kiện. Hãy tải lại danh sách.');
-        const profile = { id: candidate.profile_id, full_name: candidate.profile_full_name, role: 'MEMBER', is_active: true, player_id: candidate.player_id };
-        if (profile.role !== 'MEMBER' || profile.is_active !== true || !profile.player_id)
-          throw new Error('Tài khoản phải là MEMBER đang hoạt động và có Player tạm.');
-        const [temp, target] = await Promise.all([
-          one('players', profile.player_id, columns), one('players', guestId, columns)
-        ]);
-        if (temp.player_type !== 'CLUB' || temp.status !== 'ACTIVE')
-          throw new Error('Player hiện tại phải là CLUB ACTIVE.');
-        if (target.player_type !== 'GUEST' || target.status !== 'ACTIVE' || temp.id === target.id)
-          throw new Error('VĐV khách không còn đủ điều kiện. Hãy tải lại danh sách.');
-        const tables = ['match_players', 'rating_events', 'rating_adjustments', 'rating_adjustment_events',
-          'fund_contributions', 'fund_payments', 'fund_transactions', 'tournament_registrations', 'tournament_payments', 'awards'];
-        const [counts, matches, ratings, links] = await Promise.all([
-          Promise.all(tables.map(name => count(name, temp.id, name === 'tournament_registrations'))),
-          count('match_players', target.id), count('rating_events', target.id), count('profiles', target.id)
-        ]);
-        return { profile, temp, target, counts, matches, ratings, blocked: links > 0 || counts.some(n => n > 0), links };
+        const { data, error } = await client.rpc('get_admin_member_promotion_preview', {
+          p_profile_id: profileId,
+          p_guest_player_id: guestId
+        });
+        if (error) throw error;
+        if (!data || typeof data !== 'object' || Array.isArray(data))
+          throw new Error('Không đọc được dữ liệu kiểm tra chuyển thành viên.');
+        if (!data.profile || !data.temp || !data.target || !Array.isArray(data.counts))
+          throw new Error('Dữ liệu kiểm tra chuyển thành viên không đầy đủ.');
+        return data;
       }
       function show(info) {
         preview.replaceChildren();
