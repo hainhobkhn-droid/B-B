@@ -2229,7 +2229,7 @@ function collapsibleAdminSection(
       function options(input, data, placeholder) {
         input.replaceChildren(new Option(placeholder, ''));
         data.forEach(item => input.append(new Option(
-          `${item.full_name || 'Chưa có tên'} • ${item.id}`, item.id)));
+          `${item.full_name || 'Chưa có tên'}`, item.id)));
       }
       async function allRows(tableName, columns, filters) {
         const result = [];
@@ -2291,7 +2291,7 @@ function collapsibleAdminSection(
           `Guest được giữ: ${info.target.full_name} • GUEST / ACTIVE • Rating ${rating(info.target)} • ${info.matches} lượt tham gia trận • ${info.ratings} Rating events`,
           info.links ? 'Không thể chuyển: Guest đã liên kết với một tài khoản.' : info.blocked ?
             'Không thể chuyển tự động: Player hiện tại đã có dữ liệu thi đấu, Rating, quỹ, giải đấu hoặc thành tích.' :
-            'Chưa phát hiện dữ liệu nghiệp vụ ở Player tạm trong phạm vi quyền đọc. Hệ thống sẽ kiểm tra lại khi xác nhận.'
+            'Player hiện tại chưa có dữ liệu nghiệp vụ cản trở việc chuyển. Hệ thống sẽ kiểm tra lại khi xác nhận.'
         ].forEach(text => preview.append(el('p', text, 'notice')));
       }
       async function selectionChanged() {
