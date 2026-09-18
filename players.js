@@ -2250,11 +2250,13 @@ function collapsibleAdminSection(
         notice(message, 'Đang tải danh sách…');
         try {
           const result = await Promise.all([
-            allRows('profiles', 'id,full_name,role,is_active,player_id', [['role', 'MEMBER'], ['is_active', true]]),
+            client.rpc('get_admin_member_promotion_candidates'),
             allRows('players', 'id,full_name,player_type,status,current_rating', [['player_type', 'GUEST'], ['status', 'ACTIVE']])
           ]);
           if (!current() || token !== version) return;
-          members = result[0].filter(item => item.player_id);
+          if (result[0].error) throw result[0].error;
+          if (!Array.isArray(result[0].data)) throw new Error('Không đọc được danh sách MEMBER.');
+          members = result[0].data.map(item => ({ id: item.profile_id, full_name: item.profile_full_name, player_id: item.player_id }));
           guests = result[1];
           options(account, members, '— Chọn tài khoản MEMBER —');
           options(guest, guests, '— Chọn GUEST ACTIVE —');
@@ -2284,7 +2286,12 @@ function collapsibleAdminSection(
       }
       async function inspect(profileId, guestId) {
         const columns = 'id,full_name,player_type,status,current_rating';
-        const profile = await one('profiles', profileId, 'id,full_name,role,is_active,player_id');
+        const { data: profileRows, error: profileError } = await client.rpc('get_admin_member_promotion_candidates');
+        if (profileError) throw profileError;
+        if (!Array.isArray(profileRows)) throw new Error('Không đọc được danh sách MEMBER.');
+        const candidate = profileRows.find(item => item.profile_id === profileId);
+        if (!candidate) throw new Error('Tài khoản MEMBER không còn đủ điều kiện. Hãy tải lại danh sách.');
+        const profile = { id: candidate.profile_id, full_name: candidate.profile_full_name, role: 'MEMBER', is_active: true, player_id: candidate.player_id };
         if (profile.role !== 'MEMBER' || profile.is_active !== true || !profile.player_id)
           throw new Error('Tài khoản phải là MEMBER đang hoạt động và có Player tạm.');
         const [temp, target] = await Promise.all([
@@ -2306,9 +2313,9 @@ function collapsibleAdminSection(
         preview.replaceChildren();
         const rating = player => player.current_rating == null ? '—' : String(player.current_rating);
         [
-          `Tài khoản: ${info.profile.full_name} • ${info.profile.id}`,
-          `Player hiện tại: ${info.temp.full_name} • ${info.temp.id} • CLUB / ACTIVE • Rating ${rating(info.temp)} • ${info.counts[0]} lượt tham gia trận • ${info.counts[1]} Rating events`,
-          `Guest được giữ: ${info.target.full_name} • ${info.target.id} • GUEST / ACTIVE • Rating ${rating(info.target)} • ${info.matches} lượt tham gia trận • ${info.ratings} Rating events`,
+          `Tài khoản: ${info.profile.full_name}`,
+          `Player hiện tại: ${info.temp.full_name} • CLUB / ACTIVE • Rating ${rating(info.temp)} • ${info.counts[0]} lượt tham gia trận • ${info.counts[1]} Rating events`,
+          `Guest được giữ: ${info.target.full_name} • GUEST / ACTIVE • Rating ${rating(info.target)} • ${info.matches} lượt tham gia trận • ${info.ratings} Rating events`,
           info.links ? 'Không thể chuyển: Guest đã liên kết với một tài khoản.' : info.blocked ?
             'Không thể chuyển tự động: Player hiện tại đã có dữ liệu thi đấu, Rating, quỹ, giải đấu hoặc thành tích.' :
             'Chưa phát hiện dữ liệu nghiệp vụ ở Player tạm trong phạm vi quyền đọc. Hệ thống sẽ kiểm tra lại khi xác nhận.'
@@ -2340,7 +2347,7 @@ function collapsibleAdminSection(
           if (fresh.temp.id !== before.temp.id) {
             notice(message, 'Liên kết Player đã thay đổi. Hãy kiểm tra preview mới và xác nhận lại.', true); return;
           }
-          if (!window.confirm(`Chuyển tài khoản ${fresh.profile.full_name} (${fresh.profile.id}) sang ${fresh.target.full_name} (${fresh.target.id})?\nGiữ nguyên Rating ${fresh.target.current_rating} và toàn bộ lịch sử Guest.\nPlayer ${fresh.temp.full_name} (${fresh.temp.id}) sẽ thành INACTIVE.\nBạn đã xác minh đây là cùng một người?`)) return;
+          if (!window.confirm(`Chuyển tài khoản ${fresh.profile.full_name} sang ${fresh.target.full_name}?\nGiữ nguyên Rating ${fresh.target.current_rating} và toàn bộ lịch sử Guest.\nPlayer ${fresh.temp.full_name} sẽ thành INACTIVE.\nBạn đã xác minh đây là cùng một người?`)) return;
           if (!current()) return;
           const { data, error } = await client.rpc('promote_guest_player_to_member', {
             p_profile_id: fresh.profile.id, p_guest_player_id: fresh.target.id
