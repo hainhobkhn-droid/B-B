@@ -13056,36 +13056,49 @@ const fieldLabels = {
           };
         }
 
+        // MP01 MEMBER FUND LOAD V1
         if (
           t === 'fund_transactions' &&
           !isAdmin()
         ) {
           const [
-            transactions,
-            overview
+            obligations,
+            history,
+            summary
           ] =
             await Promise.all([
               query(
                 client.rpc(
-                  'get_member_fund_transactions'
+                  'get_my_fund_obligations'
                 ),
                 signal
               ),
               query(
                 client.rpc(
-                  'get_member_fund_overview'
+                  'get_my_fund_payment_history'
+                ),
+                signal
+              ),
+              query(
+                client.rpc(
+                  'get_club_fund_summary'
                 ),
                 signal
               )
             ]);
 
-          state.memberFundOverview =
-            overview.data || null;
+          state.memberFundObligations =
+            [...(obligations.data || [])];
 
+          state.memberFundPaymentHistory =
+            [...(history.data || [])];
+
+          state.memberFundOverview =
+            summary.data || null;
+
+          // MEMBER no longer needs raw fund ledger rows.
           return {
-            data: [
-              ...(transactions.data || [])
-            ],
+            data: [],
             partial: false
           };
         }
@@ -13290,6 +13303,8 @@ const fieldLabels = {
         state.errors = {};
         state.partial = {};
         state.memberFundOverview = null;
+        state.memberFundObligations = [];
+        state.memberFundPaymentHistory = [];
 
         $('user-name').textContent =
           state.session.user

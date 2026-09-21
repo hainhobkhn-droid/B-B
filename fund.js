@@ -361,6 +361,20 @@
         : fundKnownCash.totalIn -
           fundKnownCash.totalOut;
 
+    if (!isAdmin()) {
+      root.append(
+        el(
+          'h2',
+          'Tổng quan quỹ CLB',
+          'font-semibold text-lg mt-2 mb-1'
+        ),
+        el(
+          'p',
+          'Thông tin tổng hợp để thành viên theo dõi minh bạch thu, chi và công nợ của CLB.',
+          'text-sm opacity-70 mb-3'
+        )
+      );
+    }
 
     grid(
       root,
@@ -600,7 +614,7 @@
       );
     }
 
-        // MEMBER PERSONAL FUND V1
+        // MP01 MEMBER FUND PORTAL V1
         if (!isAdmin()) {
           fundCollapse(
             'Quỹ của tôi',
@@ -622,158 +636,121 @@
                 return;
               }
 
-              const myContributions =
-                activeContributions
-                  .filter(
-                    contribution =>
-                      raw(
-                        contribution.player_id
-                      ) ===
-                      playerId
-                  );
+              const obligations =
+                Array.isArray(
+                  state.memberFundObligations
+                )
+                  ? state.memberFundObligations
+                  : [];
 
-              const myPayments =
-                rows('fund_payments')
-                  .filter(
-                    payment =>
-                      raw(
-                        payment.player_id
-                      ) ===
-                      playerId
-                  );
+              const history =
+                Array.isArray(
+                  state.memberFundPaymentHistory
+                )
+                  ? state.memberFundPaymentHistory
+                  : [];
 
-              const paidByContribution =
-                new Map();
-
-              myPayments.forEach(
-                payment => {
-                  const contributionId =
-                    raw(
-                      payment.contribution_id
-                    );
-
-                  if (!contributionId) {
-                    return;
+              const formatDateTime =
+                value => {
+                  if (!value) {
+                    return 'Không rõ thời gian';
                   }
 
-                  paidByContribution.set(
-                    contributionId,
-                    (
-                      paidByContribution.get(
-                        contributionId
-                      ) || 0
-                    ) +
-                    (
-                      Number(
-                        payment.amount
-                      ) || 0
+                  const date =
+                    new Date(value);
+
+                  if (
+                    !Number.isFinite(
+                      date.getTime()
                     )
+                  ) {
+                    return 'Không rõ thời gian';
+                  }
+
+                  return date.toLocaleString(
+                    'vi-VN'
                   );
-                }
-              );
+                };
 
-              const myTotalDue =
-                myContributions.reduce(
-                  (sum, contribution) =>
-                    sum +
-                    (
-                      Number(
-                        contribution.amount_due
-                      ) || 0
-                    ),
-                  0
-                );
+              const obligationStatusLabel =
+                item => {
+                  if (
+                    item.is_collectible === false
+                  ) {
+                    const status =
+                      upper(
+                        item.status || ''
+                      );
 
-              const myTotalPaid =
-                myPayments
-                  .filter(
-                    payment =>
-                      activeContributionIds.has(
-                        raw(
-                          payment.contribution_id
-                        )
-                      )
-                  )
-                  .reduce(
-                    (sum, payment) =>
-                      sum +
-                      (
-                        Number(
-                          payment.amount
-                        ) || 0
-                      ),
-                    0
-                  );
+                    if (status === 'MIEN') {
+                      return 'Được miễn';
+                    }
 
-              const myOutstanding =
-                myContributions.reduce(
-                  (sum, contribution) => {
-                    const due =
-                      Number(
-                        contribution.amount_due
-                      ) || 0;
+                    if (
+                      status === 'DIEU_CHINH'
+                    ) {
+                      return 'Đã điều chỉnh';
+                    }
 
-                    const paid =
-                      paidByContribution.get(
-                        raw(
-                          contribution.id
-                        )
-                      ) || 0;
+                    return 'Không còn thu';
+                  }
 
-                    return (
-                      sum +
-                      Math.max(
-                        due - paid,
-                        0
-                      )
+                  const remaining =
+                    num(
+                      item.amount_remaining
+                    ) || 0;
+
+                  if (remaining > 0) {
+                    return 'Còn phải đóng';
+                  }
+
+                  return 'Đã hoàn tất';
+                };
+
+              const transactionLabel =
+                value => {
+                  const code =
+                    upper(
+                      value || ''
                     );
-                  },
-                  0
-                );
 
-              grid(
-                sectionRoot,
-                [
-                  [
-                    'Nghĩa vụ của tôi',
-                    money(
-                      myTotalDue
-                    ),
-                    'Các khoản đóng quỹ còn hiệu lực'
-                  ],
-                  [
-                    'Đã đóng',
-                    money(
-                      myTotalPaid
-                    ),
-                    'Theo lịch sử thanh toán của tôi'
-                  ],
-                  [
-                    'Còn phải đóng',
-                    money(
-                      myOutstanding
-                    ),
-                    myOutstanding > 0
-                      ? 'Còn nghĩa vụ chưa hoàn tất'
-                      : 'Đã hoàn tất nghĩa vụ hiện tại'
-                  ]
-                ]
-              );
+                  const labels = {
+                    THU_QUY_THUA_TRAN:
+                      'Thu quỹ trận thua',
+                    THU_QUY_HOA:
+                      'Thu quỹ trận hòa',
+                    UNG_HO:
+                      'Ủng hộ',
+                    TAI_TRO:
+                      'Tài trợ',
+                    THU_KHAC:
+                      'Thu khác',
+                    CHUYEN_VAO_QUY:
+                      'Chuyển vào quỹ',
+                    CHI_TIEU:
+                      'Chi tiêu',
+                    HOAN_TIEN:
+                      'Hoàn tiền',
+                    DIEU_CHINH:
+                      'Điều chỉnh',
+                    PAYMENT:
+                      'Thanh toán'
+                  };
 
-              const obligationsTitle =
-                el(
-                  'h3',
-                  'Các khoản nghĩa vụ',
-                  'font-semibold mt-5 mb-3'
-                );
+                  return labels[code] ||
+                    value ||
+                    'Giao dịch quỹ';
+                };
 
               sectionRoot.append(
-                obligationsTitle
+                el(
+                  'h3',
+                  'Nghĩa vụ quỹ của tôi',
+                  'font-semibold mb-3'
+                )
               );
 
-              if (
-                !myContributions.length
-              ) {
+              if (!obligations.length) {
                 sectionRoot.append(
                   el(
                     'p',
@@ -789,59 +766,109 @@
                     'space-y-2'
                   );
 
-                myContributions
+                obligations
                   .slice()
                   .sort(
-                    (a, b) =>
-                      new Date(
-                        b.created_at || 0
-                      ).getTime() -
-                      new Date(
-                        a.created_at || 0
-                      ).getTime()
+                    (a, b) => {
+                      const aRemaining =
+                        num(
+                          a.amount_remaining
+                        ) || 0;
+
+                      const bRemaining =
+                        num(
+                          b.amount_remaining
+                        ) || 0;
+
+                      const aOpen =
+                        a.is_collectible !== false &&
+                        aRemaining > 0
+                          ? 1
+                          : 0;
+
+                      const bOpen =
+                        b.is_collectible !== false &&
+                        bRemaining > 0
+                          ? 1
+                          : 0;
+
+                      if (aOpen !== bOpen) {
+                        return bOpen - aOpen;
+                      }
+
+                      return (
+                        new Date(
+                          b.occurred_at || 0
+                        ).getTime() -
+                        new Date(
+                          a.occurred_at || 0
+                        ).getTime()
+                      );
+                    }
                   )
                   .forEach(
-                    contribution => {
+                    item => {
                       const due =
-                        Number(
-                          contribution.amount_due
+                        num(
+                          item.amount_due
                         ) || 0;
 
                       const paid =
-                        paidByContribution.get(
-                          raw(
-                            contribution.id
-                          )
+                        num(
+                          item.amount_paid
                         ) || 0;
 
                       const remaining =
-                        Math.max(
-                          due - paid,
-                          0
+                        num(
+                          item.amount_remaining
+                        ) || 0;
+
+                      const statusText =
+                        obligationStatusLabel(
+                          item
                         );
 
-                      const reason =
-                        raw(
-                          contribution.reason
-                        ) || 'QUỸ';
-
-                      const status =
-                        upper(
-                          contribution.status
-                        );
-
-                      obligationList.append(
+                      const card =
                         el(
                           'div',
-                          `${reason} • Nghĩa vụ ${money(
-                            due
-                          )} • Đã đóng ${money(
-                            paid
-                          )} • Còn ${money(
-                            remaining
-                          )} • ${status}`,
+                          null,
                           'rounded-xl border p-3 text-sm'
+                        );
+
+                      card.append(
+                        el(
+                          'div',
+                          fundReasonLabel(
+                            item.reason
+                          ),
+                          'font-semibold'
+                        ),
+                        el(
+                          'div',
+                          formatDateTime(
+                            item.occurred_at
+                          ),
+                          'text-xs opacity-70 mt-1'
+                        ),
+                        el(
+                          'div',
+                          `Nghĩa vụ ${money(due)} • Đã đóng ${money(paid)} • Còn ${money(remaining)}`,
+                          'mt-2'
+                        ),
+                        el(
+                          'div',
+                          statusText,
+                          (
+                            remaining > 0 &&
+                            item.is_collectible !== false
+                          )
+                            ? 'mt-1 text-sm font-semibold text-red-600'
+                            : 'mt-1 text-sm font-semibold'
                         )
+                      );
+
+                      obligationList.append(
+                        card
                       );
                     }
                   );
@@ -854,91 +881,150 @@
               sectionRoot.append(
                 el(
                   'h3',
-                  'Lịch sử đóng quỹ',
+                  'Lịch sử thanh toán của tôi',
                   'font-semibold mt-5 mb-3'
                 )
               );
 
-              if (!myPayments.length) {
+              if (!history.length) {
                 sectionRoot.append(
                   el(
                     'p',
-                    'Chưa có giao dịch đóng quỹ.',
+                    'Chưa có giao dịch quỹ.',
                     'text-sm opacity-70'
                   )
                 );
               } else {
-                const paymentList =
+                const historyList =
                   el(
                     'div',
                     null,
                     'space-y-2'
                   );
 
-                myPayments
+                history
                   .slice()
                   .sort(
                     (a, b) =>
                       new Date(
-                        b.paid_at ||
-                        b.created_at ||
-                        0
+                        b.occurred_at || 0
                       ).getTime() -
                       new Date(
-                        a.paid_at ||
-                        a.created_at ||
-                        0
+                        a.occurred_at || 0
                       ).getTime()
                   )
                   .forEach(
-                    payment => {
-                      const paidAt =
-                        payment.paid_at
-                          ? new Date(
-                              payment.paid_at
-                            )
-                          : null;
+                    item => {
+                      const amount =
+                        num(
+                          item.amount
+                        ) || 0;
 
-                      const paidText =
-                        paidAt &&
-                        Number.isFinite(
-                          paidAt.getTime()
-                        )
-                          ? paidAt.toLocaleString(
-                              'vi-VN'
-                            )
-                          : 'Không rõ thời gian';
+                      const delta =
+                        item.cash_delta === null ||
+                        item.cash_delta === undefined
+                          ? null
+                          : num(
+                              item.cash_delta
+                            );
 
-                      const note =
-                        raw(
-                          payment.note
+                      const source =
+                        upper(
+                          item.event_source || ''
                         );
 
-                      paymentList.append(
+                      let amountText =
+                        money(amount);
+
+                      if (
+                        delta !== null &&
+                        Number.isFinite(delta)
+                      ) {
+                        if (delta > 0) {
+                          amountText =
+                            '+' +
+                            money(
+                              Math.abs(delta)
+                            );
+                        } else if (delta < 0) {
+                          amountText =
+                            '−' +
+                            money(
+                              Math.abs(delta)
+                            );
+                        } else {
+                          amountText =
+                            money(0);
+                        }
+                      }
+
+                      const card =
                         el(
                           'div',
-                          `${money(
-                            Number(
-                              payment.amount
-                            ) || 0
-                          )} • ${paidText}${
-                            note
-                              ? ` • ${note}`
-                              : ''
-                          }`,
+                          null,
                           'rounded-xl border p-3 text-sm'
+                        );
+
+                      card.append(
+                        el(
+                          'div',
+                          transactionLabel(
+                            item.transaction_type
+                          ),
+                          'font-semibold'
+                        ),
+                        el(
+                          'div',
+                          formatDateTime(
+                            item.occurred_at
+                          ),
+                          'text-xs opacity-70 mt-1'
+                        ),
+                        el(
+                          'div',
+                          amountText,
+                          'mt-2 font-semibold'
                         )
+                      );
+
+                      if (
+                        source ===
+                        'PAYMENT_WITHOUT_LEDGER'
+                      ) {
+                        card.append(
+                          el(
+                            'div',
+                            'Thanh toán cũ chưa có bút toán sổ quỹ.',
+                            'text-xs opacity-70 mt-1'
+                          )
+                        );
+                      } else if (
+                        delta === null
+                      ) {
+                        card.append(
+                          el(
+                            'div',
+                            'Giao dịch này chưa xác định chiều tăng/giảm số dư.',
+                            'text-xs opacity-70 mt-1'
+                          )
+                        );
+                      }
+
+                      historyList.append(
+                        card
                       );
                     }
                   );
 
                 sectionRoot.append(
-                  paymentList
+                  historyList
                 );
               }
-            }
+            },
+            true
           );
         }
+
         // FUND COLLECTION UI V1
     if (isAdmin()) {
       fundCollapse(
@@ -2196,6 +2282,8 @@ collectionContent.append(
       );
     }
 
+    // MP01 ADMIN-ONLY FUND REPORTS V1
+    if (isAdmin()) {
     // FUND DEBT REPORT V1
     fundCollapse(
       'Báo cáo công nợ',
@@ -4211,6 +4299,8 @@ fundCollapse(
         );
           }
         );
+    }
+
         fundCollapse(
           'Quy định quỹ',
           sectionRoot => {
