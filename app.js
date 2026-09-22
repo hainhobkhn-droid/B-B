@@ -320,11 +320,14 @@ const canCollectTournamentFee = () =>
         }
       }
 
-      function grid(parent, items) {
+      function grid(parent, items, extraClass = '') {
         const n = el(
           'div',
           null,
-          'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6'
+          (
+            'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 ' +
+            extraClass
+          ).trim()
         );
 
         for (const [label, value, hint] of items) {
@@ -931,7 +934,7 @@ const canCollectTournamentFee = () =>
           el(
             'section',
             null,
-            'hero'
+            'hero overview-hero overview-member-hero'
           );
 
         hero.append(
@@ -1131,7 +1134,8 @@ const canCollectTournamentFee = () =>
                 activeRegistrations.length
               )
             ]
-          ]
+          ],
+          'overview-kpi-grid overview-member-kpis'
         );
 
         const shortcuts =
@@ -1139,6 +1143,10 @@ const canCollectTournamentFee = () =>
             'Thao tác nhanh',
             root
           );
+
+        shortcuts.classList.add(
+          'overview-quick-actions'
+        );
 
         const actions =
           el(
@@ -1152,7 +1160,7 @@ const canCollectTournamentFee = () =>
             'Tạo trận',
             () =>
               navigate('matches'),
-            'btn'
+            'btn primary'
           ),
           button(
             'Đăng ký giải',
@@ -1264,7 +1272,7 @@ const canCollectTournamentFee = () =>
         const hero = el(
           'section',
           null,
-          'hero'
+          'hero overview-hero overview-admin-hero'
         );
 
         hero.append(
@@ -1391,6 +1399,10 @@ const canCollectTournamentFee = () =>
               '🎂 Sinh nhật VĐV',
               root
             );
+
+          birthdayPanel.classList.add(
+            'overview-birthday-panel'
+          );
 
           if (
             todayBirthdays.length
@@ -2255,7 +2267,8 @@ const canCollectTournamentFee = () =>
                 : '—',
               'Tất cả giải được hiển thị'
             ]
-          ]
+          ],
+          'overview-kpi-grid overview-admin-kpis'
         );
 
         sources(
