@@ -326,17 +326,17 @@ const canCollectTournamentFee = () =>
           'div',
           null,
           (
-            'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 ' +
+            'ui-kpi-grid ' +
             extraClass
           ).trim()
         );
 
         for (const [label, value, hint] of items) {
-          const c = el('div', null, 'stat');
+          const c = el('div', null, 'stat ui-summary-card');
 
           c.append(
-            el('div', label, 'muted'),
-            el('strong', value)
+            el('div', label, 'muted ui-card-label'),
+            el('strong', value, 'ui-card-value')
           );
 
           if (hint) {
@@ -344,7 +344,7 @@ const canCollectTournamentFee = () =>
               el(
                 'p',
                 hint,
-                'muted mt-2 mb-0'
+                'muted mt-2 mb-0 ui-card-meta'
               )
             );
           }
@@ -6493,7 +6493,7 @@ const fieldLabels = {
             el(
               'div',
               null,
-              'ranking-list'
+              'ranking-list ui-card-list'
             );
 
           renderRankingList = () => {
@@ -6511,8 +6511,8 @@ const fieldLabels = {
                       'div',
                       null,
                       isRankingOpen
-                        ? 'ranking-card ranking-card-open'
-                        : 'ranking-card'
+                        ? 'ranking-card ranking-card-open ui-compact-card'
+                        : 'ranking-card ui-compact-card'
                     );
 
                   const header =

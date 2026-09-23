@@ -4408,26 +4408,10 @@ td:first-child{
   margin-bottom:9px;
 }
 
-.overview-kpi-grid{
-  align-items:stretch;
-}
-
-.overview-kpi-grid .stat{
-  height:100%;
-}
-
 @media(min-width:1180px){
-  .overview-member-kpis{
-    grid-template-columns:
-      repeat(5,minmax(0,1fr));
-  }
 }
 
 @media(min-width:900px){
-  .overview-admin-kpis{
-    grid-template-columns:
-      repeat(4,minmax(0,1fr));
-  }
 }
 
 .overview-quick-actions{
@@ -4480,34 +4464,6 @@ td:first-child{
       );
   }
 
-  .overview-member-kpis,
-  .overview-admin-kpis{
-    grid-template-columns:
-      repeat(2,minmax(0,1fr));
-    gap:10px;
-    margin-bottom:13px;
-  }
-
-  .overview-kpi-grid .stat{
-    min-height:96px;
-    padding:13px;
-  }
-
-  .overview-kpi-grid .stat strong{
-    margin-top:6px;
-    font-size:22px;
-    letter-spacing:-.7px;
-  }
-
-  .overview-kpi-grid .stat .muted:first-child{
-    font-size:10px;
-    line-height:1.35;
-  }
-
-  .overview-member-kpis .stat:last-child:nth-child(odd){
-    grid-column:1 / -1;
-  }
-
   .overview-hero{
     padding:15px 16px 16px;
     margin-bottom:11px;
@@ -4556,14 +4512,6 @@ td:first-child{
 }
 
 @media(max-width:360px){
-  .overview-member-kpis,
-  .overview-admin-kpis{
-    grid-template-columns:minmax(0,1fr);
-  }
-
-  .overview-member-kpis .stat:last-child:nth-child(odd){
-    grid-column:auto;
-  }
 
   .overview-quick-actions .flex{
     grid-template-columns:minmax(0,1fr);
@@ -5408,66 +5356,6 @@ tbody tr:hover{
 
 @media(max-width:760px){
 
-  /*
-   * Five MEMBER metrics in two compact rows:
-   * row 1 = Rating / Approved / W-L-D
-   * row 2 = Fund / Tournament registration
-   */
-  .overview-member-kpis{
-    grid-template-columns:
-      repeat(6,minmax(0,1fr));
-
-    gap:6px;
-    margin-bottom:10px;
-  }
-
-  .overview-member-kpis .stat{
-    min-height:68px;
-
-    padding:9px 10px;
-
-    border-radius:12px;
-  }
-
-  .overview-member-kpis
-  .stat:nth-child(-n+3){
-    grid-column:span 2;
-  }
-
-  .overview-member-kpis
-  .stat:nth-child(n+4){
-    grid-column:span 3;
-  }
-
-  .overview-member-kpis
-  .stat:last-child:nth-child(odd){
-    grid-column:span 3;
-  }
-
-  .overview-member-kpis
-  .stat strong{
-    margin-top:4px;
-
-    font-size:17px;
-    line-height:1.05;
-    letter-spacing:-.4px;
-  }
-
-  .overview-member-kpis
-  .stat .muted:first-child{
-    font-size:9px;
-    line-height:1.2;
-  }
-
-  .overview-member-kpis
-  .stat::after{
-    right:-15px;
-    top:-15px;
-
-    width:42px;
-    height:42px;
-  }
-
 
   /*
    * Quick actions stay immediately visible under member hero.
@@ -5513,27 +5401,6 @@ tbody tr:hover{
 
 @media(max-width:360px){
 
-  /*
-   * Override older single-column fallback:
-   * compact layout remains two rows even on small phones.
-   */
-  .overview-member-kpis{
-    grid-template-columns:
-      repeat(6,minmax(0,1fr));
-  }
-
-  .overview-member-kpis
-  .stat:nth-child(-n+3){
-    grid-column:span 2;
-  }
-
-  .overview-member-kpis
-  .stat:nth-child(n+4),
-  .overview-member-kpis
-  .stat:last-child:nth-child(odd){
-    grid-column:span 3;
-  }
-
   .overview-quick-actions .flex{
     grid-template-columns:
       repeat(3,minmax(0,1fr));
@@ -5548,3 +5415,104 @@ tbody tr:hover{
     font-size:10px;
   }
 }
+
+
+
+/* UI02D SHARED CARD SIZING SYSTEM — sole sizing authority for summary/compact cards. */
+:root{
+  --ui-card-radius:12px;
+  --ui-card-padding:10px;
+  --ui-card-gap:10px;
+  --ui-card-stack:4px;
+  --ui-card-section-gap:12px;
+  --ui-card-min-height:112px;
+  --ui-card-label-height:28px;
+  --ui-card-meta-height:28px;
+  --ui-card-value-size:20px;
+  --ui-card-label-size:11px;
+  --ui-card-meta-size:11px;
+  --ui-card-decoration:42px;
+  --ui-card-decoration-offset:-14px;
+  --ui-compact-min-height:64px;
+}
+/* Four equal cards per desktop row; half-width tracks center incomplete rows. */
+.ui-kpi-grid.ui-kpi-grid{
+  display:grid;grid-template-columns:repeat(8,minmax(0,1fr));
+  grid-auto-rows:1fr;gap:var(--ui-card-gap);align-items:stretch;
+  margin:var(--ui-card-section-gap) 0;min-width:0;
+}
+.ui-kpi-grid > .ui-summary-card{grid-column:span 2;width:auto;min-width:0;}
+.ui-kpi-grid > .ui-summary-card:nth-child(4n+1):nth-last-child(1){grid-column:4 / span 2;}
+.ui-kpi-grid > .ui-summary-card:nth-child(4n+1):nth-last-child(2){grid-column:3 / span 2;}
+.ui-kpi-grid > .ui-summary-card:nth-child(4n+1):nth-last-child(3){grid-column:2 / span 2;}
+.ui-kpi-grid .ui-summary-card{
+  display:grid;grid-template-rows:var(--ui-card-label-height) minmax(24px,auto) var(--ui-card-meta-height);
+  align-content:start;row-gap:var(--ui-card-stack);
+  box-sizing:border-box;min-height:var(--ui-card-min-height);height:100%;
+  padding:var(--ui-card-padding);border-radius:var(--ui-card-radius);
+  overflow-wrap:anywhere;container-type:inline-size;
+}
+.ui-kpi-grid .ui-summary-card > .ui-card-label{
+  display:block;min-width:0;margin:0;font-size:var(--ui-card-label-size);line-height:14px;
+  font-weight:700;letter-spacing:0;color:var(--text-2);opacity:1;
+}
+.ui-kpi-grid .ui-summary-card > .ui-card-value{
+  display:block;min-width:0;align-self:start;margin:0;font-size:clamp(14px,12cqi,var(--ui-card-value-size));
+  font-weight:800;line-height:1.2;letter-spacing:-.3px;font-variant-numeric:tabular-nums;color:var(--brand);
+}
+.ui-kpi-grid .ui-summary-card > .ui-card-meta{
+  display:block;margin:0;font-size:var(--ui-card-meta-size);line-height:14px;color:var(--text-2);opacity:1;
+}
+.ui-kpi-grid .stat::after{
+  width:var(--ui-card-decoration);height:var(--ui-card-decoration);
+  top:var(--ui-card-decoration-offset);right:var(--ui-card-decoration-offset);pointer-events:none;
+}
+/* Record cards remain a readable full-width list; they are not numeric KPI tiles. */
+.players-ui .ui-card-list,
+.ranking-ui .ui-card-list{gap:var(--ui-card-gap);}
+.players-ui .ui-compact-card,
+.ranking-ui .ui-compact-card{
+  padding:var(--ui-card-padding);border-radius:var(--ui-card-radius);
+  min-height:var(--ui-compact-min-height);min-width:0;
+}
+.players-ui .player-card-header{min-height:44px;gap:var(--ui-card-gap);grid-template-columns:minmax(0,1fr) 92px 120px;}
+.players-ui .player-card-name,
+.ranking-ui .ranking-name{min-height:0;font-size:15px;line-height:1.3;}
+.players-ui .player-card-meta{min-height:0;gap:var(--ui-card-stack);margin-top:var(--ui-card-stack);}
+.players-ui .player-rating-label,
+.ranking-ui .ranking-label{font-size:var(--ui-card-label-size);line-height:1.3;}
+.players-ui .player-rating-value,
+.ranking-ui .ranking-value{font-size:var(--ui-card-value-size);line-height:1.2;}
+.players-ui .player-card-detail,
+.ranking-ui .ranking-detail{margin-top:var(--ui-card-gap);padding-top:var(--ui-card-gap);}
+.ranking-ui .ranking-header{grid-template-columns:40px minmax(0,1fr) 92px 80px 120px;gap:var(--ui-card-gap);}
+.ranking-ui .ranking-position{min-height:40px;font-size:16px;}
+.ranking-ui .ranking-card-toggle,
+.ranking-ui .ranking-card-open .ranking-card-toggle,
+.players-ui .player-card-toggle{min-height:44px;font-size:12px;}
+.ranking-ui .ranking-event-list{gap:var(--ui-card-gap);margin-top:var(--ui-card-gap);}
+.ranking-ui .ranking-event{padding:var(--ui-card-padding);border-radius:var(--ui-card-radius);}
+.ui-kpi-grid-compact{--ui-card-min-height:80px;--ui-card-meta-height:0px;}
+.players-ui .ui-kpi-grid-compact .ui-summary-card{display:grid;grid-column:span 2;}
+.players-ui .ui-kpi-grid-compact .ui-summary-card:last-child:nth-child(4n+1){grid-column:4 / span 2;}
+@media(max-width:1000px){
+  .ui-kpi-grid.ui-kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .ui-kpi-grid.ui-kpi-grid > .ui-summary-card:nth-child(n),
+  .players-ui .ui-kpi-grid-compact .ui-summary-card:nth-child(n){grid-column:span 2;}
+  .ui-kpi-grid.ui-kpi-grid > .ui-summary-card:last-child:nth-child(odd),
+  .players-ui .ui-kpi-grid-compact .ui-summary-card:last-child:nth-child(odd){grid-column:2 / span 2;}
+}
+@media(max-width:760px){
+  :root{--ui-card-min-height:84px;--ui-card-value-size:18px;--ui-card-meta-height:0px;}
+  .ui-kpi-grid .ui-summary-card > .ui-card-meta{display:none;}
+}
+@media(max-width:700px){
+  .players-ui .player-card-header{grid-template-columns:minmax(0,1fr) 78px;grid-template-areas:'identity rating' 'action action';gap:var(--ui-card-gap)!important;}
+  .players-ui .player-card-rating{align-items:flex-end;align-self:start;}
+  .players-ui .player-card-name,
+  .ranking-ui .ranking-name{font-size:14px;}
+  .ranking-ui .ranking-header{grid-template-columns:36px minmax(0,1fr) 82px;grid-template-areas:'rank name rating' 'rank matches action';gap:var(--ui-card-stack) var(--ui-card-gap);}
+  .ranking-ui .ranking-position{min-height:40px;align-self:start;}
+  .ranking-ui .ranking-detail-toggle{margin:0;padding:6px;font-size:11px;}
+}
+/* /UI02D SHARED CARD SIZING SYSTEM */

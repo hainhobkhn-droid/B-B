@@ -1530,7 +1530,7 @@ function collapsibleAdminSection(
         el(
           'div',
           null,
-          'grid gap-3 player-card-list'
+          'grid gap-3 player-card-list ui-card-list'
         );
 
       playerRows.forEach(
@@ -1577,7 +1577,7 @@ function collapsibleAdminSection(
             el(
               'div',
               null,
-              'player-record-card'
+              'player-record-card ui-compact-card'
             );
 
           // PICK MOBILE PLAYER CARD V1
@@ -1657,7 +1657,7 @@ function collapsibleAdminSection(
             el(
               'div',
               null,
-              'player-stats'
+              'player-stats ui-kpi-grid ui-kpi-grid-compact'
             );
 
           [
@@ -1687,21 +1687,21 @@ function collapsibleAdminSection(
                 el(
                   'div',
                   null,
-                  'player-stat'
+                  'player-stat ui-summary-card'
                 );
 
               stat.append(
                 el(
                   'div',
                   label,
-                  'text-xs opacity-60'
+                  'text-xs opacity-60 ui-card-label'
                 ),
                 el(
                   'div',
                   String(
                     value
                   ),
-                  'font-semibold mt-1'
+                  'font-semibold mt-1 ui-card-value'
                 )
               );
 
