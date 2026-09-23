@@ -68,6 +68,7 @@ function collapsibleAdminSection(
                   ) {
                     item.body.hidden =
                       true;
+                    item.toggle.setAttribute('aria-expanded', 'false');
 
                     item.toggle.textContent =
                       `▶ ${item.title}`;
@@ -78,6 +79,7 @@ function collapsibleAdminSection(
 
             body.hidden =
               !willOpen;
+            toggle.setAttribute('aria-expanded', String(willOpen));
 
             toggle.textContent =
               body.hidden
@@ -111,19 +113,26 @@ function collapsibleAdminSection(
           () => {
             body.hidden =
               true;
+            toggle.setAttribute('aria-expanded', 'false');
 
             toggle.textContent =
               `▶ ${title}`;
           },
-          'border rounded-lg px-3 py-1 text-sm mt-3'
+          'btn player-section-close mt-3'
         );
 
       close.type =
         'button';
 
+      body.id = 'player-action-' + adminActionSections.length;
+      toggle.setAttribute('aria-controls', body.id);
+      toggle.setAttribute('aria-expanded', 'false');
       buildContent(
         inner
       );
+      // The accordion already names the action; avoid a repeated panel heading.
+      const repeatedHeading = inner.querySelector('.panel > h2');
+      if (repeatedHeading) repeatedHeading.hidden = true;
 
       body.append(
         inner,
@@ -1521,7 +1530,7 @@ function collapsibleAdminSection(
         el(
           'div',
           null,
-          'grid gap-3'
+          'grid gap-3 player-card-list'
         );
 
       playerRows.forEach(
@@ -1568,7 +1577,7 @@ function collapsibleAdminSection(
             el(
               'div',
               null,
-              'rounded-xl border p-4'
+              'player-record-card'
             );
 
           // PICK MOBILE PLAYER CARD V1
@@ -1576,7 +1585,7 @@ function collapsibleAdminSection(
             el(
               'div',
               null,
-              'flex flex-wrap items-center justify-between gap-3 player-card-header'
+              'player-card-header'
             );
 
           const identity =
@@ -1586,43 +1595,30 @@ function collapsibleAdminSection(
               'player-card-identity'
             );
 
-          identity.append(
-            el(
-              'div',
-              playerName(
-                player.id
-              ),
-              'font-semibold player-card-name'
-            ),
-            el(
-              'div',
-              `${upper(
-                player.player_type
-              ) || 'CLUB'} • ${
-                upper(
-                  player.status
-                ) === 'INACTIVE'
-                  ? 'Ngừng hoạt động'
-                  : 'Đang hoạt động'
-              }`,
-              'text-xs opacity-60 mt-1'
-            )
+          const name = el('h3', playerName(player.id), 'player-card-name');
+          name.title = playerName(player.id);
+          const metadata = el('div', null, 'player-card-meta');
+          metadata.append(
+            el('span', upper(player.player_type) || 'CLUB', 'badge'),
+            el('span', upper(player.status) === 'ACTIVE' ? 'Đang hoạt động' :
+              upper(player.status) === 'INACTIVE' ? 'Ngừng hoạt động' : 'Chưa rõ trạng thái',
+              'badge player-state-' + (upper(player.status) === 'ACTIVE' ? 'active' : 'neutral'))
           );
-
-          const summary =
-            el(
-              'div',
-              `Rating ${number(
-                player.current_rating
-              )}`,
-              'font-semibold player-card-rating'
-            );
+          if (state.profile?.player_id === player.id) {
+            metadata.append(el('span', 'Hồ sơ của bạn', 'badge player-self-badge'));
+          }
+          identity.append(name, metadata);
+          const summary = el('div', null, 'player-card-rating');
+          summary.append(
+            el('span', 'Rating', 'player-rating-label'),
+            el('strong', number(player.current_rating), 'player-rating-value')
+          );
 
           const detail =
             el(
               'div',
               null,
-              'mt-4'
+              'player-card-detail'
             );
 
           detail.hidden =
@@ -1635,17 +1631,22 @@ function collapsibleAdminSection(
                 detail.hidden =
                   !detail.hidden;
 
+                toggle.setAttribute('aria-expanded', String(!detail.hidden));
                 toggle.textContent =
                   detail.hidden
                     ? 'Xem chi tiết'
                     : 'Thu gọn';
               },
-              'border rounded-lg px-3 py-1 text-sm player-card-toggle'
+              'btn player-card-toggle'
             );
 
           toggle.type =
             'button';
 
+          detail.id = 'player-detail-' + player.id;
+          toggle.setAttribute('aria-controls', detail.id);
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', 'Chi tiết VĐV ' + playerName(player.id));
           header.append(
             identity,
             summary,
@@ -1656,7 +1657,7 @@ function collapsibleAdminSection(
             el(
               'div',
               null,
-              'grid grid-cols-2 md:grid-cols-5 gap-2'
+              'player-stats'
             );
 
           [
@@ -1677,7 +1678,7 @@ function collapsibleAdminSection(
               draws
             ],
             [
-              'Win Rate',
+              'Tỷ lệ thắng',
               `${winRate}%`
             ]
           ].forEach(
@@ -1686,7 +1687,7 @@ function collapsibleAdminSection(
                 el(
                   'div',
                   null,
-                  'rounded-lg border p-2'
+                  'player-stat'
                 );
 
               stat.append(
@@ -1970,12 +1971,13 @@ function collapsibleAdminSection(
                         box
                       );
                     },
-                    'border rounded-lg px-3 py-1 font-semibold'
+                    'btn player-result player-result-' + item.result
                   );
 
                 resultButton.type =
                   'button';
 
+                resultButton.setAttribute('aria-label', (item.result === 'W' ? 'Thắng' : item.result === 'L' ? 'Thua' : 'Hòa') + ' — ' + matchCode(item.match) + ' — Xem chi tiết');
                 resultButton.title =
                   'Xem/thu gọn chi tiết trận';
 
@@ -2005,12 +2007,13 @@ function collapsibleAdminSection(
                 ratingBody.hidden =
                   !ratingBody.hidden;
 
+                ratingToggle.setAttribute('aria-expanded', String(!ratingBody.hidden));
                 ratingToggle.textContent =
                   ratingBody.hidden
                     ? 'Lịch sử Rating'
                     : 'Thu gọn lịch sử Rating';
               },
-              'border rounded-lg px-3 py-1 text-sm'
+              'btn player-history-toggle'
             );
 
           ratingToggle.type =
@@ -2025,6 +2028,10 @@ function collapsibleAdminSection(
 
           ratingBody.hidden =
             true;
+
+          ratingBody.id = 'player-rating-history-' + player.id;
+          ratingToggle.setAttribute('aria-controls', ratingBody.id);
+          ratingToggle.setAttribute('aria-expanded', 'false');
 
           const ratingHistory =
             (
@@ -2119,7 +2126,7 @@ function collapsibleAdminSection(
                   el(
                     'div',
                     null,
-                    'border-b py-2 text-sm'
+                    'player-history-row'
                   );
 
                 row.append(
@@ -2195,7 +2202,7 @@ function collapsibleAdminSection(
       const section = panel('Chuyển VĐV khách thành thành viên', root);
       const message = el('div');
       message.setAttribute('role', 'status');
-      const preview = el('div', null, 'grid gap-3 mt-3');
+      const preview = el('div', null, 'player-promotion-preview');
       preview.setAttribute('aria-live', 'polite');
       const account = el('select', null, 'field');
       const guest = el('select', null, 'field');
@@ -2215,9 +2222,9 @@ function collapsibleAdminSection(
         state.profile?.is_active === true && state.session?.user?.id === actor &&
         state.generation === generation && !state.busy;
       const reload = button('Tải danh sách thành viên và khách', loadChoices, 'btn');
-      const submit = button('Xác nhận chuyển thành viên', promote, 'btn');
+      const submit = button('Xác nhận chuyển thành viên', promote, 'btn primary');
       reload.type = submit.type = 'button';
-      const controls = el('div', null, 'flex flex-wrap gap-3 mt-3');
+      const controls = el('div', null, 'form-actions player-promotion-actions');
       controls.append(reload, submit);
       section.append(el('p',
         'Chọn đúng tài khoản và VĐV của cùng một người. Giữ nguyên ID, Rating và toàn bộ lịch sử của khách; hồ sơ VĐV tạm sẽ ngừng hoạt động. Tên và thông tin liên hệ không tự sao chép.',
@@ -2288,14 +2295,28 @@ function collapsibleAdminSection(
       function show(info) {
         preview.replaceChildren();
         const rating = player => player.current_rating == null ? '—' : String(player.current_rating);
+        preview.append(el('p', 'Tài khoản: ' + info.profile.full_name, 'player-promotion-account'));
         [
-          `Tài khoản: ${info.profile.full_name}`,
-          `Player hiện tại: ${info.temp.full_name} • CLUB / ACTIVE • Rating ${rating(info.temp)} • ${info.counts[0]} lượt tham gia trận • ${info.counts[1]} Rating events`,
-          `Guest được giữ: ${info.target.full_name} • GUEST / ACTIVE • Rating ${rating(info.target)} • ${info.matches} lượt tham gia trận • ${info.ratings} Rating events`,
-          info.links ? 'Không thể chuyển: Guest đã liên kết với một tài khoản.' : info.blocked ?
-            'Không thể chuyển tự động: Player hiện tại đã có dữ liệu thi đấu, Rating, quỹ, giải đấu hoặc thành tích.' :
-            'Player hiện tại chưa có dữ liệu nghiệp vụ cản trở việc chuyển. Hệ thống sẽ kiểm tra lại khi xác nhận.'
-        ].forEach(text => preview.append(el('p', text, 'notice')));
+          ['Player hiện tại', info.temp, info.counts[0], info.counts[1], 'CLUB / ACTIVE', 'Hồ sơ tạm sẽ ngừng hoạt động'],
+          ['Guest được giữ', info.target, info.matches, info.ratings, 'GUEST / ACTIVE', 'Giữ nguyên Rating và toàn bộ lịch sử']
+        ].forEach(([title, player, matches, ratings, status, outcome]) => {
+          const card = el('section', null, 'player-promotion-card');
+          card.append(
+            el('h3', title, 'player-promotion-label'),
+            el('p', player.full_name, 'player-card-name'),
+            el('p', status, 'player-card-meta'),
+            el('p', 'Rating ' + rating(player), 'player-promotion-rating'),
+            el('p', matches + ' lượt tham gia trận • ' + ratings + ' Rating events', 'player-promotion-history'),
+            el('p', outcome, 'player-promotion-outcome')
+          );
+          preview.append(card);
+        });
+        const status = el('div', null, 'player-promotion-status');
+        notice(status, info.links ? 'Không thể chuyển: Guest đã liên kết với một tài khoản.' : info.blocked ?
+          'Không thể chuyển tự động: Player hiện tại đã có dữ liệu thi đấu, Rating, quỹ, giải đấu hoặc thành tích.' :
+          'Player hiện tại chưa có dữ liệu nghiệp vụ cản trở việc chuyển. Hệ thống sẽ kiểm tra lại khi xác nhận.',
+          !!(info.links || info.blocked), !(info.links || info.blocked));
+        preview.append(status);
       }
       async function selectionChanged() {
         checked = null; const token = ++version; preview.replaceChildren(); sync();
@@ -2367,8 +2388,8 @@ function collapsibleAdminSection(
 
 
     function playersPage() {
-      const root =
-        $('content');
+      const root = el('div', null, 'players-ui');
+      $('content').append(root);
 
       sources(
         root,

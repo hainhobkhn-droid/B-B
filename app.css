@@ -5200,3 +5200,351 @@ tbody tr:hover{
     color:#31465c;
   }
 }
+
+/* MATCH UI review — scoped to this module; Theme V2 tokens remain shared. */
+.matches-ui{min-width:0;}
+.matches-ui > .panel{margin-bottom:12px;}
+.matches-ui .match-create-shell,
+.matches-ui .match-active-action,
+.matches-ui .match-record-card{background:var(--surface);border-color:var(--border);box-shadow:var(--shadow-1);}
+.matches-ui .match-create-shell{overflow:hidden;border-left:4px solid #459b66;}
+.matches-ui .match-create-shell > summary,
+.matches-ui .match-status-summary,
+.matches-ui .match-action-card > h2:first-child{
+  min-height:54px;box-sizing:border-box;padding:10px 14px;font-size:14px;line-height:1.35;
+}
+.matches-ui .match-create-shell > summary{color:#276641;background:#f3faf5;}
+.matches-ui .match-create-shell .match-action-card{border:0;box-shadow:none;margin:0;padding:0;overflow:visible;}
+.matches-ui .match-create-shell .match-action-card:hover{transform:none;}
+.matches-ui .match-create-shell .match-action-card > h2[hidden]{display:none!important;}
+.matches-ui .match-active-action .panel{margin:0;box-shadow:none;}
+.matches-ui .match-action-toggle:focus-visible,
+.matches-ui summary:focus-visible{outline:3px solid var(--brand-2);outline-offset:-3px;}
+.matches-ui .match-status-summary::after{content:'›';font-size:22px;transform:rotate(90deg);margin-left:12px;color:var(--text-2);}
+.matches-ui .match-status-group[open] > summary::after{transform:rotate(-90deg);}
+.matches-ui .match-status-icon{width:30px;height:30px;flex-basis:30px;}
+.matches-ui .match-record-card{display:flex;flex-direction:column;min-width:0;padding:14px;border-radius:14px;overflow-wrap:anywhere;}
+.matches-ui .match-record-teams{background:var(--surface-2);grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}
+.matches-ui .match-record-teams > [aria-label]::before{content:attr(aria-label);display:block;color:var(--muted);font-size:12px;margin-bottom:4px;}
+.matches-ui .match-record-actions{margin-top:auto;padding-top:12px;gap:8px;}
+.matches-ui .match-card-action{min-height:42px;white-space:normal;}
+.matches-ui .match-card-action-default{background:var(--surface);border-color:var(--border-strong);color:var(--brand-2);}
+.matches-ui .match-card-action-primary,
+.matches-ui .match-card-action-strong{background:var(--club-accent);border-color:var(--club-accent-strong);color:var(--brand-deep);}
+.matches-ui .match-reject-button,
+.matches-ui .match-reject-submit,
+.matches-ui .match-card-action-danger{background:#fff5f4;border-color:#edc8c4;color:#913f37;}
+.matches-ui .match-card-action:disabled{opacity:.45;cursor:not-allowed;}
+.matches-ui .form-grid,
+.matches-ui .form-group,
+.matches-ui .match-confirm-team{min-width:0;}
+.matches-ui .field{max-width:100%;min-width:0;}
+.matches-ui .match-action-edit .match-form-grid > .form-group:first-child,
+.matches-ui .match-action-lineup .match-form-grid > .form-group:first-child{order:0;grid-column:1 / -1;}
+.matches-ui .match-form-grid > [hidden]{display:none!important;}
+.matches-ui .match-confirm-meta,
+.matches-ui .match-confirm-player,
+.matches-ui .match-rejection-reason-text{overflow-wrap:anywhere;}
+.matches-ui .match-confirm-player{white-space:normal;}
+.matches-ui .match-confirm-actions .btn,
+.matches-ui .form-actions .btn{min-height:44px;white-space:normal;}
+.matches-ui .match-action-void .form-actions button[type="submit"],
+.matches-ui .match-action-reject .form-actions button[type="submit"]{background:#fff5f4;color:#913f37;border-color:#edc8c4;}
+@media(max-width:700px){
+  .matches-ui .match-record-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .matches-ui .match-card-action-primary{grid-column:1 / -1;order:-1;}
+  .matches-ui .match-record-actions > :only-child{grid-column:1 / -1;}
+  .matches-ui .match-record-teams{grid-template-columns:minmax(0,1fr);gap:8px;}
+  .matches-ui .match-record-teams > :last-child{text-align:left;}
+  .matches-ui .match-active-action > :first-child{padding:10px 12px;align-items:flex-start;}
+  .matches-ui .match-active-action > :first-child > :first-child{min-width:0;overflow-wrap:anywhere;}
+  .matches-ui .match-active-action > :first-child > button{min-height:44px;flex-shrink:0;}
+  .matches-ui .form-actions{display:flex;flex-wrap:wrap;gap:8px;}
+  .matches-ui .form-actions > .primary{flex-basis:100%;}
+}
+
+/* PICK Players UI v1 — module scope, shared Theme V2 tokens. */
+.players-ui{min-width:0;}
+.players-ui [hidden]{display:none!important;}
+.players-ui .app-action{margin-bottom:10px;}
+.players-ui .app-action-toggle{min-height:54px;font-size:14px;line-height:1.35;}
+.players-ui .app-action-toggle::before{width:30px;height:30px;flex-basis:30px;}
+.players-ui .app-action-body .panel{margin:0;padding:12px 0 0;border:0;box-shadow:none;background:transparent;}
+.players-ui .app-action-body .panel:hover{transform:none;}
+.players-ui .field,
+.players-ui .form-group{min-width:0;max-width:100%;}
+.players-ui .form-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.players-ui button{white-space:normal;}
+.players-ui .btn,
+.players-ui .player-section-close{min-height:44px;}
+.players-ui .btn:not(.primary){color:var(--brand-2);background:var(--surface);border-color:var(--border-strong);}
+.players-ui button:focus-visible{outline:3px solid var(--brand-2);outline-offset:3px;}
+.players-ui .player-card-list{display:grid;gap:12px;}
+.players-ui .player-record-card{min-width:0;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-1);}
+.players-ui .player-card-header{display:grid;grid-template-columns:minmax(0,1fr) 110px 132px;grid-template-areas:'identity rating action';gap:16px;align-items:center;min-height:76px;}
+.players-ui .player-card-identity{grid-area:identity;min-width:0;}
+.players-ui .player-card-name{margin:0;min-height:2.7em;font-size:16px;line-height:1.35;font-weight:750;color:var(--text);overflow-wrap:anywhere;}
+.players-ui .player-card-meta{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--text-2);}
+.players-ui .player-state-active{background:#dff2e4;color:#276641;}
+.players-ui .player-state-neutral{background:var(--surface-3);color:var(--text-2);}
+.players-ui .player-self-badge{background:var(--club-accent-soft);color:var(--brand-2);}
+.players-ui .player-card-rating{grid-area:rating;display:flex;flex-direction:column;align-items:flex-end;justify-self:stretch;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.players-ui .player-rating-label{font-size:12px;line-height:1.4;color:var(--text-2);}
+.players-ui .player-rating-value{font-size:24px;line-height:1.35;color:var(--brand);}
+.players-ui .player-card-toggle{grid-area:action;width:100%;margin:0;align-self:center;}
+.players-ui .player-card-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);overflow-wrap:anywhere;}
+.players-ui .player-card-detail .opacity-60,
+.players-ui .player-card-detail .opacity-70{opacity:1;color:var(--text-2);}
+.players-ui .player-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;}
+.players-ui .player-stat{min-width:0;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-variant-numeric:tabular-nums;}
+.players-ui .player-stat > :last-child{font-size:16px;font-weight:700;}
+.players-ui .player-result{min-width:44px;}
+.players-ui .player-result-W{background:#dff2e4!important;border-color:#a9d4b7!important;color:#276641!important;}
+.players-ui .player-result-L{background:#fff5f4!important;border-color:#edc8c4!important;color:#913f37!important;}
+.players-ui .player-result-D{background:var(--surface-3)!important;color:var(--text-2)!important;}
+.players-ui .player-history-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;font-variant-numeric:tabular-nums;}
+.players-ui .player-promotion-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;}
+.players-ui .player-promotion-preview:empty{display:none;}
+.players-ui .player-promotion-account,
+.players-ui .player-promotion-preview > .notice{grid-column:1 / -1;margin:0;overflow-wrap:anywhere;}
+.players-ui .player-promotion-account{font-weight:700;color:var(--text);}
+.players-ui .player-promotion-card{display:flex;flex-direction:column;min-width:0;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);}
+.players-ui .player-promotion-label{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--text-2);}
+.players-ui .player-promotion-rating{font-variant-numeric:tabular-nums;font-size:18px;font-weight:750;color:var(--brand);margin:10px 0 6px;}
+.players-ui .player-promotion-history{font-size:13px;color:var(--text-2);overflow-wrap:anywhere;margin:0 0 12px;}
+.players-ui .player-promotion-outcome{margin:auto 0 0;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--text-2);}
+.players-ui .player-promotion-actions{margin-top:14px;}
+.players-ui .player-promotion-actions .primary{order:-1;}
+@media(max-width:700px){
+  .players-ui .player-record-card{padding:12px;}
+  .players-ui .player-card-header{grid-template-columns:92px minmax(0,1fr);grid-template-areas:'identity identity' 'rating action';min-height:0;gap:12px!important;align-items:start!important;}
+  .players-ui .player-card-meta{min-height:28px;align-content:flex-start;gap:4px;}
+  .players-ui .player-card-meta .badge{padding:3px 6px;font-size:10px;line-height:16px;}
+  .players-ui .player-card-rating{align-self:center;align-items:flex-start;justify-self:stretch;}
+  .players-ui .player-card-toggle{justify-self:stretch;margin:0;}
+  .players-ui .player-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .players-ui .player-stat:first-child{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;}
+  .players-ui .player-stats > .player-stat:first-child > :last-child{margin:0;}
+  .players-ui .player-promotion-preview{grid-template-columns:minmax(0,1fr);}
+  .players-ui .form-actions > .primary{flex-basis:100%;}
+  .players-ui .form-actions > .btn{max-width:100%;}
+  .players-ui .player-promotion-actions > .btn{width:100%;}
+  .players-ui .app-action-body{padding:0 12px 12px;}
+}
+
+/* PICK Ranking UI v1 — scoped presentation; Theme V2 shared tokens. */
+.ranking-ui{min-width:0;}
+.ranking-ui [hidden]{display:none!important;}
+.ranking-ui .ranking-list{display:grid;gap:10px;}
+.ranking-ui .ranking-card{min-width:0;padding:14px;border:1px solid var(--border);border-left:4px solid var(--border-strong);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-1);}
+.ranking-ui .ranking-card:hover{background:var(--surface-2);border-color:var(--border-strong);}
+.ranking-ui .ranking-card-open{background:var(--surface);border-color:var(--brand-2);box-shadow:var(--shadow-1);}
+.ranking-ui .ranking-header{display:grid;grid-template-columns:48px minmax(0,1fr) 104px 94px 132px;gap:14px;align-items:center;}
+.ranking-ui .ranking-position{display:grid;place-items:center;min-height:44px;border-radius:10px;background:var(--surface-3);color:var(--text-2);font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;}
+.ranking-ui .ranking-card[data-rank='1']{border-left-color:var(--club-accent-strong);}
+.ranking-ui .ranking-card[data-rank='1'] .ranking-position{background:var(--club-accent);color:var(--brand-deep);}
+.ranking-ui .ranking-card[data-rank='2'] .ranking-position{background:var(--brand-2);color:var(--surface);}
+.ranking-ui .ranking-card[data-rank='3'] .ranking-position{background:var(--club-accent-soft);color:var(--brand-2);border:1px solid var(--border-strong);}
+.ranking-ui .ranking-name{min-width:0;margin:0;font-size:16px;line-height:1.4;color:var(--text);overflow-wrap:anywhere;}
+.ranking-ui .ranking-rating,
+.ranking-ui .ranking-matches{display:flex;flex-direction:column;align-items:flex-end;min-width:0;font-variant-numeric:tabular-nums;}
+.ranking-ui .ranking-label{color:var(--text-2);font-size:12px;line-height:1.5;}
+.ranking-ui .ranking-value{font-size:24px;line-height:1.35;color:var(--brand);}
+.ranking-ui .ranking-match-count{font-size:16px;line-height:1.5;color:var(--text);}
+.ranking-ui .ranking-card-toggle,
+.ranking-ui .ranking-card-open .ranking-card-toggle{min-height:44px;padding:8px 12px;white-space:normal;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;color:var(--brand-2);font-size:13px;font-weight:700;}
+.ranking-ui button:focus-visible,
+.ranking-ui .table-wrap:focus-visible{outline:3px solid var(--brand-2);outline-offset:3px;}
+.ranking-ui .ranking-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);overflow-wrap:anywhere;}
+.ranking-ui .opacity-60,
+.ranking-ui .opacity-70{opacity:1;color:var(--text-2);}
+.ranking-ui .ranking-result{display:inline-grid;place-items:center;min-width:30px;min-height:30px;padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface-3);font-size:12px;font-weight:750;color:var(--text-2);}
+.ranking-ui .ranking-result-W{background:#dff2e4;color:#276641;border-color:#a9d4b7;}
+.ranking-ui .ranking-result-L{background:#fff5f4;color:#913f37;border-color:#edc8c4;}
+.ranking-ui .ranking-event-list{display:grid;gap:8px;margin-top:10px;}
+.ranking-ui .ranking-history-hint,
+.ranking-ui .ranking-table-hint{margin:0;color:var(--text-2);font-size:12px;line-height:1.5;}
+.ranking-ui .ranking-event{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:13px;}
+.ranking-ui .ranking-event-values{grid-column:2;grid-row:1 / span 2;align-self:center;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;}
+.ranking-ui .ranking-event-date{grid-column:1;color:var(--text-2);font-size:12px;}
+.ranking-ui .ranking-event[data-change='positive'] .ranking-event-values{color:#276641;}
+.ranking-ui .ranking-event[data-change='negative'] .ranking-event-values{color:#913f37;}
+.ranking-ui .member-rating-history{margin-top:18px;border-color:var(--border);border-left-color:#4e7fd1;background:var(--surface);border-radius:14px;box-shadow:var(--shadow-1);}
+.ranking-ui .member-rating-history-toggle{min-height:54px;background:#f3f7fd;color:#315ca1;font-size:14px;line-height:1.35;}
+.ranking-ui .member-rating-history-toggle::before{content:'↗';width:30px;height:30px;flex-basis:30px;}
+.ranking-ui .member-rating-history-body{min-width:0;margin:0;padding:14px;border:0;background:var(--surface);}
+.ranking-ui .ranking-member-content{min-width:0;overflow-wrap:anywhere;}
+.ranking-ui .ranking-member-content .panel{min-width:0;margin:12px 0 0;padding:0;border:0;box-shadow:none;background:transparent;}
+.ranking-ui .field{max-width:100%;min-width:0;}
+.ranking-ui .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;}
+.ranking-ui table{min-width:660px;}
+.ranking-ui th:nth-child(2),.ranking-ui th:nth-child(3),.ranking-ui th:nth-child(4),
+.ranking-ui td:nth-child(2),.ranking-ui td:nth-child(3),.ranking-ui td:nth-child(4){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.ranking-ui td:first-child{white-space:nowrap;}
+.ranking-ui td:last-child{min-width:150px;white-space:normal;overflow-wrap:anywhere;}
+.ranking-ui .pager{flex-wrap:wrap;gap:10px;}
+.ranking-ui .pager .btn{min-height:44px;}
+.ranking-ui .ranking-table-hint{display:none;}
+@media(max-width:700px){
+  .ranking-ui .ranking-card{padding:12px;}
+  .ranking-ui .ranking-header{grid-template-columns:42px minmax(0,1fr) 94px;grid-template-areas:'rank name name' '. matches rating' 'action action action';gap:8px 10px;}
+  .ranking-ui .ranking-position{grid-area:rank;min-height:42px;}
+  .ranking-ui .ranking-name{grid-area:name;}
+  .ranking-ui .ranking-rating{grid-area:rating;}
+  .ranking-ui .ranking-matches{grid-area:matches;align-items:flex-start;}
+  .ranking-ui .ranking-detail-toggle{grid-area:action;width:100%;margin-top:4px;}
+  .ranking-ui .ranking-event{grid-template-columns:minmax(0,1fr);gap:4px;}
+  .ranking-ui .ranking-event-values{grid-column:1;grid-row:3;text-align:left;}
+  .ranking-ui .ranking-event-date{grid-row:2;}
+  .ranking-ui .ranking-table-hint{display:block;margin-bottom:8px;}
+  .ranking-ui .member-rating-history-body{padding:12px;}
+}
+
+
+/* =========================================================
+   PICK MEMBER OVERVIEW UX V1
+   Mobile-first quick actions + compact member KPI strip
+   ========================================================= */
+
+@media(max-width:760px){
+
+  /*
+   * Five MEMBER metrics in two compact rows:
+   * row 1 = Rating / Approved / W-L-D
+   * row 2 = Fund / Tournament registration
+   */
+  .overview-member-kpis{
+    grid-template-columns:
+      repeat(6,minmax(0,1fr));
+
+    gap:6px;
+    margin-bottom:10px;
+  }
+
+  .overview-member-kpis .stat{
+    min-height:68px;
+
+    padding:9px 10px;
+
+    border-radius:12px;
+  }
+
+  .overview-member-kpis
+  .stat:nth-child(-n+3){
+    grid-column:span 2;
+  }
+
+  .overview-member-kpis
+  .stat:nth-child(n+4){
+    grid-column:span 3;
+  }
+
+  .overview-member-kpis
+  .stat:last-child:nth-child(odd){
+    grid-column:span 3;
+  }
+
+  .overview-member-kpis
+  .stat strong{
+    margin-top:4px;
+
+    font-size:17px;
+    line-height:1.05;
+    letter-spacing:-.4px;
+  }
+
+  .overview-member-kpis
+  .stat .muted:first-child{
+    font-size:9px;
+    line-height:1.2;
+  }
+
+  .overview-member-kpis
+  .stat::after{
+    right:-15px;
+    top:-15px;
+
+    width:42px;
+    height:42px;
+  }
+
+
+  /*
+   * Quick actions stay immediately visible under member hero.
+   */
+  .overview-quick-actions{
+    margin-bottom:10px;
+
+    padding:10px 11px;
+  }
+
+  .overview-quick-actions >
+  h2:first-child{
+    margin-bottom:8px;
+    padding-bottom:7px;
+
+    font-size:15px;
+  }
+
+  .overview-quick-actions .flex{
+    display:grid;
+
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+
+    gap:6px;
+  }
+
+  .overview-quick-actions .btn{
+    width:100%;
+    min-height:40px;
+
+    padding:8px 6px;
+
+    font-size:11px;
+  }
+
+  .overview-quick-actions
+  .btn:first-child{
+    grid-column:auto;
+  }
+}
+
+
+@media(max-width:360px){
+
+  /*
+   * Override older single-column fallback:
+   * compact layout remains two rows even on small phones.
+   */
+  .overview-member-kpis{
+    grid-template-columns:
+      repeat(6,minmax(0,1fr));
+  }
+
+  .overview-member-kpis
+  .stat:nth-child(-n+3){
+    grid-column:span 2;
+  }
+
+  .overview-member-kpis
+  .stat:nth-child(n+4),
+  .overview-member-kpis
+  .stat:last-child:nth-child(odd){
+    grid-column:span 3;
+  }
+
+  .overview-quick-actions .flex{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+  }
+
+  .overview-quick-actions
+  .btn:first-child{
+    grid-column:auto;
+  }
+
+  .overview-quick-actions .btn{
+    font-size:10px;
+  }
+}

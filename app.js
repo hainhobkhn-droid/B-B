@@ -58,6 +58,7 @@
         writeBusy: false,
         generation: 0,
         controller: null,
+        navigationIntent: null,
         updated: null
       };
 
@@ -1103,6 +1104,51 @@ const canCollectTournamentFee = () =>
               'HUY'
           );
 
+        const shortcuts =
+          panel(
+            'Thao tác nhanh',
+            root
+          );
+
+        shortcuts.classList.add(
+          'overview-quick-actions'
+        );
+
+        const actions =
+          el(
+            'div',
+            null,
+            'flex flex-wrap gap-2'
+          );
+
+        actions.append(
+          button(
+            'Tạo trận',
+            () =>
+              navigate(
+                'matches',
+                'member-create-match'
+              ),
+            'btn primary'
+          ),
+          button(
+            'Đăng ký giải',
+            () =>
+              navigate('tournaments'),
+            'btn'
+          ),
+          button(
+            'Xem BXH',
+            () =>
+              navigate('ranking'),
+            'btn'
+          )
+        );
+
+        shortcuts.append(
+          actions
+        );
+
         grid(
           root,
           [
@@ -1136,48 +1182,6 @@ const canCollectTournamentFee = () =>
             ]
           ],
           'overview-kpi-grid overview-member-kpis'
-        );
-
-        const shortcuts =
-          panel(
-            'Thao tác nhanh',
-            root
-          );
-
-        shortcuts.classList.add(
-          'overview-quick-actions'
-        );
-
-        const actions =
-          el(
-            'div',
-            null,
-            'flex flex-wrap gap-2'
-          );
-
-        actions.append(
-          button(
-            'Tạo trận',
-            () =>
-              navigate('matches'),
-            'btn primary'
-          ),
-          button(
-            'Đăng ký giải',
-            () =>
-              navigate('tournaments'),
-            'btn'
-          ),
-          button(
-            'Xem BXH',
-            () =>
-              navigate('ranking'),
-            'btn'
-          )
-        );
-
-        shortcuts.append(
-          actions
         );
 
         const recentOwn =
@@ -6282,13 +6286,19 @@ const fieldLabels = {
         );
       }
 
-      function navigate(page) {
+      function navigate(
+        page,
+        intent = null
+      ) {
         state.page =
           modules.some(
             m => m[0] === page
           )
             ? page
             : 'overview';
+
+        state.navigationIntent =
+          intent;
 
         render();
       }
@@ -6431,11 +6441,13 @@ const fieldLabels = {
         playersPage();
         break;
       case 'ranking': {
+        const rankingRoot = el('div', null, 'ranking-ui');
+        root.append(rankingRoot);
         // BXH DETAIL V1
         // RANKING DETAIL VISUAL V1
 
         sources(
-          root,
+          rankingRoot,
           [
             'players',
             'rating_events',
@@ -6444,7 +6456,7 @@ const fieldLabels = {
           ]
         );
 
-        root.append(
+        rankingRoot.append(
           el(
             'p',
             'BXH chính thức chỉ gồm VĐV CLUB đang hoạt động, có ít nhất 5 trận Rated hợp lệ trong phiên bản Rating hiện hành; đồng điểm cùng hạng.',
@@ -6465,7 +6477,7 @@ const fieldLabels = {
         const rankingSection =
           panel(
             'Bảng xếp hạng',
-            root
+            rankingRoot
           );
 
         if (!rankingRows.length) {
@@ -6481,7 +6493,7 @@ const fieldLabels = {
             el(
               'div',
               null,
-              'space-y-2'
+              'ranking-list'
             );
 
           renderRankingList = () => {
@@ -6507,25 +6519,23 @@ const fieldLabels = {
                     el(
                       'div',
                       null,
-                      'flex flex-wrap items-center justify-between gap-3'
+                      'ranking-header'
                     );
 
-                  const summary =
-                    el(
-                      'div'
-                    );
-
-                  summary.append(
-                    el(
-                      'div',
-                      `#${player.rank} • ${playerName(player.id)}`,
-                      'font-semibold'
-                    ),
-                    el(
-                      'div',
-                      `Rating ${number(player.current_rating)} • ${number(player.rated_matches)} trận Rated`,
-                      'text-sm opacity-70 mt-1'
-                    )
+                  card.dataset.rank = String(player.rank);
+                  const rank = el('div', '#' + player.rank, 'ranking-position');
+                  rank.setAttribute('aria-label', 'Hạng ' + player.rank);
+                  const summary = el('h3', playerName(player.id), 'ranking-name');
+                  summary.title = playerName(player.id);
+                  const ratingSummary = el('div', null, 'ranking-rating');
+                  ratingSummary.append(
+                    el('span', 'Rating', 'ranking-label'),
+                    el('strong', number(player.current_rating), 'ranking-value')
+                  );
+                  const matchesSummary = el('div', null, 'ranking-matches');
+                  matchesSummary.append(
+                    el('span', 'Trận Rated', 'ranking-label'),
+                    el('strong', number(player.rated_matches), 'ranking-match-count')
                   );
 
                   const toggle =
@@ -6548,6 +6558,7 @@ const fieldLabels = {
                             memberHistoryBody.hidden =
                               true;
 
+                            memberHistoryToggle.setAttribute('aria-expanded', 'false');
                             memberHistoryToggle.textContent =
                               '▶ Lịch sử Rating theo thành viên';
                           }
@@ -6560,15 +6571,22 @@ const fieldLabels = {
                         }
 
                         renderRankingList();
+                        document.getElementById('ranking-toggle-' + player.id)?.focus({ preventScroll: true });
                       },
-                      'ranking-card-toggle'
+                      'btn ranking-card-toggle ranking-detail-toggle'
                     );
 
                   toggle.type =
                     'button';
 
+                  toggle.id = 'ranking-toggle-' + player.id;
+                  toggle.setAttribute('aria-expanded', String(isRankingOpen));
+                  toggle.setAttribute('aria-label', (isRankingOpen ? 'Thu gọn' : 'Xem chi tiết') + ' — ' + playerName(player.id));
                   header.append(
+                    rank,
                     summary,
+                    ratingSummary,
+                    matchesSummary,
                     toggle
                   );
 
@@ -6584,8 +6602,11 @@ const fieldLabels = {
                       el(
                         'div',
                         null,
-                        'mt-4 border-t pt-4'
+                        'ranking-detail'
                       );
+
+                    detail.id = 'ranking-detail-' + player.id;
+                    toggle.setAttribute('aria-controls', detail.id);
 
                     const approvedMatches =
                       new Map(
@@ -6757,9 +6778,10 @@ const fieldLabels = {
                             el(
                               'span',
                               item.result,
-                              'border rounded-lg px-3 py-1 text-sm font-semibold'
+                              'ranking-result ranking-result-' + item.result
                             );
 
+                          badge.setAttribute('aria-label', item.result === 'W' ? 'Thắng' : item.result === 'L' ? 'Thua' : 'Hòa');
                           badge.title =
                             matchCode(
                               item.match
@@ -6828,7 +6850,7 @@ const fieldLabels = {
                       el(
                         'div',
                         null,
-                        'mt-2 space-y-2'
+                        'ranking-event-list'
                       );
 
                     ratingBody.hidden =
@@ -6841,17 +6863,22 @@ const fieldLabels = {
                           ratingBody.hidden =
                             !ratingBody.hidden;
 
+                          ratingToggle.setAttribute('aria-expanded', String(!ratingBody.hidden));
                           ratingToggle.textContent =
                             ratingBody.hidden
                               ? 'Xem lịch sử Rating'
                               : 'Thu gọn lịch sử Rating';
                         },
-                        'ranking-card-toggle'
+                        'btn ranking-card-toggle ranking-history-toggle'
                       );
 
                     ratingToggle.type =
                       'button';
 
+                    ratingBody.id = 'ranking-events-' + player.id;
+                    ratingToggle.setAttribute('aria-controls', ratingBody.id);
+                    ratingToggle.setAttribute('aria-expanded', 'false');
+                    ratingBody.append(el('p', 'Tối đa 10 thay đổi gần nhất. Xem toàn bộ trong Lịch sử Rating theo thành viên.', 'ranking-history-hint'));
                     if (!ratingEvents.length) {
                       ratingBody.append(
                         el(
@@ -6913,7 +6940,7 @@ const fieldLabels = {
                               el(
                                 'div',
                                 null,
-                                'border rounded-lg p-2 text-sm'
+                                'ranking-event'
                               );
 
                             eventLine.append(
@@ -6946,10 +6973,14 @@ const fieldLabels = {
                                     ? '—'
                                     : number(after)
                                 } (${deltaText})`,
-                                'opacity-70'
+                                'ranking-event-values'
                               )
                             );
 
+                            eventLine.append(
+                              el('span', date(event.played_at), 'ranking-event-date')
+                            );
+                            eventLine.dataset.change = delta === null || delta === 0 ? 'neutral' : delta > 0 ? 'positive' : 'negative';
                             ratingBody.append(
                               eventLine
                             );
@@ -7003,7 +7034,7 @@ const fieldLabels = {
       el(
         'div',
         null,
-        'member-rating-history mt-4'
+        'app-action app-action-info member-rating-history mt-4'
       );
 
     const memberHistoryBody =
@@ -7041,16 +7072,21 @@ const fieldLabels = {
               true;
           }
 
+          memberHistoryToggle.setAttribute('aria-expanded', String(!memberHistoryBody.hidden));
           memberHistoryToggle.textContent =
             memberHistoryBody.hidden
               ? '▶ Lịch sử Rating theo thành viên'
               : '▼ Thu gọn lịch sử Rating theo thành viên';
         },
-        'member-rating-history-toggle'
+        'app-action-toggle member-rating-history-toggle'
       );
 
     memberHistoryToggle.type =
       'button';
+
+    memberHistoryBody.id = 'ranking-member-history';
+    memberHistoryToggle.setAttribute('aria-controls', memberHistoryBody.id);
+    memberHistoryToggle.setAttribute('aria-expanded', 'false');
 
     const memberHistoryControls =
       el(
@@ -7112,7 +7148,7 @@ const fieldLabels = {
     );
 
     const memberHistoryContent =
-      el('div');
+      el('div', null, 'ranking-member-content');
 
     const renderMemberHistory =
       () => {
@@ -7258,6 +7294,7 @@ const fieldLabels = {
           return;
         }
 
+        memberHistoryContent.append(el('p', 'Trên điện thoại, vuốt ngang bảng để xem đủ thời gian, điểm và trận liên quan.', 'ranking-table-hint'));
         table(
           memberHistoryContent,
           'Toàn bộ lịch sử Rating',
@@ -7359,7 +7396,7 @@ const fieldLabels = {
       memberHistoryBody
     );
 
-    root.append(
+    rankingRoot.append(
       memberHistoryWrapper
     );
 

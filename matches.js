@@ -119,7 +119,10 @@
           mode === 'create';
 
         const ids =
-          isAdminCreate
+          mode === 'edit'
+            ? { played: 'edit-played-at', type: 'edit-match-type', scoreMode: 'edit-score-mode',
+                a1: '', a2: '', b1: '', b2: '', scoreA: 'edit-score-a', scoreB: 'edit-score-b' }
+            : isAdminCreate
             ? {
                 played:
                   'create-played-at',
@@ -181,6 +184,7 @@
 
         const mark =
           (id, className) => {
+            if (!id) return null;
             const control =
               section.querySelector(
                 `#${id}`
@@ -214,6 +218,11 @@
           ids.scoreMode,
           'match-field-info'
         );
+
+        // Competition belongs to match information, before either team.
+        grid.querySelectorAll('select[id*="tournament"], select[id*="league"]')
+          .forEach(control => control.closest('.form-group')?.classList.add('match-field-info'));
+        grid.querySelectorAll(':scope > div:empty').forEach(spacer => spacer.hidden = true);
 
         mark(
           ids.a1,
@@ -269,6 +278,16 @@
           teamAHeading,
           teamBHeading
         );
+
+        orderMatchFields(grid);
+      }
+
+      function orderMatchFields(grid) {
+        // DOM/tab order follows mobile tasks; CSS pairs opposing fields on desktop.
+        const a = [...grid.querySelectorAll(':scope > .match-team-heading-a, :scope > .match-field-a1, :scope > .match-field-a2, :scope > .match-field-score-a')];
+        const b = [...grid.querySelectorAll(':scope > .match-team-heading-b, :scope > .match-field-b1, :scope > .match-field-b2, :scope > .match-field-score-b')];
+        const rank = e => e.classList.contains('match-team-heading') ? 0 : (e.classList.contains('match-field-a1') || e.classList.contains('match-field-b1')) ? 1 : (e.classList.contains('match-field-a2') || e.classList.contains('match-field-b2')) ? 2 : 3;
+        grid.append(...a.sort((x,y)=>rank(x)-rank(y)), ...b.sort((x,y)=>rank(x)-rank(y)));
       }
 
       function matchPlayerNames(match) {
@@ -1583,7 +1602,10 @@
       }
 
 
-      function createMyPendingMatchForm(root) {
+      function createMyPendingMatchForm(
+        root,
+        initiallyOpen = false
+      ) {
         if (
           isAdmin() ||
           raw(state.profile?.role)
@@ -1599,7 +1621,6 @@
           root
         );
 
-
         section.classList.add(
           'match-action-card',
           'match-action-create'
@@ -1607,7 +1628,7 @@
 
         makeMatchActionAccordion(
           section,
-          false
+          initiallyOpen
         );
 
         queueMicrotask(
@@ -2433,6 +2454,25 @@
             }
           }
         );
+
+        if (initiallyOpen) {
+          queueMicrotask(
+            () => {
+              section.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+              });
+
+              section
+                .querySelector(
+                  ':scope > h2:first-child'
+                )
+                ?.focus({
+                  preventScroll: true
+                });
+            }
+          );
+        }
       }
 
 
@@ -6761,7 +6801,7 @@ function voidApprovedMatchForm(root) {
         const createToggle =
           makeNode(
             'details',
-            'rounded-2xl border border-slate-200 bg-white shadow-sm'
+            'match-create-shell rounded-2xl border border-slate-200 bg-white shadow-sm'
           );
 
         const createSummary =
@@ -6790,10 +6830,17 @@ function voidApprovedMatchForm(root) {
           createHost
         );
 
+        // The outer details is the single create accordion on ADMIN.
+        const createSection = createHost.querySelector('.match-action-card');
+        if (createSection) {
+          createSection.classList.remove('match-action-collapsible');
+          createSection.querySelector(':scope > h2').hidden = true;
+        }
+
         const actionArea =
           makeNode(
             'div',
-            'rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-sm'
+            'match-active-action rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-sm'
           );
 
         actionArea.hidden =
@@ -7053,6 +7100,8 @@ function voidApprovedMatchForm(root) {
             btn.type =
               'button';
 
+            btn.classList.add('btn', 'match-card-action', `match-card-action-${tone}`);
+
             btn.disabled =
               !enabled;
 
@@ -7091,7 +7140,7 @@ function voidApprovedMatchForm(root) {
             const card =
               makeNode(
                 'article',
-                'rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md'
+                'match-record-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md'
               );
 
             const head =
@@ -7164,7 +7213,7 @@ function voidApprovedMatchForm(root) {
             const teams =
               makeNode(
                 'div',
-                'mt-4 grid items-center gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1fr_auto_1fr]'
+                'match-record-teams mt-4 grid items-center gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1fr_auto_1fr]'
               );
 
             const teamA =
@@ -7214,6 +7263,9 @@ function voidApprovedMatchForm(root) {
               teamBBox
             );
 
+            teamABox.setAttribute('aria-label', 'Đội A');
+            teamBBox.setAttribute('aria-label', 'Đội B');
+
             card.append(
               head,
               teams
@@ -7250,7 +7302,7 @@ function voidApprovedMatchForm(root) {
             const actions =
               makeNode(
                 'div',
-                'mt-4 flex flex-wrap gap-2'
+                'match-record-actions mt-4 flex flex-wrap gap-2'
               );
 
             if (
@@ -8386,6 +8438,13 @@ function voidApprovedMatchForm(root) {
               )
             );
 
+            // Keep keyboard order aligned with the mobile team grouping.
+            ['team-a-title', 'a1', 'a2', 'score-a', 'team-b-title', 'b1', 'b2', 'score-b']
+              .forEach(part => grid.append(grid.querySelector(`.match-edit-${part}`)));
+            grid.querySelectorAll('.form-group').forEach(group => {
+              group.querySelector('input, select')?.setAttribute('aria-label', group.querySelector('label').textContent);
+            });
+
             const notesGroup =
               makeGroup(
                 '\u0047\u0068\u0069 \u0063\u0068\u00fa',
@@ -8791,7 +8850,14 @@ function voidApprovedMatchForm(root) {
       }
 
       function matchesPage() {
-        const root = $('content');
+        const root = el('div', null, 'matches-ui');
+        $('content').append(root);
+
+        const navigationIntent =
+          state.navigationIntent;
+
+        state.navigationIntent =
+          null;
 
         sources(
           root,
@@ -8807,7 +8873,12 @@ function voidApprovedMatchForm(root) {
         if (isAdmin()) {
           adminMatchCenter(root);
         } else {
-          createMyPendingMatchForm(root);
+          createMyPendingMatchForm(
+            root,
+            navigationIntent ===
+              'member-create-match'
+          );
+
           memberOpponentConfirmationPanel(root);
 
           table(
@@ -8825,6 +8896,22 @@ function voidApprovedMatchForm(root) {
             }
           );
         }
+
+        // Presentation only: pair lineup columns on desktop, group teams on mobile.
+        const lineupGrid = root.querySelector('#pending-team-a-1')?.closest('.form-grid');
+        if (lineupGrid) {
+          lineupGrid.classList.add('match-form-grid');
+          ['a1', 'a2', 'b1', 'b2'].forEach(slot => {
+            const id = `pending-team-${slot[0]}-${slot[1]}`;
+            root.querySelector(`#${id}`)?.closest('.form-group')?.classList.add(`match-field-${slot}`);
+          });
+          lineupGrid.append(
+            el('div', 'Đội A', 'match-team-heading match-team-heading-a'),
+            el('div', 'Đội B', 'match-team-heading match-team-heading-b')
+          );
+          orderMatchFields(lineupGrid);
+        }
+        prepareMatchFormLayout(root.querySelector('.match-action-edit'), 'edit');
       }
     return Object.freeze({
       matchesPage
