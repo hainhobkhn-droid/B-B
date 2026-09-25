@@ -209,7 +209,7 @@ begin
         v_amount_paid
     );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.change_tournament_status(p_tournament_id uuid, p_new_status text, p_reason text DEFAULT NULL::text)
@@ -425,7 +425,7 @@ begin
         'updated_at', v_new.updated_at
     );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_tournament(p_name text, p_code text DEFAULT NULL::text, p_start_date date DEFAULT CURRENT_DATE, p_end_date date DEFAULT NULL::date, p_location text DEFAULT NULL::text, p_event_category text DEFAULT NULL::text, p_format text DEFAULT NULL::text, p_registration_fee numeric DEFAULT 0, p_notes text DEFAULT NULL::text)
@@ -591,7 +591,7 @@ begin
         'notes', v_tournament.notes
     );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_tournament_expense(p_tournament_id uuid, p_amount numeric, p_category text, p_description text, p_expense_date date DEFAULT CURRENT_DATE)
@@ -780,7 +780,7 @@ begin
     'created_by', v_expense.created_by
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_tournament_payment(p_registration_id uuid, p_amount numeric, p_paid_at timestamp with time zone DEFAULT now(), p_note text DEFAULT NULL::text)
@@ -1081,7 +1081,7 @@ begin
         )
     );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_tournament_registration(p_tournament_id uuid, p_player_id uuid, p_event_name text, p_partner_player_id uuid DEFAULT NULL::uuid, p_fee_due numeric DEFAULT NULL::numeric)
@@ -1298,7 +1298,7 @@ begin
         'created_at', v_registration.created_at
     );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_tournament_finance_summary(p_tournament_id uuid)
@@ -1462,7 +1462,7 @@ begin
     'net_cash', v_net_cash
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.refund_tournament_payment(p_payment_id uuid, p_amount numeric, p_reason text, p_refunded_at timestamp with time zone DEFAULT now())
@@ -1674,7 +1674,7 @@ begin
       )
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.reverse_tournament_expense(p_expense_id uuid, p_reason text, p_reversed_at timestamp with time zone DEFAULT now())
@@ -1839,7 +1839,7 @@ begin
     'reason', v_reason
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.settle_tournament(p_tournament_id uuid, p_note text DEFAULT NULL::text)
@@ -2034,7 +2034,7 @@ begin
     v_note
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_tournament(p_tournament_id uuid, p_name text, p_code text DEFAULT NULL::text, p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_location text DEFAULT NULL::text, p_event_category text DEFAULT NULL::text, p_format text DEFAULT NULL::text, p_registration_fee numeric DEFAULT 0, p_notes text DEFAULT NULL::text)
@@ -2214,7 +2214,7 @@ begin
         'updated_at', v_new.updated_at
     );
 end;
-$function$
+$function$;
 
 
 
