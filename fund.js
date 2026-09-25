@@ -45,6 +45,7 @@
             'fund_payments',
             'fund_transactions',
             'fund_rules',
+            'fund_obligation_campaigns',
             'players'
           ]
         );
@@ -163,12 +164,106 @@
           CLUB_RATED: 'Trận CLB',
           MATCH_LOSS: 'Thua trận',
           MATCH_DRAW: 'Hòa trận',
-          MATCH_WIN: 'Thắng trận'
+          MATCH_WIN: 'Thắng trận',
+          QUY_THANG: 'Quỹ CLB tháng',
+          PHI_SINH_HOAT: 'Phí sinh hoạt',
+          PHI_SU_KIEN: 'Phí sự kiện',
+          KHAC: 'Khoản phải đóng khác'
         };
 
         return labels[code] ||
           value ||
           '—';
+      };
+
+
+    // FUND03B CAMPAIGN HELPERS
+    const fundCampaignMap =
+      new Map(
+        rows(
+          'fund_obligation_campaigns'
+        )
+          .map(
+            campaign => [
+              raw(
+                campaign.id
+              ),
+              campaign
+            ]
+          )
+      );
+
+    const fundCampaign =
+      contribution => {
+        if (
+          !contribution
+            ?.campaign_id
+        ) {
+          return null;
+        }
+
+        return (
+          fundCampaignMap.get(
+            raw(
+              contribution
+                .campaign_id
+            )
+          ) ||
+          null
+        );
+      };
+
+    const fundContributionTitle =
+      contribution => {
+        const campaign =
+          fundCampaign(
+            contribution
+          );
+
+        if (
+          campaign?.title
+        ) {
+          return campaign.title;
+        }
+
+        return fundReasonLabel(
+          pick(
+            contribution,
+            'reason',
+            'contribution_type',
+            'type'
+          )
+        );
+      };
+
+    const fundContributionDate =
+      contribution => {
+        const campaign =
+          fundCampaign(
+            contribution
+          );
+
+        const match =
+          rows(
+            'matches'
+          ).find(
+            item =>
+              item.id ===
+              contribution
+                ?.match_id
+          );
+
+        return (
+          contribution
+            ?.due_date ||
+          campaign
+            ?.period_month ||
+          match
+            ?.played_at ||
+          contribution
+            ?.created_at ||
+          null
+        );
       };
 
     const fundDebtStatus =
@@ -191,7 +286,37 @@
     const activeContributions =
       rows('fund_contributions')
         .filter(
-          validContribution
+          contribution => {
+            if (
+              !validContribution(
+                contribution
+              )
+            ) {
+              return false;
+            }
+
+            if (
+              contribution
+                .campaign_id
+            ) {
+              const campaign =
+                fundCampaign(
+                  contribution
+                );
+
+              if (
+                !campaign ||
+                upper(
+                  campaign.status
+                ) ===
+                  'CANCELLED'
+              ) {
+                return false;
+              }
+            }
+
+            return true;
+          }
         );
 
     const activeContributionIds =
@@ -379,7 +504,7 @@
     grid(
       root,
       [
-        [
+[
           'Số dư quỹ',
           ready(
             'fund_transactions'
@@ -413,14 +538,8 @@
               )
             : '—',
           'Chi tiêu và hoàn tiền'
-        ]
-      ]
-    );
-
-    grid(
-      root,
-      [
-        [
+        ],
+[
           'Tổng nghĩa vụ',
           ready(
             'fund_contributions'
@@ -468,7 +587,8 @@
             ? 'Có số tiền thanh toán vượt nghĩa vụ'
             : 'Không có'
         ]
-      ]
+      ],
+      'fund-overview-kpis fund-overview-kpis-all'
     );
 
     root.append(
@@ -838,9 +958,10 @@
                       card.append(
                         el(
                           'div',
-                          fundReasonLabel(
-                            item.reason
-                          ),
+                          item.obligation_title ||
+                            fundReasonLabel(
+                              item.reason
+                            ),
                           'font-semibold'
                         ),
                         el(
@@ -1031,6 +1152,456 @@
         'Thao tác quỹ',
         sectionRoot => {
           // FUND ACTIONS TREE V1
+
+          // FUND03B CREATE OBLIGATION CAMPAIGN
+          const campaignDetails =
+            document.createElement(
+              'details'
+            );
+
+          campaignDetails.className =
+            'fund-action fund-action-income';
+
+          const campaignSummary =
+            document.createElement(
+              'summary'
+            );
+
+          campaignSummary.className =
+            'fund-action-summary';
+
+          campaignSummary.textContent =
+            'Tạo khoản phải đóng';
+
+          const campaignContent =
+            el(
+              'div',
+              null,
+              'px-4 pb-4'
+            );
+
+          const campaignBox =
+            el(
+              'div',
+              null,
+              'rounded-xl border p-4'
+            );
+
+          campaignBox.append(
+            el(
+              'h3',
+              'Tạo đợt thu / khoản phải đóng',
+              'font-semibold mb-1'
+            ),
+            el(
+              'p',
+              'Tạo nghĩa vụ cho các MEMBER đang hoạt động và đã liên kết VĐV CLUB.',
+              'text-sm opacity-70 mb-4'
+            )
+          );
+
+          const campaignMessage =
+            el(
+              'div'
+            );
+
+          campaignMessage.hidden =
+            true;
+
+          const makeCampaignField =
+            (
+              labelText,
+              control
+            ) => {
+              const box =
+                el(
+                  'div',
+                  null,
+                  'mb-3'
+                );
+
+              box.append(
+                el(
+                  'label',
+                  labelText,
+                  'block text-sm font-semibold mb-1'
+                ),
+                control
+              );
+
+              return box;
+            };
+
+          const campaignCategory =
+            document.createElement(
+              'select'
+            );
+
+          campaignCategory.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          [
+            [
+              'MONTHLY_CLUB_FUND',
+              'Quỹ CLB hàng tháng'
+            ],
+            [
+              'ACTIVITY_FEE',
+              'Phí sinh hoạt'
+            ],
+            [
+              'EVENT_FEE',
+              'Phí sự kiện'
+            ],
+            [
+              'OTHER',
+              'Khoản khác'
+            ]
+          ].forEach(
+            ([value, label]) =>
+              campaignCategory.append(
+                new Option(
+                  label,
+                  value
+                )
+              )
+          );
+
+          const campaignTitle =
+            document.createElement(
+              'input'
+            );
+
+          campaignTitle.type =
+            'text';
+
+          campaignTitle.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          campaignTitle.placeholder =
+            'Ví dụ: Quỹ CLB tháng 09/2026';
+
+          const campaignMonth =
+            document.createElement(
+              'input'
+            );
+
+          campaignMonth.type =
+            'month';
+
+          campaignMonth.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          const campaignAmount =
+            document.createElement(
+              'input'
+            );
+
+          campaignAmount.type =
+            'number';
+
+          campaignAmount.min =
+            '1';
+
+          campaignAmount.step =
+            '1000';
+
+          campaignAmount.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          const campaignDueDate =
+            document.createElement(
+              'input'
+            );
+
+          campaignDueDate.type =
+            'date';
+
+          campaignDueDate.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          const campaignNote =
+            document.createElement(
+              'input'
+            );
+
+          campaignNote.type =
+            'text';
+
+          campaignNote.className =
+            'w-full border rounded-lg px-3 py-2';
+
+          campaignNote.placeholder =
+            'Ghi chú nếu có';
+
+          const currentMonth =
+            new Date()
+              .toISOString()
+              .slice(
+                0,
+                7
+              );
+
+          campaignMonth.value =
+            currentMonth;
+
+          const syncCampaignTitle =
+            () => {
+              if (
+                campaignCategory
+                  .value !==
+                  'MONTHLY_CLUB_FUND' ||
+                !campaignMonth.value
+              ) {
+                return;
+              }
+
+              const [
+                year,
+                month
+              ] =
+                campaignMonth
+                  .value
+                  .split('-');
+
+              if (
+                !campaignTitle
+                  .dataset
+                  .manual
+              ) {
+                campaignTitle.value =
+                  'Quỹ CLB tháng ' +
+                  month +
+                  '/' +
+                  year;
+              }
+            };
+
+          campaignTitle
+            .addEventListener(
+              'input',
+              () => {
+                campaignTitle
+                  .dataset
+                  .manual =
+                    campaignTitle
+                      .value
+                      .trim()
+                      ? '1'
+                      : '';
+              }
+            );
+
+          campaignMonth
+            .addEventListener(
+              'change',
+              syncCampaignTitle
+            );
+
+          campaignCategory
+            .addEventListener(
+              'change',
+              syncCampaignTitle
+            );
+
+          syncCampaignTitle();
+
+          const campaignSubmit =
+            button(
+              'Tạo khoản phải đóng',
+              async () => {
+                notice(
+                  campaignMessage,
+                  ''
+                );
+
+                const category =
+                  campaignCategory
+                    .value;
+
+                const title =
+                  campaignTitle
+                    .value
+                    .trim();
+
+                const amount =
+                  num(
+                    campaignAmount
+                      .value
+                  );
+
+                const month =
+                  campaignMonth
+                    .value;
+
+                const dueDate =
+                  campaignDueDate
+                    .value ||
+                  null;
+
+                if (!title) {
+                  notice(
+                    campaignMessage,
+                    'Vui lòng nhập tên khoản phải đóng.',
+                    true
+                  );
+
+                  return;
+                }
+
+                if (
+                  amount === null ||
+                  amount <= 0
+                ) {
+                  notice(
+                    campaignMessage,
+                    'Số tiền phải lớn hơn 0.',
+                    true
+                  );
+
+                  return;
+                }
+
+                if (
+                  category ===
+                    'MONTHLY_CLUB_FUND' &&
+                  !month
+                ) {
+                  notice(
+                    campaignMessage,
+                    'Vui lòng chọn kỳ tháng.',
+                    true
+                  );
+
+                  return;
+                }
+
+                campaignSubmit.disabled =
+                  true;
+
+                campaignSubmit.textContent =
+                  'Đang tạo…';
+
+                try {
+                  const {
+                    data,
+                    error
+                  } =
+                    await client.rpc(
+                      'create_fund_obligation_campaign',
+                      {
+                        p_category:
+                          category,
+
+                        p_title:
+                          title,
+
+                        p_amount_due:
+                          amount,
+
+                        p_period_month:
+                          month
+                            ? month +
+                              '-01'
+                            : null,
+
+                        p_due_date:
+                          dueDate,
+
+                        p_note:
+                          campaignNote
+                            .value
+                            .trim() ||
+                          null
+                      }
+                    );
+
+                  if (error) {
+                    throw error;
+                  }
+
+                  await load();
+
+                  state.page =
+                    'fund';
+
+                  render();
+
+                  notice(
+                    $('global-message'),
+                    'Đã tạo "' +
+                      title +
+                      '" cho ' +
+                      number(
+                        data
+                          ?.obligation_count ||
+                        0
+                      ) +
+                      ' thành viên.',
+                    false,
+                    true
+                  );
+                }
+                catch (error) {
+                  notice(
+                    campaignMessage,
+                    error?.message ||
+                      'Không thể tạo khoản phải đóng.',
+                    true
+                  );
+                }
+                finally {
+                  campaignSubmit.disabled =
+                    false;
+
+                  campaignSubmit.textContent =
+                    'Tạo khoản phải đóng';
+                }
+              },
+              'btn primary'
+            );
+
+          campaignSubmit.type =
+            'button';
+
+          campaignBox.append(
+            makeCampaignField(
+              'Danh mục',
+              campaignCategory
+            ),
+            makeCampaignField(
+              'Tên khoản phải đóng',
+              campaignTitle
+            ),
+            makeCampaignField(
+              'Kỳ tháng',
+              campaignMonth
+            ),
+            makeCampaignField(
+              'Số tiền phải đóng',
+              campaignAmount
+            ),
+            makeCampaignField(
+              'Hạn đóng',
+              campaignDueDate
+            ),
+            makeCampaignField(
+              'Ghi chú',
+              campaignNote
+            ),
+            campaignSubmit,
+            campaignMessage
+          );
+
+          campaignContent.append(
+            campaignBox
+          );
+
+          campaignDetails.append(
+            campaignSummary,
+            campaignContent
+          );
+
           const collectionDetails =
             document.createElement(
               'details'
@@ -1072,7 +1643,7 @@
             ),
             el(
               'p',
-              'Ghi nhận tiền thực nhận từ nghĩa vụ Quỹ phát sinh theo trận đấu.',
+              'Ghi nhận tiền thực nhận từ các khoản phải đóng của VĐV: Quỹ tháng, phí sinh hoạt, phí sự kiện hoặc nghĩa vụ theo trận.',
               'text-sm opacity-70 mb-4'
             )
           );
@@ -1237,23 +1808,6 @@
             activeContributions
               .filter(
                 contribution => {
-                  const reason =
-                    upper(
-                      pick(
-                        contribution,
-                        'reason',
-                        'contribution_type',
-                        'type'
-                      )
-                    );
-
-                  if (
-                    reason !== 'THUA' &&
-                    reason !== 'HOA'
-                  ) {
-                    return false;
-                  }
-
                   const due =
                     contributionAmount(
                       contribution
@@ -1468,34 +2022,17 @@
                     playerId
                 )
                 .sort(
-                  (a, b) => {
-                    const ma =
-                      rows(
-                        'matches'
-                      ).find(
-                        item =>
-                          item.id ===
-                          a.match_id
-                      );
-
-                    const mb =
-                      rows(
-                        'matches'
-                      ).find(
-                        item =>
-                          item.id ===
-                          b.match_id
-                      );
-
-                    return (
-                      new Date(
-                        mb?.played_at || 0
-                      ).getTime() -
-                      new Date(
-                        ma?.played_at || 0
-                      ).getTime()
-                    );
-                  }
+                  (a, b) =>
+                    new Date(
+                      fundContributionDate(
+                        b
+                      ) || 0
+                    ).getTime() -
+                    new Date(
+                      fundContributionDate(
+                        a
+                      ) || 0
+                    ).getTime()
                 )
                 .forEach(
                   contribution => {
@@ -1536,21 +2073,23 @@
                         )
                       );
 
+                    const title =
+                      fundContributionTitle(
+                        contribution
+                      );
+
                     const label =
                       (
                         match
-                          ? matchCode(
-                              match
+                          ? (
+                              matchCode(
+                                match
+                              ) +
+                              ' • ' +
+                              title
                             )
-                          : String(
-                              contribution.id
-                            ).slice(
-                              0,
-                              8
-                            )
+                          : title
                       ) +
-                      ' • ' +
-                      reason +
                       ' • Còn ' +
                       money(
                         remaining
@@ -2238,40 +2777,40 @@ collectionContent.append(
             collectionContent
           );
 
-          const closeOtherFundAction =
-            (
-              opened,
-              other
-            ) => {
-              if (
-                opened.open
-              ) {
-                other.open =
-                  false;
-              }
-            };
+          const fundActions = [
+            campaignDetails,
+            collectionDetails,
+            expenseDetails
+          ];
 
-          collectionDetails.addEventListener(
-            'toggle',
-            () => {
-              closeOtherFundAction(
-                collectionDetails,
-                expenseDetails
-              );
-            }
-          );
+          fundActions.forEach(
+            action => {
+              action.addEventListener(
+                'toggle',
+                () => {
+                  if (!action.open) {
+                    return;
+                  }
 
-          expenseDetails.addEventListener(
-            'toggle',
-            () => {
-              closeOtherFundAction(
-                expenseDetails,
-                collectionDetails
+                  fundActions
+                    .filter(
+                      other =>
+                        other !==
+                        action
+                    )
+                    .forEach(
+                      other => {
+                        other.open =
+                          false;
+                      }
+                    );
+                }
               );
             }
           );
 
           sectionRoot.append(
+            campaignDetails,
             collectionDetails,
             expenseDetails
           );
@@ -4326,3 +4865,6 @@ fundCollapse(
 
 
 
+
+
+/* FUND03B OBLIGATION CAMPAIGN UI V1 */
