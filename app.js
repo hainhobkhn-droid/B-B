@@ -3683,7 +3683,7 @@ const fieldLabels = {
         password.required = confirm.required = true;
         password.minLength = confirm.minLength = 8;
         const nonce = field('account-password-nonce', 'Mã xác thực qua email (khi được yêu cầu)', 'text', 'one-time-code');
-        const submit = el('button', 'Đổi mật khẩu', 'btn');
+        const submit = el('button', 'Đổi mật khẩu', 'btn primary');
         submit.type = 'submit';
         const resend = button('Gửi mã xác thực', async () => {
           if (pending || state.writeBusy || !state.session) return;
@@ -3760,40 +3760,39 @@ const fieldLabels = {
       }
 
 
+      // Account presentation only; existing loaders and action handlers are unchanged.
+      function accountAction(root, title, renderBody, variant = 'info') {
+        const action = el('details', null, 'app-action app-action-' + variant);
+        const toggle = el('summary', title, 'app-action-toggle');
+        const body = el('div', null, 'app-action-body');
+        action.append(toggle, body);
+        root.append(action);
+        renderBody(body);
+        return action;
+      }
+
       function admin() {
-        const root = $('content');
-
-        const p = panel(
-          'Tài khoản của bạn'
-        );
-
-        p.append(
-          el(
-            'p',
-            raw(
-              state.profile.full_name
-            ),
-            'font-semibold'
-          ),
-          el(
-            'p',
-            state.session.user.email ||
-              '',
-            'muted'
-          ),
-          badge(
-            state.profile.role
-          ),
-          el(
-            'p',
-            state.profile.is_active
-              ? 'Tài khoản đang hoạt động'
-              : 'Tài khoản ngừng hoạt động',
-            'muted mt-3'
-          )
-        );
-
-        accountPassword(root);
+        const root = el('div', null, 'account-ui');
+        $('content').append(root);
+        root.append(el('p', isAdmin()
+          ? 'Thông tin tài khoản và các thao tác quản trị.'
+          : 'Thông tin cá nhân và bảo mật tài khoản.', 'muted account-subtitle'));
+        const p = panel('Tài khoản của bạn', root);
+        p.classList.add('account-self');
+        const identity = el('div', null, 'account-identity');
+        identity.append(el('h3', raw(state.profile.full_name), 'account-name'));
+        const statuses = el('div', null, 'account-statuses');
+        statuses.append(badge(state.profile.role),
+          badge(state.profile.is_active ? 'ACTIVE' : 'INACTIVE'));
+        identity.append(statuses);
+        const linked = rows('players').find(item =>
+          state.profile.player_id && String(item.id) === String(state.profile.player_id));
+        identity.append(el('p', state.profile.player_id
+          ? 'Đã liên kết VĐV' + (linked ? ': ' + raw(linked.full_name) : '')
+          : 'Chưa liên kết VĐV', 'account-link muted'));
+        identity.append(el('p', state.session.user.email || 'Chưa có thông tin email', 'account-email muted'));
+        p.append(identity);
+        accountAction(root, 'Đổi mật khẩu', accountPassword);
 
         if (!isAdmin()) {
           // IAM04-B MEMBER SELF PROFILE V1
@@ -3844,7 +3843,7 @@ const fieldLabels = {
           birthInput.max = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
             .toISOString().slice(0, 10);
           const actions = el('div', null, 'form-actions');
-          const submit = el('button', 'Lưu thông tin', 'btn');
+          const submit = el('button', 'Lưu thông tin', 'btn primary');
           submit.type = 'submit';
           const controls = [nameInput, phoneInput, birthInput, submit];
           controls.forEach(input => { input.disabled = state.writeBusy; });
@@ -3908,27 +3907,13 @@ const fieldLabels = {
           return;
         }
 
-        root.append(
-          el(
-            'p',
-            'ADMIN hiện đã có thể tạo trận PENDING qua RPC. Các thao tác chọn 4 VĐV, sửa trận, duyệt và hủy sẽ được mở theo từng bước kiểm thử.',
-            'notice'
-          )
-        );
-
-
-
-
-        adminCreateMember(root);
-
-        adminAccountVerification(root);
-
-        adminSystemConfig(root);
-
-        adminBirthdayReport(root);
-
+        accountAction(root, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
+        accountAction(root, 'Xác nhận email tài khoản', adminAccountVerification);
+        accountAction(root, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
+        accountAction(root, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
+        accountAction(root, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
         sources(
-          root,
+          referenceRoot,
           [
             'rating_settings',
             'rating_match_weights',
@@ -3937,19 +3922,20 @@ const fieldLabels = {
         );
 
         settings(
-          root,
+          referenceRoot,
           'rating_settings'
         );
 
         settings(
-          root,
+          referenceRoot,
           'rating_match_weights'
         );
 
         settings(
-          root,
+          referenceRoot,
           'fund_rules'
         );
+        }, 'neutral');
       }
 
 
@@ -6314,9 +6300,8 @@ const fieldLabels = {
           );
 
         const visiblePageTitle =
-          current[0] === 'admin' &&
-          !isAdmin()
-            ? 'Tài khoản'
+          current[0] === 'admin'
+            ? (isAdmin() ? 'Quản trị tài khoản' : 'Tài khoản')
             : current[2];
 
         $('page-title').textContent =

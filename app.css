@@ -5516,3 +5516,32 @@ tbody tr:hover{
   .ranking-ui .ranking-detail-toggle{margin:0;padding:6px;font-size:11px;}
 }
 /* /UI02D SHARED CARD SIZING SYSTEM */
+
+/* ACCOUNT_UI_V1: scoped presentation, shared actions and semantic badges. */
+.account-ui{display:grid;gap:var(--ui-card-section-gap,12px);min-width:0;}
+.account-ui .account-subtitle{margin:0;}
+.account-ui .panel{margin:0;min-width:0;}
+.account-ui .account-self{padding:var(--ui-card-padding,10px);border-radius:var(--ui-card-radius,12px);}
+.account-ui .account-identity{display:grid;gap:8px;min-width:0;}
+.account-ui .account-name{margin:0;font-size:16px;line-height:1.4;overflow-wrap:anywhere;}
+.account-ui .account-statuses{display:flex;flex-wrap:wrap;gap:6px;}
+.account-ui .account-link,.account-ui .account-email{margin:0;overflow-wrap:anywhere;}
+.account-ui .app-action + .app-action{margin-top:0;}
+.account-ui .app-action-toggle{min-height:54px;font-size:14px;}
+.account-ui .app-action-toggle::-webkit-details-marker{display:none;}
+.account-ui .app-action-toggle::after{content:'›';margin-left:auto;font-size:20px;}
+.account-ui .app-action[open] > .app-action-toggle::after{transform:rotate(90deg);}
+.account-ui .app-action-body > .panel{border:0;box-shadow:none;background:transparent;padding:12px 0 0;}
+.account-ui .app-action-body > .panel:only-child > h2:first-child{display:none;}
+.account-ui .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.account-ui .form-group,.account-ui .field{min-width:0;max-width:100%;}
+.account-ui form{margin-top:12px;}
+.account-ui .form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.account-ui .btn{min-height:44px;white-space:normal;overflow-wrap:anywhere;}
+.account-ui .notice{overflow-wrap:anywhere;}
+@media(max-width:640px){
+  .account-ui .form-grid{grid-template-columns:minmax(0,1fr);}
+  .account-ui .form-actions > .btn{width:100%;}
+  .account-ui .app-action-toggle{padding:10px;font-size:13px;}
+}
+/* /ACCOUNT_UI_V1 */
