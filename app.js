@@ -3942,6 +3942,7 @@ const fieldLabels = {
         accountAction(root, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
         accountAction(root, 'Xác nhận email tài khoản', adminAccountVerification);
         accountAction(root, 'Quản lý quyền thành viên', adminMemberPermissions);
+        accountAction(root, 'Vòng đời tài khoản thành viên', adminMemberLifecycle);
         accountAction(root, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
         accountAction(root, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
         accountAction(root, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
@@ -4219,6 +4220,993 @@ const fieldLabels = {
         });
       }
 
+
+      // IAM05C: ADMIN-only MEMBER account lifecycle UI.
+      function adminMemberLifecycle(root) {
+        if (!isAdmin()) return;
+
+        const actor = state.session?.user?.id;
+        const generation = state.generation;
+        const current = () =>
+          root.isConnected &&
+          isAdmin() &&
+          state.session?.user?.id === actor &&
+          state.generation === generation;
+
+        const section = panel(
+          'Vòng đời tài khoản thành viên',
+          root
+        );
+
+        section.classList.add('member-lifecycle');
+
+        const message = el('div');
+        message.hidden = true;
+        message.setAttribute('role', 'status');
+
+        const directory = el('div');
+        const detail = el(
+          'div',
+          null,
+          'member-lifecycle-detail'
+        );
+
+        const paging = el(
+          'div',
+          null,
+          'form-actions'
+        );
+
+        const pageLabel = el(
+          'span',
+          '',
+          'muted'
+        );
+
+        let members = [];
+        let offset = 0;
+        let reading = false;
+        let saving = false;
+        let loaded = false;
+
+        const pageSize = 50;
+
+        const reload = button(
+          'Tải lại danh sách',
+          () => loadPage(offset)
+        );
+
+        const previous = button(
+          'Trang trước',
+          () => loadPage(
+            Math.max(0, offset - pageSize)
+          )
+        );
+
+        const next = button(
+          'Trang sau',
+          () => loadPage(offset + pageSize)
+        );
+
+        paging.append(
+          reload,
+          previous,
+          next,
+          pageLabel
+        );
+
+        section.append(
+          paging,
+          message,
+          directory,
+          detail
+        );
+
+        function sync() {
+          const blocked =
+            reading ||
+            saving ||
+            !current();
+
+          reload.disabled = blocked;
+          previous.disabled =
+            blocked || offset === 0;
+          next.disabled =
+            blocked ||
+            !loaded ||
+            members.length < pageSize;
+
+          directory
+            .querySelectorAll(
+              'button, select'
+            )
+            .forEach(control => {
+              control.disabled = blocked;
+            });
+
+          detail
+            .querySelectorAll(
+              'button, input, textarea, select'
+            )
+            .forEach(control => {
+              control.disabled = blocked;
+            });
+        }
+
+        function statusText(value) {
+          return value === true
+            ? 'Hoạt động'
+            : 'Vô hiệu hóa';
+        }
+
+        function playerStatusText(value) {
+          if (!value) return 'Không có Player';
+          return upper(value) === 'ACTIVE'
+            ? 'Đang tham gia'
+            : 'Ngừng tham gia';
+        }
+
+        function addSummaryItem(
+          container,
+          label,
+          value,
+          badgeValue = null
+        ) {
+          const item = el(
+            'div',
+            null,
+            'member-lifecycle-summary-item'
+          );
+
+          item.append(
+            el(
+              'span',
+              label,
+              'muted'
+            )
+          );
+
+          const valueWrap = el(
+            'strong',
+            value || '—'
+          );
+
+          if (badgeValue) {
+            const wrap = el(
+              'div',
+              null,
+              'member-lifecycle-summary-value'
+            );
+
+            wrap.append(
+              valueWrap,
+              badge(badgeValue)
+            );
+
+            item.append(wrap);
+          } else {
+            item.append(valueWrap);
+          }
+
+          container.append(item);
+        }
+
+        function showMember(member) {
+          if (
+            !current() ||
+            !members.includes(member)
+          ) {
+            return;
+          }
+
+          detail.replaceChildren();
+
+          const summary = el(
+            'div',
+            null,
+            'member-lifecycle-summary'
+          );
+
+          const head = el(
+            'div',
+            null,
+            'member-lifecycle-summary-head'
+          );
+
+          const identity = el('div');
+
+          identity.append(
+            el(
+              'strong',
+              member.full_name ||
+                member.login_name ||
+                member.profile_id
+            ),
+            badge(
+              member.is_active === true
+                ? 'ACTIVE'
+                : 'INACTIVE'
+            )
+          );
+
+          identity.append(
+            el(
+              'p',
+              member.login_name
+                ? '@' + member.login_name
+                : 'Chưa có nickname',
+              'muted'
+            )
+          );
+
+          head.append(identity);
+
+          const grid = el(
+            'div',
+            null,
+            'member-lifecycle-summary-grid'
+          );
+
+          addSummaryItem(
+            grid,
+            'Tài khoản',
+            statusText(member.is_active),
+            member.is_active === true
+              ? 'ACTIVE'
+              : 'INACTIVE'
+          );
+
+          addSummaryItem(
+            grid,
+            'Player ID',
+            member.player_id || 'Không liên kết'
+          );
+
+          addSummaryItem(
+            grid,
+            'Trạng thái VĐV',
+            playerStatusText(
+              member.player_status
+            ),
+            member.player_status || null
+          );
+
+          addSummaryItem(
+            grid,
+            'Quyền được ủy quyền',
+            String(
+              member.delegated_permissions_count || 0
+            ) + ' / 8'
+          );
+
+          const distinction = el(
+            'p',
+            'Trạng thái tài khoản và trạng thái VĐV là hai khái niệm độc lập. Vô hiệu hóa tài khoản không làm thay đổi Player ID, Rating hoặc lịch sử thi đấu.',
+            'notice'
+          );
+
+          const actions = el(
+            'div',
+            null,
+            'form-actions member-lifecycle-actions'
+          );
+
+          const lifecycleButton = button(
+            member.is_active === true
+              ? 'Vô hiệu hóa tài khoản'
+              : 'Kích hoạt lại tài khoản',
+            () => editLifecycle(member),
+            member.is_active === true
+              ? 'btn lifecycle-deactivate'
+              : 'btn primary'
+          );
+
+          const previewButton = button(
+            'Kiểm tra khả năng xóa',
+            () => previewDeletion(member)
+          );
+
+          actions.append(
+            lifecycleButton,
+            previewButton
+          );
+
+          summary.append(
+            head,
+            grid,
+            distinction,
+            actions
+          );
+
+          detail.append(summary);
+        }
+
+        function editLifecycle(member) {
+          if (
+            !current() ||
+            reading ||
+            saving ||
+            !members.includes(member)
+          ) {
+            return;
+          }
+
+          detail.replaceChildren();
+
+          const form = el('form');
+
+          const activating =
+            member.is_active !== true;
+
+          form.append(
+            el(
+              'h3',
+              activating
+                ? 'Kích hoạt lại tài khoản'
+                : 'Vô hiệu hóa tài khoản'
+            )
+          );
+
+          form.append(
+            el(
+              'p',
+              activating
+                ? 'Tài khoản sẽ được phép sử dụng lại hệ thống. Các quyền ủy quyền cũ không tự khôi phục.'
+                : 'Tài khoản sẽ bị chặn sử dụng hệ thống. Player ID, Rating và lịch sử nghiệp vụ được giữ nguyên; toàn bộ quyền ủy quyền sẽ bị thu hồi.',
+              activating
+                ? 'notice'
+                : 'notice error'
+            )
+          );
+
+          const reasonGroup = el(
+            'div',
+            null,
+            'form-group'
+          );
+
+          const reasonLabel = el(
+            'label',
+            'Lý do'
+          );
+
+          const reason = el(
+            'textarea',
+            null,
+            'field'
+          );
+
+          reason.id =
+            'member-lifecycle-reason';
+
+          reasonLabel.htmlFor = reason.id;
+          reason.required = true;
+          reason.maxLength = 1000;
+          reason.rows = 3;
+
+          reasonGroup.append(
+            reasonLabel,
+            reason
+          );
+
+          const submit = el(
+            'button',
+            activating
+              ? 'Kích hoạt tài khoản'
+              : 'Xác nhận vô hiệu hóa',
+            activating
+              ? 'btn primary'
+              : 'btn lifecycle-deactivate'
+          );
+
+          submit.type = 'submit';
+
+          const cancel = button(
+            'Đóng',
+            () => showMember(member)
+          );
+
+          const actions = el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+          actions.append(
+            submit,
+            cancel
+          );
+
+          form.append(
+            reasonGroup,
+            actions
+          );
+
+          detail.append(form);
+
+          form.addEventListener(
+            'submit',
+            async event => {
+              event.preventDefault();
+
+              if (
+                !current() ||
+                reading ||
+                saving ||
+                state.writeBusy ||
+                state.busy ||
+                !members.includes(member)
+              ) {
+                return;
+              }
+
+              const reasonText =
+                reason.value.trim();
+
+              if (
+                !reasonText ||
+                reasonText.length > 1000
+              ) {
+                notice(
+                  message,
+                  'Vui lòng nhập lý do (tối đa 1.000 ký tự).',
+                  true
+                );
+
+                reason.focus();
+                return;
+              }
+
+              saving = true;
+              state.writeBusy = true;
+              sync();
+
+              submit.textContent =
+                activating
+                  ? 'Đang kích hoạt…'
+                  : 'Đang vô hiệu hóa…';
+
+              notice(
+                message,
+                activating
+                  ? 'Đang kích hoạt lại tài khoản…'
+                  : 'Đang vô hiệu hóa tài khoản…'
+              );
+
+              let saved = false;
+
+              try {
+                const {
+                  data,
+                  error
+                } = await query(
+                  client.rpc(
+                    'admin_set_member_account_active',
+                    {
+                      p_profile_id:
+                        member.profile_id,
+                      p_is_active:
+                        activating,
+                      p_reason:
+                        reasonText
+                    }
+                  )
+                );
+
+                if (error) throw error;
+
+                if (
+                  data?.success !== true
+                ) {
+                  throw new Error(
+                    'Unconfirmed lifecycle update'
+                  );
+                }
+
+                saved = true;
+
+                if (!current()) return;
+
+                detail.replaceChildren();
+
+                const refreshed =
+                  await loadPage(
+                    offset,
+                    member.profile_id,
+                    true
+                  );
+
+                if (!current()) return;
+
+                notice(
+                  message,
+                  refreshed
+                    ? (
+                        data.changed === false
+                          ? 'Tài khoản đã ở trạng thái yêu cầu.'
+                          : activating
+                            ? 'Đã kích hoạt lại tài khoản.'
+                            : 'Đã vô hiệu hóa tài khoản và thu hồi quyền ủy quyền.'
+                      )
+                    : 'Đã lưu trạng thái nhưng chưa tải lại được danh sách. Vui lòng bấm Tải lại danh sách.',
+                  !refreshed,
+                  refreshed
+                );
+              } catch (error) {
+                if (current()) {
+                  notice(
+                    message,
+                    'Không thay đổi được trạng thái tài khoản. ' +
+                      explain(error),
+                    true
+                  );
+                }
+              } finally {
+                state.writeBusy = false;
+                saving = false;
+
+                if (current()) {
+                  if (!saved) {
+                    reason.disabled = false;
+                    submit.disabled = false;
+                    cancel.disabled = false;
+                    submit.textContent =
+                      activating
+                        ? 'Kích hoạt tài khoản'
+                        : 'Xác nhận vô hiệu hóa';
+                  }
+
+                  sync();
+                }
+              }
+            }
+          );
+        }
+
+        async function previewDeletion(member) {
+          if (
+            !current() ||
+            reading ||
+            saving ||
+            state.writeBusy ||
+            state.busy ||
+            !members.includes(member)
+          ) {
+            return;
+          }
+
+          reading = true;
+          detail.replaceChildren();
+
+          notice(
+            message,
+            'Đang kiểm tra lịch sử và ràng buộc dữ liệu…'
+          );
+
+          sync();
+
+          try {
+            const {
+              data,
+              error
+            } = await query(
+              client.rpc(
+                'get_admin_member_deletion_preview',
+                {
+                  p_profile_id:
+                    member.profile_id
+                }
+              )
+            );
+
+            if (error) throw error;
+            if (!data || typeof data !== 'object') {
+              throw new Error(
+                'Invalid deletion preview'
+              );
+            }
+
+            if (!current()) return;
+
+            const preview = el(
+              'div',
+              null,
+              'member-deletion-preview'
+            );
+
+            preview.append(
+              el(
+                'h3',
+                'Khả năng xóa: ' +
+                  (
+                    member.full_name ||
+                    member.login_name ||
+                    member.profile_id
+                  )
+              )
+            );
+
+            const total =
+              Number(
+                data.reference_total || 0
+              );
+
+            const playerTotal =
+              Number(
+                data.player_references?.total ||
+                0
+              );
+
+            const profileTotal =
+              Number(
+                data.profile_references?.total ||
+                0
+              );
+
+            const resultNotice = el(
+              'p',
+              data.hard_delete_allowed === true
+                ? 'Không phát hiện dữ liệu nghiệp vụ/audit tham chiếu. Đây chỉ là ứng viên để xem xét hard-delete; IAM05 V1 chưa cung cấp thao tác xóa.'
+                : 'Không được hard-delete. Tài khoản có lịch sử nghiệp vụ hoặc audit và chỉ được vô hiệu hóa.',
+              data.hard_delete_allowed === true
+                ? 'notice'
+                : 'notice error'
+            );
+
+            const grid = el(
+              'div',
+              null,
+              'member-lifecycle-summary-grid'
+            );
+
+            addSummaryItem(
+              grid,
+              'Tổng tham chiếu',
+              String(total)
+            );
+
+            addSummaryItem(
+              grid,
+              'Theo Player',
+              String(playerTotal)
+            );
+
+            addSummaryItem(
+              grid,
+              'Theo tài khoản',
+              String(profileTotal)
+            );
+
+            addSummaryItem(
+              grid,
+              'Khuyến nghị',
+              data.recommended_action ===
+                'DEACTIVATE_ONLY'
+                ? 'Chỉ vô hiệu hóa'
+                : 'Ứng viên xem xét xóa'
+            );
+
+            const blockers = [];
+
+            const collect = (
+              source,
+              prefix
+            ) => {
+              if (
+                !source ||
+                typeof source !== 'object'
+              ) {
+                return;
+              }
+
+              Object.entries(source)
+                .filter(
+                  ([key, value]) =>
+                    key !== 'total' &&
+                    Number(value) > 0
+                )
+                .forEach(
+                  ([key, value]) => {
+                    blockers.push(
+                      prefix +
+                      key +
+                      ': ' +
+                      value
+                    );
+                  }
+                );
+            };
+
+            collect(
+              data.player_references,
+              'Player • '
+            );
+
+            collect(
+              data.profile_references,
+              'Account • '
+            );
+
+            const blockerBox = el(
+              'div',
+              null,
+              'member-deletion-blockers'
+            );
+
+            blockerBox.append(
+              el(
+                'strong',
+                'Dữ liệu đang giữ lịch sử'
+              )
+            );
+
+            if (blockers.length) {
+              const list = el('ul');
+
+              blockers.forEach(text => {
+                list.append(
+                  el('li', text)
+                );
+              });
+
+              blockerBox.append(list);
+            } else {
+              blockerBox.append(
+                el(
+                  'p',
+                  'Không phát hiện blocker.',
+                  'muted'
+                )
+              );
+            }
+
+            const actions = el(
+              'div',
+              null,
+              'form-actions'
+            );
+
+            actions.append(
+              button(
+                'Quay lại',
+                () => showMember(member)
+              )
+            );
+
+            preview.append(
+              resultNotice,
+              grid,
+              blockerBox,
+              actions
+            );
+
+            detail.append(preview);
+
+            notice(message, '');
+          } catch (error) {
+            if (current()) {
+              notice(
+                message,
+                'Không kiểm tra được khả năng xóa. ' +
+                  explain(error),
+                true
+              );
+
+              showMember(member);
+            }
+          } finally {
+            reading = false;
+
+            if (current()) {
+              sync();
+            }
+          }
+        }
+
+        async function loadPage(
+          newOffset = 0,
+          selectedId = null,
+          afterSave = false
+        ) {
+          if (
+            !current() ||
+            reading ||
+            (saving && !afterSave)
+          ) {
+            return false;
+          }
+
+          reading = true;
+          loaded = false;
+
+          detail.replaceChildren();
+          directory.replaceChildren();
+
+          notice(
+            message,
+            'Đang tải trạng thái tài khoản…'
+          );
+
+          sync();
+
+          try {
+            const {
+              data,
+              error
+            } = await query(
+              client.rpc(
+                'get_admin_member_lifecycle',
+                {
+                  p_limit: pageSize,
+                  p_offset: newOffset
+                }
+              )
+            );
+
+            if (error) throw error;
+
+            if (!Array.isArray(data)) {
+              throw new Error(
+                'Invalid lifecycle directory'
+              );
+            }
+
+            if (!current()) return false;
+
+            members = data.filter(
+              member =>
+                member.profile_id &&
+                member.profile_id !== actor
+            );
+
+            offset = newOffset;
+            loaded = true;
+
+            pageLabel.textContent =
+              'Trang ' +
+              (
+                Math.floor(
+                  offset / pageSize
+                ) + 1
+              );
+
+            const select = el(
+              'select',
+              null,
+              'field'
+            );
+
+            select.id =
+              'member-lifecycle-target';
+
+            const label = el(
+              'label',
+              'Chọn thành viên'
+            );
+
+            label.htmlFor = select.id;
+
+            const placeholder = el(
+              'option',
+              'Chọn thành viên'
+            );
+
+            placeholder.value = '';
+            select.append(placeholder);
+
+            members.forEach(member => {
+              const option = el(
+                'option',
+                (
+                  member.full_name ||
+                  member.login_name ||
+                  member.profile_id
+                ) +
+                  (
+                    member.login_name
+                      ? ' • ' +
+                        member.login_name
+                      : ''
+                  ) +
+                  (
+                    member.is_active === true
+                      ? ' • Hoạt động'
+                      : ' • Vô hiệu hóa'
+                  )
+              );
+
+              option.value =
+                member.profile_id;
+
+              select.append(option);
+            });
+
+            select.addEventListener(
+              'change',
+              () => {
+                const member =
+                  members.find(
+                    item =>
+                      item.profile_id ===
+                      select.value
+                  );
+
+                if (member) {
+                  showMember(member);
+                } else if (!saving) {
+                  detail.replaceChildren();
+                }
+              }
+            );
+
+            directory.append(
+              label,
+              select
+            );
+
+            if (selectedId) {
+              select.value = selectedId;
+
+              const selectedMember =
+                members.find(
+                  item =>
+                    item.profile_id ===
+                    selectedId
+                );
+
+              if (selectedMember) {
+                showMember(
+                  selectedMember
+                );
+              }
+            }
+
+            notice(
+              message,
+              members.length
+                ? ''
+                : 'Không có thành viên trong trang này.'
+            );
+
+            return true;
+          } catch (error) {
+            if (current()) {
+              members = [];
+
+              notice(
+                message,
+                'Không tải được vòng đời tài khoản. ' +
+                  explain(error),
+                true
+              );
+            }
+
+            return false;
+          } finally {
+            reading = false;
+
+            if (current()) {
+              sync();
+            }
+          }
+        }
+
+        sync();
+
+        root.parentElement.addEventListener(
+          'toggle',
+          () => {
+            if (
+              root.parentElement.open &&
+              !loaded &&
+              !reading &&
+              !saving
+            ) {
+              loadPage(offset);
+            }
+          }
+        );
+      }
 
       function adminCreateMember(root) {
         if (!isAdmin()) return;
