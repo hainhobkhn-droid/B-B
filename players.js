@@ -1225,6 +1225,67 @@ function collapsibleAdminSection(
     }
 
     function playerDetailSection(root) {
+      let adminMemberDirectoryPromise = null;
+
+      async function getAdminMemberDirectory() {
+        if (
+          upper(state.profile?.role) !== 'ADMIN' ||
+          state.profile?.is_active !== true
+        ) {
+          return [];
+        }
+
+        if (adminMemberDirectoryPromise) {
+          return adminMemberDirectoryPromise;
+        }
+
+        adminMemberDirectoryPromise = (async () => {
+          const result = [];
+          const pageSize = 200;
+
+          for (
+            let offset = 0;
+            ;
+            offset += pageSize
+          ) {
+            const {
+              data,
+              error
+            } = await client.rpc(
+              'get_admin_member_permissions',
+              {
+                p_limit: pageSize,
+                p_offset: offset
+              }
+            );
+
+            if (error) {
+              throw error;
+            }
+
+            if (!Array.isArray(data)) {
+              throw new Error(
+                'INVALID_MEMBER_DIRECTORY'
+              );
+            }
+
+            result.push(...data);
+
+            if (data.length < pageSize) {
+              break;
+            }
+          }
+
+          return result;
+        })();
+
+        try {
+          return await adminMemberDirectoryPromise;
+        } catch (error) {
+          adminMemberDirectoryPromise = null;
+          throw error;
+        }
+      }
       const section =
         panel(
           'Hồ sơ & thành tích VĐV',
@@ -1637,6 +1698,10 @@ function collapsibleAdminSection(
                   detail.hidden
                     ? 'Xem chi tiết'
                     : 'Thu gọn';
+
+                if (!detail.hidden) {
+                  void loadLinkedAccount();
+                }
               },
               'btn player-card-toggle'
             );
@@ -1774,6 +1839,350 @@ function collapsibleAdminSection(
             )
           );
 
+          const linkedAccount =
+            el(
+              'div',
+              null,
+              'mt-4 rounded-xl border p-3'
+            );
+
+          const linkedAccountBody =
+            el(
+              'div',
+              null,
+              'text-sm'
+            );
+
+          linkedAccount.append(
+            el(
+              'div',
+              'Tài khoản liên kết',
+              'font-semibold mb-2'
+            ),
+            linkedAccountBody
+          );
+
+          profile.append(
+            linkedAccount
+          );
+
+          let linkedAccountLoaded =
+            false;
+
+          let linkedAccountLoading =
+            false;
+
+          function linkedAccountErrorText(error) {
+            const code =
+              String(
+                error?.message ||
+                error?.code ||
+                ''
+              );
+
+            if (code.includes('LOGIN_NAME_TAKEN')) {
+              return 'Nickname này đã được sử dụng.';
+            }
+
+            if (code.includes('LOGIN_NAME_INVALID_LENGTH')) {
+              return 'Nickname phải có từ 3 đến 32 ký tự.';
+            }
+
+            if (code.includes('LOGIN_NAME_INVALID_FORMAT')) {
+              return 'Nickname chỉ được dùng chữ cái, số, dấu chấm, gạch dưới và gạch ngang.';
+            }
+
+            if (code.includes('LOGIN_NAME_ALREADY_SET')) {
+              return 'Tài khoản này đã có nickname.';
+            }
+
+            if (code.includes('TARGET_ACCOUNT_INACTIVE')) {
+              return 'Tài khoản đang bị vô hiệu hóa.';
+            }
+
+            if (code.includes('ADMIN_REQUIRED')) {
+              return 'Chỉ ADMIN đang hoạt động mới được thực hiện thao tác này.';
+            }
+
+            return explain(error);
+          }
+
+          function renderLinkedAccount(account) {
+            linkedAccountBody.replaceChildren();
+
+            if (!account) {
+              linkedAccountBody.append(
+                el(
+                  'div',
+                  'Tài khoản: Chưa liên kết',
+                  'muted'
+                )
+              );
+
+              return;
+            }
+
+            linkedAccountBody.append(
+              el(
+                'div',
+                `Nickname: ${
+                  raw(account.login_name) ||
+                  'Chưa có'
+                }`
+              ),
+              el(
+                'div',
+                `Trạng thái tài khoản: ${
+                  account.is_active === true
+                    ? 'Đang hoạt động'
+                    : 'Đã vô hiệu hóa'
+                }`,
+                'mt-1'
+              )
+            );
+
+            if (
+              account.login_name ||
+              account.is_active !== true
+            ) {
+              return;
+            }
+
+            const form =
+              el(
+                'form',
+                null,
+                'mt-3'
+              );
+
+            const group =
+              el(
+                'div',
+                null,
+                'form-group'
+              );
+
+            const label =
+              el(
+                'label',
+                'Tạo nickname'
+              );
+
+            const input =
+              el(
+                'input',
+                null,
+                'field'
+              );
+
+            input.type = 'text';
+            input.autocomplete = 'off';
+            input.minLength = 3;
+            input.maxLength = 32;
+            input.placeholder = 'Ví dụ: nguyen.van.a';
+
+            group.append(
+              label,
+              input
+            );
+
+            const message =
+              el('div');
+
+            message.setAttribute(
+              'role',
+              'status'
+            );
+
+            const submit =
+              el(
+                'button',
+                'Lưu nickname',
+                'btn primary'
+              );
+
+            submit.type = 'submit';
+
+            const actions =
+              el(
+                'div',
+                null,
+                'form-actions mt-3'
+              );
+
+            actions.append(
+              submit
+            );
+
+            form.append(
+              group,
+              message,
+              actions
+            );
+
+            form.addEventListener(
+              'submit',
+              async event => {
+                event.preventDefault();
+
+                if (
+                  state.writeBusy ||
+                  account.login_name ||
+                  account.is_active !== true
+                ) {
+                  return;
+                }
+
+                const loginName =
+                  input.value
+                    .trim()
+                    .toLowerCase();
+
+                if (
+                  !/^[a-z0-9._-]{3,32}$/
+                    .test(loginName)
+                ) {
+                  notice(
+                    message,
+                    'Nickname phải có 3–32 ký tự và chỉ dùng chữ cái, số, dấu chấm, gạch dưới hoặc gạch ngang.',
+                    true
+                  );
+
+                  input.focus();
+                  return;
+                }
+
+                state.writeBusy = true;
+                input.disabled = true;
+                submit.disabled = true;
+                submit.textContent = 'Đang lưu…';
+
+                notice(
+                  message,
+                  'Đang tạo nickname…'
+                );
+
+                try {
+                  const {
+                    data,
+                    error
+                  } = await client.rpc(
+                    'admin_set_member_nickname',
+                    {
+                      p_profile_id:
+                        account.profile_id,
+                      p_nickname:
+                        loginName
+                    }
+                  );
+
+                  if (error) {
+                    throw error;
+                  }
+
+                  if (data?.success !== true) {
+                    throw new Error(
+                      'NICKNAME_SAVE_UNCONFIRMED'
+                    );
+                  }
+
+                  account.login_name =
+                    data.login_name ||
+                    loginName;
+
+                  renderLinkedAccount(
+                    account
+                  );
+
+                  notice(
+                    $('global-message'),
+                    `Đã tạo nickname "${account.login_name}" cho ${playerName(player.id)}.`
+                  );
+                } catch (error) {
+                  input.disabled = false;
+                  submit.disabled = false;
+                  submit.textContent = 'Lưu nickname';
+
+                  notice(
+                    message,
+                    'Không tạo được nickname. ' +
+                      linkedAccountErrorText(error),
+                    true
+                  );
+                } finally {
+                  state.writeBusy = false;
+                }
+              }
+            );
+
+            linkedAccountBody.append(
+              form
+            );
+          }
+
+          async function loadLinkedAccount() {
+            if (
+              linkedAccountLoaded ||
+              linkedAccountLoading
+            ) {
+              return;
+            }
+
+            if (
+              upper(state.profile?.role) !== 'ADMIN' ||
+              state.profile?.is_active !== true
+            ) {
+              linkedAccount.hidden = true;
+              return;
+            }
+
+            linkedAccountLoading = true;
+
+            linkedAccountBody.replaceChildren(
+              el(
+                'div',
+                'Đang tải tài khoản liên kết…',
+                'muted'
+              )
+            );
+
+            try {
+              const members =
+                await getAdminMemberDirectory();
+
+              const account =
+                members.find(
+                  item =>
+                    item.player_id &&
+                    String(item.player_id) ===
+                      String(player.id)
+                ) ||
+                null;
+
+              linkedAccountLoaded = true;
+
+              renderLinkedAccount(
+                account
+              );
+            } catch (error) {
+              linkedAccountBody.replaceChildren();
+
+              notice(
+                linkedAccountBody,
+                'Không tải được tài khoản liên kết. ' +
+                  explain(error),
+                true
+              );
+            } finally {
+              linkedAccountLoading = false;
+            }
+          }
+
+          if (
+            upper(state.profile?.role) !== 'ADMIN'
+          ) {
+            linkedAccount.hidden = true;
+          }
           const formSection =
             el(
               'div',
