@@ -3995,7 +3995,7 @@ const fieldLabels = {
         message.hidden = true;
         message.setAttribute('role', 'status');
         const directory = el('div');
-        const editor = el('div');
+        const editor = el('div', null, 'member-permission-editor');
         const paging = el('div', null, 'form-actions');
         const pageLabel = el('span', '', 'muted');
         let members = [], offset = 0, reading = false, saving = false, loaded = false;
@@ -4012,6 +4012,44 @@ const fieldLabels = {
           previous.disabled = blocked || offset === 0;
           next.disabled = blocked || !loaded || members.length < pageSize;
           directory.querySelectorAll('button, select').forEach(control => { control.disabled = blocked; });
+        }
+
+        function showMemberPermissions(member) {
+          if (!current() || !members.includes(member)) return;
+
+          editor.replaceChildren();
+
+          const summary = el('div', null, 'member-permission-summary');
+
+          const head = el('div', null, 'member-permission-summary-head');
+          const identity = el('div');
+          identity.append(
+            el('strong', member.full_name || member.login_name || member.profile_id),
+            badge(member.is_active === true ? 'ACTIVE' : 'INACTIVE')
+          );
+
+          if (member.email || member.login_name) {
+            identity.append(el('p', member.email || member.login_name, 'muted'));
+          }
+
+          head.append(identity);
+
+          const flags = el('div', null, 'member-permission-summary-flags');
+
+          capabilities.forEach(([key, label]) => {
+            const item = el('div', null, 'member-permission-summary-item');
+            item.append(
+              el('span', label),
+              badge(member[key] === true ? 'Có quyền' : 'Không')
+            );
+            flags.append(item);
+          });
+
+          const actions = el('div', null, 'form-actions');
+          actions.append(button('Chỉnh quyền', () => editMember(member), 'btn primary'));
+
+          summary.append(head, flags, actions);
+          editor.append(summary);
         }
 
         function editMember(member) {
@@ -4045,7 +4083,7 @@ const fieldLabels = {
           reasonGroup.append(reasonLabel, reason);
           const submit = el('button', 'Lưu quyền', 'btn primary');
           submit.type = 'submit';
-          const cancel = button('Đóng chỉnh sửa', () => editor.replaceChildren());
+          const cancel = button('Đóng chỉnh sửa', () => showMemberPermissions(member));
           const actions = el('div', null, 'form-actions');
           actions.append(submit, cancel);
           form.append(grid, reasonGroup, actions);
@@ -4153,25 +4191,15 @@ const fieldLabels = {
             });
             select.addEventListener('change', () => {
               const member = members.find(item => item.profile_id === select.value);
-              if (member) editMember(member);
+              if (member) showMemberPermissions(member);
               else if (!saving) editor.replaceChildren();
             });
             directory.append(label, select);
-            members.forEach(member => {
-              const card = el('article', null, 'permission-record');
-              card.append(el('strong', member.full_name || member.login_name || member.profile_id),
-                badge(member.is_active === true ? 'ACTIVE' : 'INACTIVE'));
-              if (member.email || member.login_name) card.append(el('p', member.email || member.login_name, 'muted'));
-              const flags = el('ul', null, 'permission-flags');
-              capabilities.forEach(([key, label]) => flags.append(el('li', label + ': ' + (member[key] === true ? 'Có' : 'Không'))));
-              card.append(flags, button('Chỉnh quyền', () => {
-                select.value = member.profile_id;
-                editMember(member);
-                editor.scrollIntoView({ block: 'nearest' });
-              }));
-              directory.append(card);
-            });
-            if (selectedId) select.value = selectedId;
+            if (selectedId) {
+              select.value = selectedId;
+              const selectedMember = members.find(item => item.profile_id === selectedId);
+              if (selectedMember) showMemberPermissions(selectedMember);
+            }
             notice(message, members.length ? '' : 'Không có thành viên trong trang này.');
             return true;
           } catch (error) {
