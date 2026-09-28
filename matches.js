@@ -11,6 +11,7 @@
       state,
       client,
       isAdmin,
+      canApproveMatches,
   button,
       panel,
       el,
@@ -4625,7 +4626,7 @@
       }
 
       function rejectPendingMatchForm(root) {
-        if (!isAdmin()) {
+        if (!canApproveMatches()) {
           return;
         }
 
@@ -4842,7 +4843,7 @@
 
             if (
               state.writeBusy ||
-              !isAdmin()
+              !canApproveMatches()
             ) {
               return;
             }
@@ -4973,7 +4974,7 @@
       }
 
 function voidApprovedMatchForm(root) {
-        if (!isAdmin()) {
+        if (!canApproveMatches()) {
           return;
         }
 
@@ -5359,7 +5360,7 @@ function voidApprovedMatchForm(root) {
 
             if (
               state.writeBusy ||
-              !isAdmin()
+              !canApproveMatches()
             ) {
               return;
             }
@@ -5543,7 +5544,7 @@ function voidApprovedMatchForm(root) {
       }
 
       function replacementMatchForm(root) {
-        if (!isAdmin()) {
+        if (!canApproveMatches()) {
           return;
         }
 
@@ -5898,7 +5899,7 @@ function voidApprovedMatchForm(root) {
 
             if (
               state.writeBusy ||
-              !isAdmin()
+              !canApproveMatches()
             ) {
               return;
             }
@@ -6089,7 +6090,7 @@ function voidApprovedMatchForm(root) {
         );
       }
       function approvePendingMatchForm(root) {
-        if (!isAdmin()) {
+        if (!canApproveMatches()) {
           return;
         }
 
@@ -6466,7 +6467,7 @@ function voidApprovedMatchForm(root) {
 
             if (
               state.writeBusy ||
-              !isAdmin()
+              !canApproveMatches()
             ) {
               return;
             }
@@ -6599,7 +6600,7 @@ function voidApprovedMatchForm(root) {
         );
       }
       function adminMatchCenter(root) {
-        if (!isAdmin()) {
+        if (!canApproveMatches()) {
           return;
         }
 
@@ -6798,6 +6799,7 @@ function voidApprovedMatchForm(root) {
 
         root.append(center);
 
+        if (isAdmin()) {
         const createToggle =
           makeNode(
             'details',
@@ -6835,6 +6837,8 @@ function voidApprovedMatchForm(root) {
         if (createSection) {
           createSection.classList.remove('match-action-collapsible');
           createSection.querySelector(':scope > h2').hidden = true;
+        }
+
         }
 
         const actionArea =
@@ -7305,71 +7309,79 @@ function voidApprovedMatchForm(root) {
                 'match-record-actions mt-4 flex flex-wrap gap-2'
               );
 
-            if (
-              status ===
-              'PENDING'
-            ) {
-              actions.append(
-                actionButton(
-                  '✏ Sửa',
-                  'edit',
-                  match
-                ),
+            if (canApproveMatches()) {
+              if (
+                status ===
+                'PENDING'
+              ) {
+                if (isAdmin()) {
+                  actions.append(
+                    actionButton(
+                      '✏ Sửa',
+                      'edit',
+                      match
+                    ),
 
-                actionButton(
-                  '👥 Xếp VĐV',
-                  'players',
-                  match
-                ),
+                    actionButton(
+                      '👥 Xếp VĐV',
+                      'players',
+                      match
+                    )
+                );
+                }
 
-                actionButton(
-                  '✓ Duyệt',
-                  'approve',
-                  match,
-                  'primary',
-                  isApproveEligible(
-                    match
+                actions.append(
+                  actionButton(
+                    '✓ Duyệt',
+                    'approve',
+                    match,
+                    'primary',
+                    isApproveEligible(
+                      match
+                    )
+                  ),
+
+                  actionButton(
+                    '✕ Từ chối',
+                    'reject',
+                    match,
+                    'danger'
                   )
-                ),
+                );
+              }
 
-                actionButton(
-                  '✕ Từ chối',
-                  'reject',
-                  match,
-                  'danger'
-                )
-              );
-            }
+              if (
+                status ===
+                'APPROVED'
+              ) {
+                actions.append(
+                  actionButton(
+                    'Hủy trận',
+                    'void',
+                    match,
+                    'danger'
+                  )
+                );
+              }
 
-            if (
-              status ===
-              'APPROVED'
-            ) {
-              actions.append(
-                actionButton(
-                  'Hủy trận',
-                  'void',
-                  match,
-                  'danger'
+              if (
+                status ===
+                  'VOIDED' &&
+                !hasReplacement(
+                  match.id
                 )
-              );
-            }
+              ) {
+                actions.append(
+                  actionButton(
+                    'Tạo trận thay thế',
+                    'replacement',
+                    match,
+                    'strong'
+                  )
+                );
+              }
 
-            if (
-              status ===
-                'VOIDED' &&
-              !hasReplacement(
-                match.id
-              )
-            ) {
-              actions.append(
-                actionButton(
-                  'Tạo trận thay thế',
-                  'replacement',
-                  match,
-                  'strong'
-                )
-              );
+
             }
 
             if (
@@ -8870,9 +8882,11 @@ function voidApprovedMatchForm(root) {
           ]
         );
 
-        if (isAdmin()) {
+        if (canApproveMatches()) {
           adminMatchCenter(root);
-        } else {
+        }
+
+        if (!isAdmin()) {
           createMyPendingMatchForm(
             root,
             navigationIntent ===
@@ -8881,20 +8895,22 @@ function voidApprovedMatchForm(root) {
 
           memberOpponentConfirmationPanel(root);
 
-          table(
-            root,
-            'Danh sách trận đấu',
-            recent(
-              rows('matches'),
-              'played_at'
-            ),
-            matchCols,
-            {
-              status: true,
-              unavailable:
-                !!state.errors.matches
-            }
-          );
+          if (!canApproveMatches()) {
+            table(
+              root,
+              'Danh sách trận đấu',
+              recent(
+                rows('matches'),
+                'played_at'
+              ),
+              matchCols,
+              {
+                status: true,
+                unavailable:
+                  !!state.errors.matches
+              }
+            );
+          }
         }
 
         // Presentation only: pair lineup columns on desktop, group teams on mobile.

@@ -7,6 +7,7 @@
       state,
       client,
       isAdmin,
+      canManageMembers,
       button,
       el,
       rows,
@@ -163,7 +164,7 @@ function collapsibleAdminSection(
       };
     }
     function createPlayerForm(root) {
-      if (!isAdmin()) {
+      if (!canManageMembers()) {
         return;
       }
 
@@ -483,7 +484,7 @@ function collapsibleAdminSection(
 
           if (
             state.writeBusy ||
-            !isAdmin()
+            !canManageMembers()
           ) {
             return;
           }
@@ -636,7 +637,7 @@ function collapsibleAdminSection(
     }
 
     function updatePlayerForm(root) {
-      if (!isAdmin()) {
+      if (!canManageMembers()) {
         return;
       }
 
@@ -1084,7 +1085,7 @@ function collapsibleAdminSection(
 
           if (
             state.writeBusy ||
-            !isAdmin()
+            !canManageMembers()
           ) {
             return;
           }
@@ -2196,7 +2197,7 @@ function collapsibleAdminSection(
 
     // P0.4F: read-only preview; the RPC remains the final transactional guard.
     function promoteGuestForm(root) {
-      if (!isAdmin()) return;
+      if (!canManageMembers()) return;
       const actor = state.session?.user?.id;
       const generation = state.generation;
       const section = panel('Chuyển VĐV khách thành thành viên', root);
@@ -2218,7 +2219,7 @@ function collapsibleAdminSection(
       });
       let members = [], guests = [], checked = null;
       let reading = false, saving = false, version = 0, committed = false;
-      const current = () => root.isConnected && isAdmin() &&
+      const current = () => root.isConnected && canManageMembers() &&
         state.profile?.is_active === true && state.session?.user?.id === actor &&
         state.generation === generation && !state.busy;
       const reload = button('Tải danh sách thành viên và khách', loadChoices, 'btn');
@@ -2356,7 +2357,7 @@ function collapsibleAdminSection(
           if (!current()) return;
           state.writeBusy = false;
           await load();
-          if (state.session?.user?.id !== actor || !isAdmin()) return;
+          if (state.session?.user?.id !== actor || !canManageMembers()) return;
           const incomplete = state.busy || state.errors?.players || state.partial?.players ||
             !rows('players').some(p => p.id === fresh.target.id && p.player_type === 'CLUB') ||
             !rows('players').some(p => p.id === fresh.temp.id && p.status === 'INACTIVE');
@@ -2365,7 +2366,7 @@ function collapsibleAdminSection(
             'Đã chuyển thành viên thành công. Giữ nguyên Player ID, Rating và lịch sử của khách.', !!incomplete, !incomplete);
         } catch (error) {
           checked = null;
-          if (state.session?.user?.id === actor && isAdmin()) {
+          if (state.session?.user?.id === actor && canManageMembers()) {
             const text = String(error?.message || '');
             const detail = text.includes('TEMP_PLAYER_HAS_BUSINESS_DATA') ? 'Player hiện tại đã có dữ liệu nghiệp vụ.' : explain(error);
             notice(root.isConnected ? message : $('global-message'), committed ?
@@ -2401,7 +2402,7 @@ function collapsibleAdminSection(
         ]
       );
 
-      if (isAdmin()) {
+      if (canManageMembers()) {
         collapsibleAdminSection(
           root,
           'Tạo VĐV',
@@ -2425,7 +2426,7 @@ function collapsibleAdminSection(
         );
       }
 
-      if (isAdmin()) {
+      if (canManageMembers()) {
         let loadPromotion;
         const promotion = collapsibleAdminSection(
           root, 'Chuyển VĐV khách thành thành viên',

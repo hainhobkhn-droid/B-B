@@ -5545,3 +5545,24 @@ tbody tr:hover{
   .account-ui .app-action-toggle{padding:10px;font-size:13px;}
 }
 /* /ACCOUNT_UI_V1 */
+
+/* SYSTEM_CONFIG_UI_V1 */
+.account-ui .system-config-ui > .app-action{margin-top:var(--ui-card-section-gap,12px);}
+.account-ui .system-config-current{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:var(--ui-card-padding,10px);margin:12px 0;border:1px solid var(--border);border-radius:var(--ui-card-radius,12px);font-size:12px;overflow-wrap:anywhere;}
+.account-ui .system-config-current > strong{flex-basis:100%;}
+.account-ui .system-config-current .notice{margin:0;}
+.account-ui .system-config-ui .form-group:has(#admin-rating-weight-description){grid-column:1 / -1;}
+/* /SYSTEM_CONFIG_UI_V1 */
+
+/* PERM01D D5: shared account action, records and business-group order. */
+.account-ui .permission-record{margin-top:12px;padding:var(--ui-card-padding,10px);border:1px solid var(--border);border-radius:var(--ui-card-radius,12px);overflow-wrap:anywhere;}
+.account-ui .permission-record > .badge{margin-left:8px;}
+.account-ui .permission-flags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;padding-left:20px;}
+.account-ui .permission-option{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;}
+.account-ui .permission-option input{width:18px;height:18px;flex:0 0 18px;}
+.account-ui .member-permissions .form-group{margin-top:12px;}
+@media(max-width:640px){
+  .account-ui .permission-flags{grid-template-columns:minmax(0,1fr);}
+  .account-ui .permission-record > .btn{width:100%;}
+}
+/* /PERM01D D5 */

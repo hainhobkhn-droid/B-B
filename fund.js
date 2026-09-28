@@ -8,6 +8,8 @@
         state,
         client,
         isAdmin,
+        canManageFund,
+        canCollectFund,
         button,
         el,
         rows,
@@ -600,7 +602,7 @@
     );
 
     // FUND ADMIN OBLIGATION VISIBILITY V1
-    if (isAdmin()) {
+    if (canManageFund() || canCollectFund()) {
       const recentFundObligations =
         activeContributions
           .slice()
@@ -1147,7 +1149,7 @@
         }
 
         // FUND COLLECTION UI V1
-    if (isAdmin()) {
+    if (canManageFund() || canCollectFund()) {
       fundCollapse(
         'Thao tác quỹ',
         sectionRoot => {
@@ -1473,6 +1475,10 @@
                     true
                   );
 
+                  return;
+                }
+
+                if (!canManageFund()) {
                   return;
                 }
 
@@ -2226,6 +2232,10 @@
                   return;
                 }
 
+                if (!canCollectFund()) {
+                  return;
+                }
+
                 submit.disabled =
                   true;
 
@@ -2667,6 +2677,10 @@
                   return;
                 }
 
+                if (!canManageFund()) {
+                  return;
+                }
+
                 expenseSubmit.disabled =
                   true;
 
@@ -2777,11 +2791,20 @@ collectionContent.append(
             collectionContent
           );
 
-          const fundActions = [
-            campaignDetails,
-            collectionDetails,
-            expenseDetails
-          ];
+          const fundActions = [];
+
+          if (canManageFund()) {
+            fundActions.push(
+              campaignDetails,
+              expenseDetails
+            );
+          }
+
+          if (canCollectFund()) {
+            fundActions.push(
+              collectionDetails
+            );
+          }
 
           fundActions.forEach(
             action => {
@@ -2810,9 +2833,7 @@ collectionContent.append(
           );
 
           sectionRoot.append(
-            campaignDetails,
-            collectionDetails,
-            expenseDetails
+            ...fundActions
           );
 
           fillContributions();
@@ -2821,8 +2842,8 @@ collectionContent.append(
       );
     }
 
-    // MP01 ADMIN-ONLY FUND REPORTS V1
-    if (isAdmin()) {
+    // MP01 FUND MANAGEMENT REPORTS V1
+    if (canManageFund() || canCollectFund()) {
     // FUND DEBT REPORT V1
     fundCollapse(
       'Báo cáo công nợ',
@@ -4736,108 +4757,111 @@ fundCollapse(
         );
           }
         );
-        fundCollapse(
-          'Sổ giao dịch',
-          sectionRoot => {
+        if (canManageFund()) {
+          fundCollapse(
+            'Sổ giao dịch',
+            sectionRoot => {
 
-        table(
-            sectionRoot,
-          'Sổ giao dịch',
-          recent(
-            rows(
-              'fund_transactions'
-            ).map(transaction => {
-              const match =
-                rows(
-                  'matches'
-                ).find(
-                  item =>
-                    item.id ===
-                    transaction.match_id
-                );
+          table(
+              sectionRoot,
+            'Sổ giao dịch',
+            recent(
+              rows(
+                'fund_transactions'
+              ).map(transaction => {
+                const match =
+                  rows(
+                    'matches'
+                  ).find(
+                    item =>
+                      item.id ===
+                      transaction.match_id
+                  );
 
-              return {
-                ...transaction,
-                match_reference:
-                  match
-                    ? (
-                        'Trận ' +
-                        matchCode(match) +
-                        ' • ' +
-                        number(
-                          match.team_a_score
-                        ) +
-                        ' – ' +
-                        number(
-                          match.team_b_score
+                return {
+                  ...transaction,
+                  match_reference:
+                    match
+                      ? (
+                          'Trận ' +
+                          matchCode(match) +
+                          ' • ' +
+                          number(
+                            match.team_a_score
+                          ) +
+                          ' – ' +
+                          number(
+                            match.team_b_score
+                          )
                         )
-                      )
-                    : (
-                        transaction.match_id
-                          ? '#' +
-                            String(
-                              transaction.match_id
-                            ).slice(
-                              0,
-                              8
-                            )
-                          : '—'
-                      )
-              };
-            }),
-            'transaction_date'
-          ),
-          [
-            dateCol(
-              'Thời gian',
-              'transaction_date',
-              'occurred_at',
-              'created_at'
-            ),
-            col(
-              'Loại giao dịch',
-              'transaction_type',
-              'type',
-              'entry_type'
-            ),
-            moneyCol(
-              'Số tiền',
-              'amount'
-            ),
-            col(
-              'Diễn giải',
-              'description',
-              'note',
-              'notes',
-              'reason'
+                      : (
+                          transaction.match_id
+                            ? '#' +
+                              String(
+                                transaction.match_id
+                              ).slice(
+                                0,
+                                8
+                              )
+                            : '—'
+                        )
+                };
+              }),
+              'transaction_date'
             ),
             [
-              'Trận liên quan',
-              r =>
-                r.match_reference ||
-                (
-                  r.match_id
-                    ? '#' +
-                      String(
-                        r.match_id
-                      ).slice(
-                        0,
-                        8
-                      )
-                    : '—'
-                )
-            ]
-          ],
-          {
-            unavailable:
-              !!state.errors
-                .fund_transactions ||
-              !!state.errors
-                .matches
-          }
-        );
-          }
-        );
+              dateCol(
+                'Thời gian',
+                'transaction_date',
+                'occurred_at',
+                'created_at'
+              ),
+              col(
+                'Loại giao dịch',
+                'transaction_type',
+                'type',
+                'entry_type'
+              ),
+              moneyCol(
+                'Số tiền',
+                'amount'
+              ),
+              col(
+                'Diễn giải',
+                'description',
+                'note',
+                'notes',
+                'reason'
+              ),
+              [
+                'Trận liên quan',
+                r =>
+                  r.match_reference ||
+                  (
+                    r.match_id
+                      ? '#' +
+                        String(
+                          r.match_id
+                        ).slice(
+                          0,
+                          8
+                        )
+                      : '—'
+                  )
+              ]
+            ],
+            {
+              unavailable:
+                !!state.errors
+                  .fund_transactions ||
+                !!state.errors
+                  .matches
+            }
+          );
+            }
+          );
+
+        }
     }
 
         fundCollapse(

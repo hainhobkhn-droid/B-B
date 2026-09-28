@@ -172,9 +172,36 @@
         upper(state.profile?.role) === 'ADMIN' &&
         state.profile?.is_active === true;
 
-const canCollectTournamentFee = () =>
-  state.profile?.is_active === true &&
-  state.profile?.can_collect_tournament_fee === true;
+      const hasCapability = name =>
+        state.profile?.is_active === true &&
+        (
+          isAdmin() ||
+          state.profile?.[name] === true
+        );
+
+      const canCollectTournamentFee = () =>
+        hasCapability('can_collect_tournament_fee');
+
+      const canApproveMatches = () =>
+        hasCapability('can_approve_matches');
+
+      const canManageTournaments = () =>
+        hasCapability('can_manage_tournaments');
+
+      const canManageFund = () =>
+        hasCapability('can_manage_fund');
+
+      const canManageMembers = () =>
+        hasCapability('can_manage_members');
+
+      const canAdjustRating = () =>
+        hasCapability('can_adjust_rating');
+
+      const canCollectFund = () =>
+        hasCapability('can_collect_fund');
+
+      const canViewAudit = () =>
+        hasCapability('can_view_audit');
 
       function el(tag, text, cls) {
         const n = document.createElement(tag);
@@ -2324,6 +2351,8 @@ const canCollectTournamentFee = () =>
         state,
         client,
         isAdmin,
+        canManageMembers,
+        canAdjustRating,
         button,
         el,
         rows,
@@ -2373,6 +2402,7 @@ const canCollectTournamentFee = () =>
             state,
             client,
             isAdmin,
+            canApproveMatches,
             button,
             panel,
             el,
@@ -2409,6 +2439,8 @@ const canCollectTournamentFee = () =>
       state,
       client,
       isAdmin,
+      canManageFund,
+      canCollectFund,
       button,
       el,
       rows,
@@ -3909,6 +3941,7 @@ const fieldLabels = {
 
         accountAction(root, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
         accountAction(root, 'Xác nhận email tài khoản', adminAccountVerification);
+        accountAction(root, 'Quản lý quyền thành viên', adminMemberPermissions);
         accountAction(root, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
         accountAction(root, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
         accountAction(root, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
@@ -3936,6 +3969,226 @@ const fieldLabels = {
           'fund_rules'
         );
         }, 'neutral');
+      }
+
+
+      // PERM01D D5: ADMIN authority is independent of delegated capabilities.
+      function adminMemberPermissions(root) {
+        if (!isAdmin()) return;
+        const actor = state.session?.user?.id;
+        const generation = state.generation;
+        const current = () => root.isConnected && isAdmin() &&
+          state.session?.user?.id === actor && state.generation === generation;
+        const capabilities = [
+          ['can_approve_matches', 'Duyệt / quản lý trận đấu'],
+          ['can_manage_tournaments', 'Quản lý giải đấu'],
+          ['can_collect_tournament_fee', 'Thu phí giải đấu'],
+          ['can_manage_fund', 'Quản lý quỹ'],
+          ['can_collect_fund', 'Thu quỹ'],
+          ['can_manage_members', 'Quản lý thành viên'],
+          ['can_adjust_rating', 'Điều chỉnh Rating'],
+          ['can_view_audit', 'Xem Audit']
+        ];
+        const section = panel('Quản lý quyền thành viên', root);
+        section.classList.add('member-permissions');
+        const message = el('div');
+        message.hidden = true;
+        message.setAttribute('role', 'status');
+        const directory = el('div');
+        const editor = el('div');
+        const paging = el('div', null, 'form-actions');
+        const pageLabel = el('span', '', 'muted');
+        let members = [], offset = 0, reading = false, saving = false, loaded = false;
+        const pageSize = 50;
+        const reload = button('Tải lại danh sách', () => loadPage(offset));
+        const previous = button('Trang trước', () => loadPage(Math.max(0, offset - pageSize)));
+        const next = button('Trang sau', () => loadPage(offset + pageSize));
+        paging.append(reload, previous, next, pageLabel);
+        section.append(paging, message, directory, editor);
+
+        function sync() {
+          const blocked = reading || saving || !current();
+          reload.disabled = blocked;
+          previous.disabled = blocked || offset === 0;
+          next.disabled = blocked || !loaded || members.length < pageSize;
+          directory.querySelectorAll('button, select').forEach(control => { control.disabled = blocked; });
+        }
+
+        function editMember(member) {
+          if (!current() || reading || saving || !members.includes(member)) return;
+          editor.replaceChildren();
+          const form = el('form');
+          form.append(el('h3', 'Chỉnh quyền: ' + (member.full_name || member.login_name || member.profile_id)));
+          if (member.is_active !== true) {
+            form.append(el('p', 'Thành viên ngừng hoạt động: chỉ được thu hồi quyền hiện có, không được cấp thêm quyền.', 'notice'));
+          }
+          const grid = el('div', null, 'form-grid');
+          const checks = capabilities.map(([key, label]) => {
+            const caption = el('label', null, 'permission-option');
+            const input = el('input');
+            input.type = 'checkbox';
+            input.name = key;
+            input.checked = member[key] === true;
+            input.disabled = member.is_active !== true && member[key] !== true;
+            caption.append(input, el('span', label));
+            grid.append(caption);
+            return [key, input];
+          });
+          const reasonGroup = el('div', null, 'form-group');
+          const reasonLabel = el('label', 'Lý do thay đổi quyền');
+          const reason = el('textarea', null, 'field');
+          reason.id = 'member-permissions-reason';
+          reasonLabel.htmlFor = reason.id;
+          reason.required = true;
+          reason.maxLength = 1000;
+          reason.rows = 3;
+          reasonGroup.append(reasonLabel, reason);
+          const submit = el('button', 'Lưu quyền', 'btn primary');
+          submit.type = 'submit';
+          const cancel = button('Đóng chỉnh sửa', () => editor.replaceChildren());
+          const actions = el('div', null, 'form-actions');
+          actions.append(submit, cancel);
+          form.append(grid, reasonGroup, actions);
+          editor.append(form);
+          form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!isAdmin()) return;
+            if (!current() || reading || saving || state.writeBusy || state.busy) return;
+            if (!members.includes(member) || member.profile_id === actor ||
+                (member.role && upper(member.role) !== 'MEMBER')) return;
+            const patch = {};
+            for (const [key, input] of checks) {
+              if (member.is_active !== true && member[key] !== true && input.checked) {
+                notice(message, 'Thành viên ngừng hoạt động chỉ được thu hồi quyền.', true);
+                return;
+              }
+              if (input.checked !== (member[key] === true)) patch[key] = input.checked;
+            }
+            if (!Object.keys(patch).length) {
+              notice(message, 'Không có thay đổi quyền để lưu.');
+              return;
+            }
+            const reasonText = reason.value.trim();
+            if (!reasonText || reasonText.length > 1000) {
+              notice(message, 'Vui lòng nhập lý do thay đổi quyền (tối đa 1.000 ký tự).', true);
+              reason.focus();
+              return;
+            }
+            saving = true;
+            state.writeBusy = true;
+            sync();
+            form.querySelectorAll('input, textarea, button').forEach(control => { control.disabled = true; });
+            submit.textContent = 'Đang lưu…';
+            notice(message, 'Đang lưu quyền thành viên…');
+            let saved = false;
+            try {
+              const { data, error } = await query(client.rpc('admin_update_member_permissions', {
+                p_profile_id: member.profile_id, p_capabilities: patch, p_reason: reasonText
+              }));
+              if (error) throw error;
+              if (data?.success !== true) throw new Error('Unconfirmed permission update');
+              saved = true;
+              if (!current()) return;
+              editor.replaceChildren();
+              const refreshed = await loadPage(offset, member.profile_id, true);
+              if (!current()) return;
+              notice(message, refreshed
+                ? (data.changed === false ? 'Quyền đã ở trạng thái yêu cầu. Đã tải lại danh sách.' : 'Đã lưu quyền và tải lại danh sách.')
+                : 'Đã lưu quyền nhưng chưa tải lại được danh sách. Vui lòng bấm Tải lại danh sách.', !refreshed, refreshed);
+            } catch (error) {
+              if (current()) notice(message, 'Không lưu được quyền. ' +
+                (error?.code === '22023'
+                  ? 'Kiểm tra lý do và tải lại danh sách; thành viên có thể đã đổi trạng thái hoặc không còn là đối tượng được chỉnh quyền.'
+                  : explain(error)), true);
+            } finally {
+              state.writeBusy = false;
+              saving = false;
+              if (current()) {
+                if (!saved) {
+                  reason.disabled = submit.disabled = cancel.disabled = false;
+                  checks.forEach(([key, input]) => {
+                    input.disabled = member.is_active !== true && member[key] !== true;
+                  });
+                  submit.textContent = 'Lưu quyền';
+                }
+                sync();
+              }
+            }
+          });
+        }
+
+        async function loadPage(newOffset = 0, selectedId = null, afterSave = false) {
+          if (!current() || reading || (saving && !afterSave)) return false;
+          reading = true;
+          loaded = false;
+          editor.replaceChildren();
+          directory.replaceChildren();
+          notice(message, 'Đang tải quyền thành viên…');
+          sync();
+          try {
+            const { data, error } = await query(client.rpc('get_admin_member_permissions', {
+              p_limit: pageSize, p_offset: newOffset
+            }));
+            if (error) throw error;
+            if (!Array.isArray(data)) throw new Error('Invalid permission directory');
+            if (!current()) return false;
+            members = data.filter(member => member.profile_id && member.profile_id !== actor &&
+              (!member.role || upper(member.role) === 'MEMBER'));
+            offset = newOffset;
+            loaded = true;
+            pageLabel.textContent = 'Trang ' + (Math.floor(offset / pageSize) + 1);
+            const select = el('select', null, 'field');
+            select.id = 'member-permissions-target';
+            const label = el('label', 'Chọn thành viên để chỉnh quyền');
+            label.htmlFor = select.id;
+            const placeholder = el('option', 'Chọn thành viên');
+            placeholder.value = '';
+            select.append(placeholder);
+            members.forEach(member => {
+              const option = el('option', (member.full_name || member.login_name || member.profile_id) +
+                (member.login_name ? ' • ' + member.login_name : '') +
+                (member.is_active === true ? ' • Hoạt động' : ' • Ngừng hoạt động'));
+              option.value = member.profile_id;
+              select.append(option);
+            });
+            select.addEventListener('change', () => {
+              const member = members.find(item => item.profile_id === select.value);
+              if (member) editMember(member);
+              else if (!saving) editor.replaceChildren();
+            });
+            directory.append(label, select);
+            members.forEach(member => {
+              const card = el('article', null, 'permission-record');
+              card.append(el('strong', member.full_name || member.login_name || member.profile_id),
+                badge(member.is_active === true ? 'ACTIVE' : 'INACTIVE'));
+              if (member.email || member.login_name) card.append(el('p', member.email || member.login_name, 'muted'));
+              const flags = el('ul', null, 'permission-flags');
+              capabilities.forEach(([key, label]) => flags.append(el('li', label + ': ' + (member[key] === true ? 'Có' : 'Không'))));
+              card.append(flags, button('Chỉnh quyền', () => {
+                select.value = member.profile_id;
+                editMember(member);
+                editor.scrollIntoView({ block: 'nearest' });
+              }));
+              directory.append(card);
+            });
+            if (selectedId) select.value = selectedId;
+            notice(message, members.length ? '' : 'Không có thành viên trong trang này.');
+            return true;
+          } catch (error) {
+            if (current()) {
+              members = [];
+              notice(message, 'Không tải được danh sách quyền. ' + explain(error), true);
+            }
+            return false;
+          } finally {
+            reading = false;
+            if (current()) sync();
+          }
+        }
+        sync();
+        root.parentElement.addEventListener('toggle', () => {
+          if (root.parentElement.open && !loaded && !reading && !saving) loadPage(offset);
+        });
       }
 
 
@@ -4617,6 +4870,8 @@ const fieldLabels = {
             root
           );
 
+        section.classList.add('system-config-ui');
+
         const weights =
           rows('rating_match_weights');
 
@@ -4734,7 +4989,7 @@ const fieldLabels = {
           );
 
         makeGroup(
-          'Loại trận',
+          'Loại trận cần cấu hình trọng số',
           typeSelect
         );
 
@@ -4816,8 +5071,8 @@ const fieldLabels = {
         const submit =
           el(
             'button',
-            'Lưu trọng số',
-            'btn'
+            'Lưu cấu hình trọng số',
+            'btn primary'
           );
 
         submit.type =
@@ -4837,7 +5092,7 @@ const fieldLabels = {
         form.append(
           el(
             'p',
-            'Thay đổi trọng số sẽ áp dụng cho engine Rating khi rebuild các trận tính điểm.',
+            'Cập nhật trọng số của loại trận đang chọn, không tạo phiên bản mới. Trọng số được áp dụng khi tính lại các trận tính điểm.',
             'muted'
           ),
           grid,
@@ -4845,7 +5100,7 @@ const fieldLabels = {
           message
         );
 
-        section.append(form);
+        accountAction(section, 'Cấu hình trọng số Rating', body => body.append(form));
 
         const controls = [
           typeSelect,
@@ -5002,7 +5257,7 @@ const fieldLabels = {
               );
 
               submit.textContent =
-                'Lưu trọng số';
+                'Lưu cấu hình trọng số';
 
               if (
                 saved &&
@@ -5117,7 +5372,7 @@ const fieldLabels = {
         );
 
         makeFundGroup(
-          'Loại trận',
+          'Loại trận áp dụng quy định Quỹ',
           fundType
         );
 
@@ -5185,6 +5440,8 @@ const fieldLabels = {
           effectiveInput
         );
 
+        const fundCurrent = el('div', null, 'system-config-current');
+        fundCurrent.setAttribute('role', 'status');
         const syncFundInputs = () => {
           const current =
             fundRules
@@ -5207,6 +5464,18 @@ const fieldLabels = {
                     )
                   )
               )[0];
+
+          fundCurrent.replaceChildren();
+          if (state.errors.fund_rules) {
+            fundCurrent.append(el('p', 'Chưa tải được quy định Quỹ hiện hành.', 'notice error'));
+          } else if (current) {
+            fundCurrent.append(el('strong', 'Quy định Quỹ đang áp dụng'));
+            if (current.version != null) fundCurrent.append(el('span', 'Phiên bản: ' + current.version));
+            if (current.effective_from) fundCurrent.append(el('span', 'Hiệu lực từ: ' + current.effective_from));
+            if (typeof current.is_active === 'boolean') fundCurrent.append(badge(current.is_active ? 'ACTIVE' : 'INACTIVE'));
+          } else {
+            fundCurrent.append(el('span', 'Chưa có quy định Quỹ hiện hành cho loại trận này.', 'muted'));
+          }
 
           lossInput.value =
             current?.amount_loss == null
@@ -5246,8 +5515,8 @@ const fieldLabels = {
         const fundSubmit =
           el(
             'button',
-            'Tạo phiên bản quy định quỹ',
-            'btn'
+            'Tạo phiên bản Quỹ mới',
+            'btn primary'
           );
 
         fundSubmit.type =
@@ -5270,14 +5539,13 @@ const fieldLabels = {
             'Quy định mới sẽ tạo phiên bản theo ngày hiệu lực; lịch sử cũ được giữ nguyên.',
             'muted'
           ),
+          fundCurrent,
           fundGrid,
           fundActions,
           fundMessage
         );
 
-        section.append(
-          fundForm
-        );
+        accountAction(section, 'Tạo phiên bản quy định Quỹ', body => body.append(fundForm), 'success');
 
         const fundControls = [
           fundType,
@@ -5456,7 +5724,7 @@ const fieldLabels = {
               );
 
               fundSubmit.textContent =
-                'Tạo phiên bản quy định quỹ';
+                'Tạo phiên bản Quỹ mới';
 
               if (
                 saved &&
@@ -5468,7 +5736,7 @@ const fieldLabels = {
 
                 notice(
                   $('global-message'),
-                  'Đã cập nhật quy định quỹ.',
+                  'Đã tạo phiên bản Quỹ mới.',
                   false,
                   true
                 );
@@ -5674,7 +5942,7 @@ const fieldLabels = {
           el(
             'button',
             'Tạo phiên bản Rating mới',
-            'btn'
+            'btn primary'
           );
 
         ratingSubmit.type =
@@ -5691,20 +5959,29 @@ const fieldLabels = {
           ratingSubmit
         );
 
+        const ratingCurrent = el('div', null, 'system-config-current');
+        if (state.errors.rating_settings) {
+          ratingCurrent.append(el('p', 'Chưa tải được phiên bản Rating hiện hành.', 'notice error'));
+        } else if (activeSettings) {
+          ratingCurrent.append(el('strong', 'Rating hiện hành: ' + (activeSettings.algorithm_version || 'Chưa có tên phiên bản')));
+          if (typeof activeSettings.is_active === 'boolean') ratingCurrent.append(badge(activeSettings.is_active ? 'ACTIVE' : 'INACTIVE'));
+        } else {
+          ratingCurrent.append(el('span', 'Chưa có phiên bản Rating hiện hành.', 'muted'));
+        }
+
         ratingForm.append(
           el(
             'p',
-            'Phiên bản cũ được giữ nguyên. Phiên bản mới sẽ trở thành cấu hình Rating đang hoạt động.',
+            'Tạo phiên bản mới, không ghi đè dữ liệu phiên bản hiện hành. Khi tạo thành công, phiên bản mới sẽ được kích hoạt; phiên bản cũ được giữ lịch sử.',
             'muted'
           ),
+          ratingCurrent,
           ratingGrid,
           ratingActions,
           ratingMessage
         );
 
-        section.append(
-          ratingForm
-        );
+        accountAction(section, 'Tạo phiên bản Rating', body => body.append(ratingForm), 'success');
 
         const ratingControls = [
           versionInput,
@@ -7426,7 +7703,7 @@ const fieldLabels = {
             let closeTournamentAdminActions =
               () => {};
 
-            if (isAdmin()) {
+            if (canManageTournaments()) {
               const createWrapper =
                 el(
                   'section',
@@ -7777,7 +8054,8 @@ const fieldLabels = {
                   event.preventDefault();
 
                   if (
-                    state.writeBusy
+                    state.writeBusy ||
+                    !canManageTournaments()
                   ) {
                     return;
                   }
@@ -8548,7 +8826,8 @@ const fieldLabels = {
                   event.preventDefault();
 
                   if (
-                    state.writeBusy
+                    state.writeBusy ||
+                    !canManageTournaments()
                   ) {
                     return;
                   }
@@ -9219,7 +9498,8 @@ const fieldLabels = {
                   event.preventDefault();
 
                   if (
-                    state.writeBusy
+                    state.writeBusy ||
+                    !canManageTournaments()
                   ) {
                     return;
                   }
@@ -10007,7 +10287,8 @@ const fieldLabels = {
                   event.preventDefault();
 
                   if (
-                    state.writeBusy
+                    state.writeBusy ||
+                    !canManageTournaments()
                   ) {
                     return;
                   }
@@ -10970,7 +11251,7 @@ const fieldLabels = {
               root.append(
                 el(
                   'p',
-                  isAdmin()
+                  canManageTournaments()
                     ? '🏆 Chưa có giải đấu. Mở “Tạo giải đấu” để khởi động giải đầu tiên.'
                     : '🏆 Chưa có giải đấu nào được tạo.',
                   'notice'
@@ -11995,7 +12276,8 @@ const fieldLabels = {
                           reason
                         ) => {
                           if (
-                            state.writeBusy
+                            state.writeBusy ||
+                            !canManageTournaments()
                           ) {
                             return;
                           }
@@ -12146,6 +12428,7 @@ const fieldLabels = {
                         };
 
                       if (
+                        canManageTournaments() &&
                         registrationStatus ===
                         'DANG_KY'
                       ) {
@@ -12189,10 +12472,13 @@ const fieldLabels = {
                       }
 
                       if (
-                        registrationStatus ===
-                          'DANG_KY' ||
-                        registrationStatus ===
-                          'DA_XAC_NHAN'
+                        canManageTournaments() &&
+                        (
+                          registrationStatus ===
+                            'DANG_KY' ||
+                          registrationStatus ===
+                            'DA_XAC_NHAN'
+                        )
                       ) {
                         const cancelButton =
                           button(
@@ -12386,7 +12672,8 @@ const fieldLabels = {
                             '✓ Xác nhận thu',
                             async () => {
                               if (
-                                state.writeBusy
+                                state.writeBusy ||
+                                !canCollectTournamentFee()
                               ) {
                                 return;
                               }
@@ -13010,7 +13297,9 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                'get_member_matches'
+                canApproveMatches()
+                  ? 'get_match_management_matches'
+                  : 'get_member_matches'
               ),
               signal
             );
@@ -13028,7 +13317,53 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                'get_member_match_players'
+                canApproveMatches()
+                  ? 'get_match_management_players'
+                  : 'get_member_match_players'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'tournament_registrations' &&
+          !isAdmin() &&
+          (
+            canManageTournaments() ||
+            canCollectTournamentFee()
+          )
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                'get_tournament_management_registrations'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'tournament_payments' &&
+          !isAdmin() &&
+          (
+            canManageTournaments() ||
+            canCollectTournamentFee()
+          )
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                'get_tournament_management_payments'
               ),
               signal
             );
@@ -13064,7 +13399,12 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                'get_my_fund_contributions'
+                (
+                  canManageFund() ||
+                  canCollectFund()
+                )
+                  ? 'get_fund_management_contributions'
+                  : 'get_my_fund_contributions'
               ),
               signal
             );
@@ -13082,7 +13422,12 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                'get_my_fund_payments'
+                (
+                  canManageFund() ||
+                  canCollectFund()
+                )
+                  ? 'get_fund_management_payments'
+                  : 'get_my_fund_payments'
               ),
               signal
             );
@@ -13133,6 +13478,14 @@ const fieldLabels = {
           state.memberFundOverview =
             summary.data || null;
 
+          // Delegated fund managers retain MEMBER self-service and club summary.
+          if (canManageFund()) {
+            const result = await query(
+              client.rpc('get_fund_management_transactions'),
+              signal
+            );
+            return { data: [...(result.data || [])], partial: false };
+          }
           // MEMBER no longer needs raw fund ledger rows.
           return {
             data: [],
@@ -13147,7 +13500,9 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                'get_player_directory'
+                canManageMembers()
+                  ? 'get_member_management_players'
+                  : 'get_player_directory'
               ),
               signal
             );
@@ -13372,7 +13727,7 @@ const fieldLabels = {
                   'profiles'
                 )
                 .select(
-                  'id, full_name, role, is_active, can_collect_tournament_fee, player_id, must_change_password'
+                  'id, full_name, role, is_active, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
                 )
                 .eq(
                   'id',
