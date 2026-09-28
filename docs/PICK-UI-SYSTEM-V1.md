@@ -1,6 +1,8 @@
 # PICK UI System v1
 
-Status: ACTIVE / REQUIRED  
+Status: SUPERSEDED / HISTORICAL
+Superseded by: PICK UI System v2
+Current standard: `docs/PICK-UI-SYSTEM-V2.md`
 Scope: Entire PICK WEBAPP  
 Applies to: ADMIN, MEMBER, Desktop, Mobile
 
@@ -303,6 +305,8 @@ Only after local verification passes should the change be committed and pushed.
 
 ## 17. Project rule
 
-PICK UI System v1 is the default design contract for the entire PICK WEBAPP.
+PICK UI System v1 is retained as historical documentation.
 
-All future modules and UI refactors — including Matches, Players, Fund, Tournament, League, Rating and Member Portal — must follow this document unless a newer version explicitly supersedes it.
+PICK UI System v2 supersedes this document and is the mandatory current design contract for the entire PICK WEBAPP.
+
+All future modules and UI refactors must follow `docs/PICK-UI-SYSTEM-V2.md` unless a newer version explicitly supersedes it.
