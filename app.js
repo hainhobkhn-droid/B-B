@@ -14182,6 +14182,16 @@ preview.append(
           };
         }
 
+        // FUND04: collection preview uses the same authoritative read model for all collectors.
+        if (t === 'fund_transactions' && (isAdmin() || canManageFund() || canCollectFund())) {
+          const balances = await query(client.rpc('get_fund_collection_balances'), signal);
+          if (!Array.isArray(balances.data)) throw new Error('FUND_BALANCE_RESPONSE_INVALID');
+          // query throws on RPC error/abort; never publish a failed/stale response as ready.
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          state.fundCollectionBalances = [...balances.data];
+          state.fundCollectionBalancesReady = true;
+        }
+
         // MP01 MEMBER FUND LOAD V1
         if (
           t === 'fund_transactions' &&
@@ -14190,8 +14200,7 @@ preview.append(
           const [
             obligations,
             history,
-            summary,
-            collectionBalances
+            summary
           ] =
             await Promise.all([
               query(
@@ -14211,20 +14220,8 @@ preview.append(
                   'get_club_fund_summary'
                 ),
                 signal
-              ),
-              (
-                canManageFund() ||
-                canCollectFund()
               )
-                ? query(
-                    client.rpc(
-                      'get_fund_collection_balances'
-                    ),
-                    signal
-                  )
-                : Promise.resolve({
-                    data: []
-                  })
+
             ]);
 
           state.memberFundObligations =
@@ -14235,13 +14232,6 @@ preview.append(
 
           state.memberFundOverview =
             summary.data || null;
-
-          state.fundCollectionBalances =
-            [...(collectionBalances.data || [])];
-
-          state.fundCollectionBalancesReady =
-            canManageFund() ||
-            canCollectFund();
 
           // Delegated fund managers retain MEMBER self-service and club summary.
           if (canManageFund()) {

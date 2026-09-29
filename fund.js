@@ -186,6 +186,11 @@
         ])
     );
 
+    const validCollectionBalance = balance => balance &&
+      ['amount_due', 'gross_paid', 'refunded', 'net_paid', 'amount_remaining'].every(key =>
+        balance[key] !== null && balance[key] !== undefined &&
+        Number.isFinite(Number(balance[key])) && Number(balance[key]) >= 0);
+
     const collectionBalance =
       contribution =>
         collectionBalanceByContribution.get(
@@ -207,7 +212,8 @@
     const netPaid =
       contribution => {
         const balance =
-          collectionBalance(contribution);
+          collectionBalanceDataReady && validCollectionBalance(collectionBalance(contribution))
+            ? collectionBalance(contribution) : null;
 
         if (balance) {
           return Math.max(
@@ -216,13 +222,14 @@
           );
         }
 
-        return ledgerNetPaid(contribution);
+        return ledgerNetPaymentDataReady ? ledgerNetPaid(contribution) : NaN;
       };
 
     const remainingPayment =
       contribution => {
         const balance =
-          collectionBalance(contribution);
+          collectionBalanceDataReady && validCollectionBalance(collectionBalance(contribution))
+            ? collectionBalance(contribution) : null;
 
         if (balance) {
           return Math.max(
@@ -261,6 +268,10 @@
       collectionBalanceDataReady ||
       ledgerNetPaymentDataReady;
 
+    const hasNetBalance = contribution =>
+      (collectionBalanceDataReady && validCollectionBalance(collectionBalance(contribution))) ||
+      ledgerNetPaymentDataReady;
+
     const fundContributionStatus =
       contribution => {
         if (
@@ -276,7 +287,8 @@
         }
 
         const balance =
-          collectionBalance(contribution);
+          collectionBalanceDataReady && validCollectionBalance(collectionBalance(contribution))
+            ? collectionBalance(contribution) : null;
 
         if (
           collectionBalanceDataReady &&
@@ -285,7 +297,7 @@
           return balance.computed_status;
         }
 
-        if (!netPaymentDataReady) {
+        if (!hasNetBalance(contribution)) {
           return contribution.status;
         }
 
@@ -492,6 +504,9 @@
             return true;
           }
         );
+    const debtDataComplete = netPaymentDataReady && activeContributions
+      .filter(c => upper(c.status) !== 'MIEN' && contributionAmount(c) > 0)
+      .every(hasNetBalance);
     const memberFundOverview =
       !isAdmin()
         ? state.memberFundOverview
@@ -1901,7 +1916,7 @@
 
           const collectibleContributions = netPaymentDataReady
             ? activeContributions.filter(contribution =>
-                upper(contribution.status) !== 'MIEN' && remainingPayment(contribution) > 0)
+                upper(contribution.status) !== 'MIEN' && hasNetBalance(contribution) && remainingPayment(contribution) > 0)
             : [];
           if (!netPaymentDataReady) {
             notice(message, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
@@ -2835,6 +2850,173 @@ collectionContent.append(
             collectionContent
           );
 
+          // FUND04: preview only. Allocation decisions always come from the RPC.
+          // FUND04 ordering: mirror backend COALESCE(date sources), then instant, UUID.
+          const batchBangkokDate = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+          });
+          const batchDateKey = value => {
+            if (value == null) return null;
+            const instant = new Date(value);
+            if (!Number.isFinite(instant.getTime())) return null;
+            const parts = batchBangkokDate.formatToParts(instant);
+            return ['year', 'month', 'day'].map(type => parts.find(p => p.type === type).value).join('-');
+          };
+          const batchMatchById = new Map(rows('matches').map(match => [match.id, match]));
+          const batchPrimaryDate = contribution => contribution.due_date ??
+            fundCampaign(contribution)?.period_month ??
+            batchDateKey(batchMatchById.get(contribution.match_id)?.played_at) ??
+            batchDateKey(contribution.created_at);
+          const batchCreatedKey = value => {
+            if (value == null) return null;
+            const milliseconds = Date.parse(value);
+            if (!Number.isFinite(milliseconds)) return null;
+            // PostgreSQL timestamptz retains microseconds; Date alone truncates them.
+            const fraction = String(value).match(/\.(\d+)(?:Z|[+-]\d{2}(?::?\d{2})?)$/i)?.[1] || '';
+            return BigInt(milliseconds) * 1000n + BigInt(fraction.padEnd(6, '0').slice(3, 6));
+          };
+          const batchCompareKey = (a, b) => a === b ? 0 :
+            a == null ? 1 : b == null ? -1 : a < b ? -1 : 1;
+          const batchCompare = (a, b) =>
+            batchCompareKey(batchPrimaryDate(a), batchPrimaryDate(b)) ||
+            batchCompareKey(batchCreatedKey(a.created_at), batchCreatedKey(b.created_at)) ||
+            batchCompareKey(a.id.toLowerCase(), b.id.toLowerCase());
+          // END FUND04 ordering
+          const batchDetails = el('details', null, 'fund-action fund-action-income');
+          batchDetails.append(el('summary', 'Thu gộp theo VĐV', 'fund-action-summary'));
+          const batchBody = el('div', null, 'px-4 pb-4');
+          const batchSelect = el('select', null, 'w-full border rounded-lg px-3 py-2');
+          const batchSearch = el('input', null, 'w-full border rounded-lg px-3 py-2');
+          batchSearch.placeholder = 'Tìm tên VĐV';
+          const batchAmount = el('input', null, 'w-full border rounded-lg px-3 py-2');
+          batchAmount.type = 'number'; batchAmount.min = '1'; batchAmount.step = '1';
+          const batchDate = el('input', null, 'w-full border rounded-lg px-3 py-2');
+          batchDate.type = 'datetime-local';
+          const batchNow = new Date();
+          batchDate.value = new Date(batchNow.getTime() - batchNow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          const batchNote = el('input', null, 'w-full border rounded-lg px-3 py-2');
+          const batchPreview = el('div', null, 'mt-3');
+          const batchMessage = el('div');
+          const batchResult = el('div', null, 'mt-3');
+          let batchBusy = false, batchNeedsReload = false, batchPage = 0;
+          const batchOwner = state.session?.user?.id || state.profile?.id;
+          const field = (label, control) => {
+            const node = el('label', null, 'block text-sm font-semibold mb-3');
+            node.append(el('span', label, 'block mb-1'), control); return node;
+          };
+          const batchCandidates = () => activeContributions.filter(c =>
+            c.player_id === batchSelect.value && upper(c.status) !== 'MIEN' && contributionAmount(c) > 0);
+          const batchKnown = c => collectionBalanceDataReady &&
+            validCollectionBalance(collectionBalance(c)) && collectionBalance(c).player_id === c.player_id;
+          const batchOutstanding = () => batchCandidates().filter(batchKnown)
+            .reduce((sum, c) => sum + Number(collectionBalance(c).amount_remaining), 0);
+          const batchReady = () => !batchNeedsReload && collectionBalanceDataReady && canCollectFund() &&
+            !!batchSelect.value && batchCandidates().every(batchKnown) && batchOutstanding() > 0;
+          const paged = (container, items, draw, page) => {
+            const pageCount = Math.max(1, Math.ceil(items.length / 10));
+            const current = Math.min(page, pageCount - 1);
+            items.slice(current * 10, current * 10 + 10).forEach(draw);
+            if (pageCount > 1) {
+              const controls = el('div', null, 'form-actions');
+              const prev = button('Trang trước', () => { batchPage = current - 1; updateBatch(false); }, 'btn');
+              const next = button('Trang sau', () => { batchPage = current + 1; updateBatch(false); }, 'btn');
+              prev.disabled = current === 0; next.disabled = current + 1 >= pageCount;
+              controls.append(prev, el('span', `${current + 1}/${pageCount}`), next); container.append(controls);
+            }
+          };
+          const updateBatch = (reset = true) => {
+            if (reset) batchPage = 0;
+            batchPreview.replaceChildren();
+            const candidates = batchCandidates();
+            const known = candidates.filter(batchKnown);
+            const total = batchOutstanding();
+            batchAmount.max = String(total);
+            if (reset) batchAmount.value = total > 0 ? String(total) : '';
+            batchAmount.disabled = !batchReady() || batchBusy;
+            batchSubmit.disabled = !batchReady() || batchBusy;
+            if (!collectionBalanceDataReady || candidates.some(c => !batchKnown(c))) {
+              notice(batchPreview, 'Chưa đủ dữ liệu số dư để thu gộp. Vui lòng tải lại; không sử dụng số thanh toán gộp chưa trừ hoàn tiền.', true);
+              return;
+            }
+            if (!batchSelect.value) { notice(batchPreview, 'Chọn VĐV để xem nghĩa vụ và số tiền còn phải thu.'); return; }
+            grid(batchPreview, [
+              ['Tổng phải đóng', money(known.reduce((sum, c) => sum + Number(collectionBalance(c).amount_due), 0))],
+              ['Đã nộp NET', money(known.reduce((sum, c) => sum + Number(collectionBalance(c).net_paid), 0))],
+              ['Còn phải thu', money(total)]
+            ]);
+            const pending = known.filter(c => Number(collectionBalance(c).amount_remaining) > 0);
+            pending.sort(batchCompare);
+            if (!pending.length) notice(batchPreview, 'VĐV không còn khoản phải thu.');
+            paged(batchPreview, pending, c => batchPreview.append(el('p',
+              `${fundContributionTitle(c)} • ${batchPrimaryDate(c) || '—'} • Đã nộp ${money(collectionBalance(c).net_paid)} • Còn ${money(collectionBalance(c).amount_remaining)}`,
+              'text-sm border-b py-2')), batchPage);
+          };
+          const batchSubmit = button('Ghi nhận thu gộp', async () => {
+            if (batchBusy || !batchReady()) return;
+            const amount = num(batchAmount.value), paidAt = new Date(batchDate.value);
+            if (!Number.isFinite(amount) || amount <= 0 || amount > batchOutstanding() || Number.isNaN(paidAt.getTime())) {
+              notice(batchMessage, 'Nhập số tiền lớn hơn 0, không vượt công nợ và ngày nhận tiền hợp lệ.', true); return;
+            }
+            const selectedId = batchSelect.value;
+            batchBusy = true; batchSubmit.disabled = true; batchSelect.disabled = true;
+            notice(batchMessage, 'Đang ghi nhận…');
+            let recorded = false;
+            try {
+              const { data, error } = await client.rpc('record_member_fund_payment', {
+                p_player_id: selectedId, p_amount: amount,
+                p_paid_at: paidAt.toISOString(), p_note: batchNote.value.trim() || null
+              });
+              if (error) throw error;
+              if (data?.success !== true || !Array.isArray(data.allocations)) throw new Error('Phản hồi thu gộp không hợp lệ. Tải lại để kiểm tra trước khi thu tiếp.');
+              recorded = true;
+              if ((state.session?.user?.id || state.profile?.id) !== batchOwner) return;
+              state.fundBatchReceipt = { actor: batchOwner, data };
+              state.fundBatchPlayer = { actor: batchOwner, id: selectedId };
+              await load();
+              if ((state.session?.user?.id || state.profile?.id) !== batchOwner) return;
+              state.page = 'fund'; render();
+              notice($('global-message'), `Đã ghi nhận ${money(data.requested_amount)} cho ${data.allocation_count} khoản.`, false, true);
+            } catch (error) {
+              notice(batchMessage, recorded ? 'Đã ghi nhận. Chưa tải lại được số dư; không gửi lại, hãy tải lại trang để kiểm tra.' :
+                (error?.message || 'Không thể thu gộp. Hãy tải lại số dư trước khi thử lại.'), true);
+            } finally {
+              // Do not allow a stale snapshot to be submitted again after success or an ambiguous failure.
+              batchNeedsReload = true; batchBusy = false; batchSubmit.disabled = true; batchSelect.disabled = true;
+              batchSearch.disabled = true; batchAmount.disabled = true;
+            }
+          }, 'btn primary');
+          batchSubmit.type = 'button';
+          const fillBatchPlayers = () => {
+            const chosen = batchSelect.value;
+            batchSelect.replaceChildren(new Option('— Chọn VĐV —', ''));
+            const ids = new Set(activeContributions.map(c => c.player_id));
+            [...ids].filter(id => playerName(id).toLocaleLowerCase('vi').includes(batchSearch.value.toLocaleLowerCase('vi')))
+              .sort((a, b) => playerName(a).localeCompare(playerName(b), 'vi'))
+              .forEach(id => batchSelect.append(new Option(playerName(id), id)));
+            if ([...batchSelect.options].some(option => option.value === chosen)) batchSelect.value = chosen;
+            updateBatch();
+          };
+          batchSelect.addEventListener('change', () => updateBatch());
+          batchSearch.addEventListener('input', fillBatchPlayers);
+          batchBody.append(el('p', 'Phân bổ khoản cũ trước; khoản cuối có thể đóng một phần. Số phân bổ chính thức do hệ thống xác nhận khi ghi nhận.', 'text-sm muted mb-3'),
+            field('Tìm VĐV', batchSearch), field('VĐV', batchSelect), batchPreview,
+            field('Số tiền thực nhận', batchAmount), field('Ngày giờ nhận tiền', batchDate),
+            field('Ghi chú', batchNote), batchSubmit, batchMessage, batchResult);
+          batchDetails.append(batchBody);
+          fillBatchPlayers();
+          if (state.fundBatchPlayer?.actor === batchOwner && state.fundBatchPlayer?.id) {
+            batchSelect.value = state.fundBatchPlayer.id; updateBatch();
+          }
+          if (state.fundBatchReceipt?.actor === batchOwner && state.fundBatchReceipt?.data) {
+            const receipt = state.fundBatchReceipt.data;
+            batchDetails.open = true;
+            batchResult.append(el('p', `Đã thu ${money(receipt.requested_amount)} • ${receipt.allocation_count} khoản • Còn ${money(receipt.total_outstanding_after)}`, 'notice'));
+            table(batchResult, 'Phân bổ đã ghi nhận', receipt.allocations,
+              [['Khoản', c => String(c.contribution_id).slice(0, 8)],
+               ['Đã thu', c => money(c.allocated_amount)], ['Còn lại', c => money(c.remaining)],
+               ['Trạng thái', c => c.status]], { status: true });
+          }
+
           const fundActions = [];
 
           if (canManageFund()) {
@@ -2846,7 +3028,8 @@ collectionContent.append(
 
           if (canCollectFund()) {
             fundActions.push(
-              collectionDetails
+              collectionDetails,
+              batchDetails
             );
           }
 
@@ -2892,7 +3075,7 @@ collectionContent.append(
     fundCollapse(
       'Báo cáo công nợ',
       sectionRoot => {
-        if (!netPaymentDataReady) {
+        if (!debtDataComplete) {
           notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
           return;
         }
@@ -4077,7 +4260,7 @@ collectionContent.append(
 fundCollapse(
       'Công nợ theo VĐV',
       sectionRoot => {
-        if (!netPaymentDataReady) {
+        if (!debtDataComplete) {
           notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
           return;
         }
