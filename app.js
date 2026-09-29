@@ -5166,7 +5166,144 @@ const fieldLabels = {
               )
             );
 
-            preview.append(
+
+            if (
+              data.hard_delete_allowed === true
+            ) {
+              const hardDeleteButton = button(
+                'Xóa vĩnh viễn',
+                async () => {
+                  if (
+                    !current() ||
+                    saving ||
+                    state.writeBusy
+                  ) {
+                    return;
+                  }
+
+                  const reason = prompt(
+                    'Nhập lý do xóa vĩnh viễn tài khoản ' +
+                      (
+                        member.login_name ||
+                        member.full_name ||
+                        member.profile_id
+                      ) +
+                      ':'
+                  );
+
+                  if (reason === null) {
+                    return;
+                  }
+
+                  const normalizedReason =
+                    reason.trim();
+
+                  if (
+                    !normalizedReason ||
+                    normalizedReason.length > 1000
+                  ) {
+                    notice(
+                      message,
+                      'Lý do xóa là bắt buộc và tối đa 1000 ký tự.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (
+                    !confirm(
+                      'Xóa vĩnh viễn tài khoản ' +
+                        (
+                          member.login_name ||
+                          member.full_name ||
+                          member.profile_id
+                        ) +
+                        '?' +
+                        '\n\n' +
+                        'Thao tác này sẽ xóa Auth user, Profile và Player liên kết. Không thể hoàn tác.'
+                    )
+                  ) {
+                    return;
+                  }
+
+                  saving = true;
+                  state.writeBusy = true;
+                  hardDeleteButton.disabled = true;
+                  hardDeleteButton.textContent =
+                    'Đang xóa…';
+
+                  notice(message, '');
+
+                  try {
+                    const {
+                      data: deleteData,
+                      error: deleteError
+                    } =
+                      await client.functions.invoke(
+                        'admin-hard-delete-member',
+                        {
+                          body: {
+                            profile_id:
+                              member.profile_id,
+                            reason:
+                              normalizedReason
+                          }
+                        }
+                      );
+
+                    if (deleteError) {
+                      throw deleteError;
+                    }
+
+                    if (
+                      !deleteData ||
+                      deleteData.ok !== true
+                    ) {
+                      throw new Error(
+                        deleteData?.error ||
+                        'UNKNOWN_ERROR'
+                      );
+                    }
+
+                    notice(
+                      message,
+                      'Đã xóa vĩnh viễn tài khoản thành công.',
+                      false,
+                      true
+                    );
+
+                    await loadPage(
+                      0,
+                      null,
+                      true
+                    );
+                  } catch (error) {
+                    if (current()) {
+                      notice(
+                        message,
+                        'Không thể xóa vĩnh viễn tài khoản. ' +
+                          explain(error),
+                        true
+                      );
+                    }
+                  } finally {
+                    saving = false;
+                    state.writeBusy = false;
+
+                    if (current()) {
+                      sync();
+                    }
+                  }
+                },
+                'danger'
+              );
+
+              actions.append(
+                hardDeleteButton
+              );
+            }
+preview.append(
               resultNotice,
               grid,
               blockerBox,
@@ -10907,7 +11044,7 @@ const fieldLabels = {
                 lifecycleBody
               );
 
-              
+
               // TOURNAMENT REGISTRATION UI V1F.1
               const registrationWrapper =
                 el(
