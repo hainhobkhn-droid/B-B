@@ -139,14 +139,162 @@
           )
         ) || 0;
 
-    const paymentAmount =
-      payment =>
-        num(
-          pick(
-            payment,
-            'amount'
+    // FUND03E NET PAYMENT: rebuild once per render from the loaded snapshot.
+    const grossPaymentByContribution = new Map();
+    const refundByContribution = new Map();
+    const paymentById = new Map();
+    const transactionById = new Map();
+    const paymentRows = rows('fund_payments') || [];
+    const transactionRows = rows('fund_transactions') || [];
+    const paymentCashInTypes = new Set([
+      'THU_QUY_THUA_TRAN', 'THU_QUY_HOA', 'THU_KHAC'
+    ]);
+    const positiveAmount = value => {
+      const amount = num(value);
+      return Number.isFinite(amount) && amount > 0 ? amount : 0;
+    };
+    for (const payment of paymentRows) {
+      if (!payment?.contribution_id) continue;
+      if (payment.id) paymentById.set(payment.id, payment);
+      const id = payment.contribution_id;
+      grossPaymentByContribution.set(id,
+        (grossPaymentByContribution.get(id) || 0) + positiveAmount(payment.amount));
+    }
+    for (const transaction of transactionRows) {
+      if (transaction?.id) transactionById.set(transaction.id, transaction);
+    }
+    for (const refund of transactionRows) {
+      if (refund?.transaction_type !== 'HOAN_TIEN' || !refund.reversal_of_transaction_id) continue;
+      const original = transactionById.get(refund.reversal_of_transaction_id);
+      if (!original?.payment_id || !paymentCashInTypes.has(original.transaction_type)) continue;
+      const payment = paymentById.get(original.payment_id);
+      if (!payment?.contribution_id) continue;
+      // Never infer debt ownership from player_id or a refund's direct payment_id.
+      const id = payment.contribution_id;
+      refundByContribution.set(id,
+        (refundByContribution.get(id) || 0) + positiveAmount(refund.amount));
+    }
+    // FUND03E: prefer backend NET balance read model for collection/debt.
+    const collectionBalanceByContribution = new Map(
+      (Array.isArray(state.fundCollectionBalances)
+        ? state.fundCollectionBalances
+        : [])
+        .filter(balance => balance?.contribution_id)
+        .map(balance => [
+          balance.contribution_id,
+          balance
+        ])
+    );
+
+    const collectionBalance =
+      contribution =>
+        collectionBalanceByContribution.get(
+          contribution?.id
+        ) || null;
+
+    const ledgerNetPaid =
+      contribution =>
+        Math.max(
+          (grossPaymentByContribution.get(
+            contribution?.id
+          ) || 0) -
+          (refundByContribution.get(
+            contribution?.id
+          ) || 0),
+          0
+        );
+
+    const netPaid =
+      contribution => {
+        const balance =
+          collectionBalance(contribution);
+
+        if (balance) {
+          return Math.max(
+            num(balance.net_paid) || 0,
+            0
+          );
+        }
+
+        return ledgerNetPaid(contribution);
+      };
+
+    const remainingPayment =
+      contribution => {
+        const balance =
+          collectionBalance(contribution);
+
+        if (balance) {
+          return Math.max(
+            num(balance.amount_remaining) || 0,
+            0
+          );
+        }
+
+        return Math.max(
+          contributionAmount(contribution) -
+            netPaid(contribution),
+          0
+        );
+      };
+
+    const paymentCredit =
+      contribution =>
+        Math.max(
+          netPaid(contribution) -
+            contributionAmount(contribution),
+          0
+        );
+
+    const collectionBalanceDataReady =
+      !!state.fundCollectionBalancesReady;
+
+    const ledgerNetPaymentDataReady =
+      (isAdmin() || canManageFund()) &&
+      ready(
+        'fund_contributions',
+        'fund_payments',
+        'fund_transactions'
+      );
+
+    const netPaymentDataReady =
+      collectionBalanceDataReady ||
+      ledgerNetPaymentDataReady;
+
+    const fundContributionStatus =
+      contribution => {
+        if (
+          ![
+            'CHUA_DONG',
+            'DONG_MOT_PHAN',
+            'DA_DONG'
+          ].includes(
+            contribution.status
           )
-        ) || 0;
+        ) {
+          return contribution.status;
+        }
+
+        const balance =
+          collectionBalance(contribution);
+
+        if (
+          collectionBalanceDataReady &&
+          balance?.computed_status
+        ) {
+          return balance.computed_status;
+        }
+
+        if (!netPaymentDataReady) {
+          return contribution.status;
+        }
+
+        return netPaid(contribution) <= 0
+          ? 'CHUA_DONG'
+          : remainingPayment(contribution) > 0
+            ? 'DONG_MOT_PHAN'
+            : 'DA_DONG';
+      };
     // FUND UX POLISH V1C
     const fundReasonLabel =
       value => {
@@ -317,22 +465,33 @@
               }
             }
 
+            if (
+              contribution
+                .match_id
+            ) {
+              const match =
+                rows(
+                  'matches'
+                ).find(
+                  item =>
+                    item.id ===
+                    contribution.match_id
+                );
+
+              if (
+                !match ||
+                upper(
+                  match.status
+                ) ===
+                  'VOIDED'
+              ) {
+                return false;
+              }
+            }
+
             return true;
           }
         );
-
-    const activeContributionIds =
-      new Set(
-        activeContributions
-          .map(
-            contribution =>
-              raw(
-                contribution.id
-              )
-          )
-          .filter(Boolean)
-      );
-
     const memberFundOverview =
       !isAdmin()
         ? state.memberFundOverview
@@ -358,43 +517,14 @@
         ? num(
             memberFundOverview.total_paid
           ) || 0
-        : rows('fund_payments')
-            .filter(
-              payment =>
-                activeContributionIds.has(
-                  raw(
-                    payment.contribution_id
-                  )
-                )
-            )
-            .reduce(
-              (sum, payment) =>
-                sum +
-                paymentAmount(
-                  payment
-                ),
-              0
-            );
+        : activeContributions.reduce((sum, contribution) => sum + netPaid(contribution), 0);
 
-    const totalOutstanding =
-      memberFundOverview
-        ? num(
-            memberFundOverview.total_outstanding
-          ) || 0
-        : Math.max(
-            totalDue - totalPaid,
-            0
-          );
-
-    const totalCredit =
-      memberFundOverview
-        ? num(
-            memberFundOverview.total_credit
-          ) || 0
-        : Math.max(
-            totalPaid - totalDue,
-            0
-          );
+    const totalOutstanding = memberFundOverview
+      ? num(memberFundOverview.total_outstanding) || 0
+      : activeContributions.reduce((sum, contribution) => sum + remainingPayment(contribution), 0);
+    const totalCredit = memberFundOverview
+      ? num(memberFundOverview.total_credit) || 0
+      : activeContributions.reduce((sum, contribution) => sum + paymentCredit(contribution), 0);
     // FUND OVERVIEW CASH BALANCE V2
     const fundCashInTypes =
       new Set([
@@ -552,21 +682,14 @@
         ],
         [
           'Đã thanh toán',
-          ready(
-            'fund_payments'
-          )
+          (memberFundOverview || netPaymentDataReady)
             ? money(totalPaid)
             : '—',
-          'Theo sổ thanh toán'
+          'Thanh toán sau hoàn tiền'
         ],
         [
           'Còn phải thu',
-          ready(
-            'fund_contributions'
-          ) &&
-          ready(
-            'fund_payments'
-          )
+          (memberFundOverview || netPaymentDataReady)
             ? money(
                 totalOutstanding
               )
@@ -575,12 +698,7 @@
         ],
         [
           'Nộp dư',
-          ready(
-            'fund_contributions'
-          ) &&
-          ready(
-            'fund_payments'
-          )
+          (memberFundOverview || netPaymentDataReady)
             ? money(
                 totalCredit
               )
@@ -648,6 +766,7 @@
 
               return {
                 ...contribution,
+                status: fundContributionStatus(contribution),
                 match_reference:
                   match
                     ? (
@@ -1780,57 +1899,13 @@
                 16
               );
 
-          const paymentByContribution =
-            new Map();
-
-          rows(
-            'fund_payments'
-          ).forEach(
-            payment => {
-              const id =
-                payment
-                  .contribution_id;
-
-              if (!id) {
-                return;
-              }
-
-              paymentByContribution.set(
-                id,
-                (
-                  paymentByContribution
-                    .get(id) || 0
-                ) +
-                (
-                  num(
-                    payment.amount
-                  ) || 0
-                )
-              );
-            }
-          );
-
-          const collectibleContributions =
-            activeContributions
-              .filter(
-                contribution => {
-                  const due =
-                    contributionAmount(
-                      contribution
-                    );
-
-                  const paid =
-                    paymentByContribution
-                      .get(
-                        contribution.id
-                      ) || 0;
-
-                  return (
-                    due > 0 &&
-                    paid < due
-                  );
-                }
-              );
+          const collectibleContributions = netPaymentDataReady
+            ? activeContributions.filter(contribution =>
+                upper(contribution.status) !== 'MIEN' && remainingPayment(contribution) > 0)
+            : [];
+          if (!netPaymentDataReady) {
+            notice(message, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
+          }
 
           const playerIds =
             Array.from(
@@ -1914,16 +1989,10 @@
                 );
 
               const paid =
-                paymentByContribution
-                  .get(
-                    contribution.id
-                  ) || 0;
+                netPaid(contribution);
 
               const remaining =
-                Math.max(
-                  0,
-                  due - paid
-                );
+                remainingPayment(contribution);
 
               const stat =
                 (
@@ -2042,22 +2111,8 @@
                 )
                 .forEach(
                   contribution => {
-                    const due =
-                      contributionAmount(
-                        contribution
-                      );
-
-                    const paid =
-                      paymentByContribution
-                        .get(
-                          contribution.id
-                        ) || 0;
-
                     const remaining =
-                      Math.max(
-                        0,
-                        due - paid
-                      );
+                      remainingPayment(contribution);
 
                     const match =
                       rows(
@@ -2130,6 +2185,10 @@
             button(
               'Ghi nhận thanh toán',
               async () => {
+                if (!netPaymentDataReady) {
+                  notice(message, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền.', true);
+                  return;
+                }
                 notice(
                   message,
                   ''
@@ -2153,23 +2212,7 @@
                     amountInput.value
                   );
 
-                const due =
-                  contributionAmount(
-                    contribution
-                  );
-
-                const paidBefore =
-                  paymentByContribution
-                    .get(
-                      contribution.id
-                    ) || 0;
-
-                const remainingBefore =
-                  Math.max(
-                    0,
-                    due -
-                    paidBefore
-                  );
+                const remainingBefore = remainingPayment(contribution);
 
                 if (
                   amount === null ||
@@ -2336,6 +2379,7 @@
 
           submit.type =
             'button';
+          submit.disabled = !netPaymentDataReady;
 
           wrapper.append(
             playerLabel,
@@ -2848,6 +2892,10 @@ collectionContent.append(
     fundCollapse(
       'Báo cáo công nợ',
       sectionRoot => {
+        if (!netPaymentDataReady) {
+          notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
+          return;
+        }
         const wrapper =
           el(
             'div',
@@ -2863,7 +2911,7 @@ collectionContent.append(
           ),
           el(
             'p',
-            'Lọc nghĩa vụ theo ngày thi đấu. Số đã nộp được tính theo toàn bộ thanh toán của chính các nghĩa vụ trong kỳ.',
+            'Lọc nghĩa vụ theo ngày thi đấu. Số đã nộp là thanh toán sau hoàn tiền của chính các nghĩa vụ trong kỳ.',
             'text-sm opacity-70 mb-4'
           )
         );
@@ -3096,38 +3144,6 @@ collectionContent.append(
             today;
         }
 
-        const paymentTotals =
-          new Map();
-
-        rows(
-          'fund_payments'
-        ).forEach(
-          payment => {
-            const contributionId =
-              payment
-                .contribution_id;
-
-            if (!contributionId) {
-              return;
-            }
-
-            paymentTotals.set(
-              contributionId,
-              (
-                paymentTotals.get(
-                  contributionId
-                ) || 0
-              ) +
-              (
-                num(
-                  payment.amount
-                ) || 0
-              )
-            );
-          },
-          true
-        );
-
         const getReportData =
           () => {
             const from =
@@ -3169,42 +3185,6 @@ collectionContent.append(
 
             const playerMap =
               new Map();
-
-            // DEBT REPORT DEBUG TEMP
-            const debugContributions = rows('fund_contributions');
-
-            console.log(
-              '[DEBT DEBUG] total fund_contributions:',
-              debugContributions.length
-            );
-
-            console.table(
-              debugContributions
-                .map(contribution => {
-                  const match =
-                    matchMap.get(contribution.match_id);
-
-                  return {
-                    contribution_id: contribution.id,
-                    player_id: contribution.player_id,
-                    match_id: contribution.match_id,
-                    played_at: match?.played_at,
-                    playedDate: match ? vnDateKey(match.played_at) : null,
-                    match_status: match?.status,
-                    status: contribution.status,
-                    reason: contribution.reason,
-                    amount_due: contribution.amount_due,
-                    paid: paymentTotals.get(contribution.id) || 0,
-                    remaining: Math.max(
-                      0,
-                      (num(contribution.amount_due) || 0) -
-                      (paymentTotals.get(contribution.id) || 0)
-                    )
-                  };
-                })
-                .filter(item => item.playedDate === '2026-09-03')
-            );
-            // END DEBT REPORT DEBUG TEMP
 
             rows(
               'fund_contributions'
@@ -3290,15 +3270,10 @@ collectionContent.append(
                 }
 
                 const paid =
-                  paymentTotals.get(
-                    contribution.id
-                  ) || 0;
+                  netPaid(contribution);
 
                 const remaining =
-                  Math.max(
-                    0,
-                    due - paid
-                  );
+                  remainingPayment(contribution);
 
                 const playerId =
                   contribution
@@ -3379,68 +3354,6 @@ collectionContent.append(
                 );
               }
             );
-
-            // PLAYERMAP DEBUG TEMP
-            const debugPlayerMap =
-              Array.from(
-                playerMap.values()
-              ).map(player => {
-                const sep03Items =
-                  player.items.filter(
-                    item =>
-                      vnDateKey(
-                        item.match.played_at
-                      ) === '2026-09-03'
-                  );
-
-                return {
-                  player_id: player.playerId,
-                  name: player.name,
-                  total_items: player.items.length,
-                  sep03_items: sep03Items.length,
-                  sep03_due: sep03Items.reduce(
-                    (sum, item) => sum + item.due,
-                    0
-                  ),
-                  sep03_paid: sep03Items.reduce(
-                    (sum, item) => sum + item.paid,
-                    0
-                  ),
-                  sep03_remaining: sep03Items.reduce(
-                    (sum, item) => sum + item.remaining,
-                    0
-                  ),
-                  total_due: player.due,
-                  total_paid: player.paid,
-                  total_remaining: player.remaining
-                };
-              }).filter(
-                player => player.sep03_items > 0
-              );
-
-            console.log(
-              '[PLAYERMAP DEBUG] players with 03/09:',
-              debugPlayerMap.length
-            );
-
-            console.log(
-              '[PLAYERMAP DEBUG] 03/09 item count:',
-              debugPlayerMap.reduce(
-                (sum, player) => sum + player.sep03_items,
-                0
-              )
-            );
-
-            console.log(
-              '[PLAYERMAP DEBUG] 03/09 remaining:',
-              debugPlayerMap.reduce(
-                (sum, player) => sum + player.sep03_remaining,
-                0
-              )
-            );
-
-            console.table(debugPlayerMap);
-            // END PLAYERMAP DEBUG TEMP
 
             let players =
               Array.from(
@@ -4164,6 +4077,10 @@ collectionContent.append(
 fundCollapse(
       'Công nợ theo VĐV',
       sectionRoot => {
+        if (!netPaymentDataReady) {
+          notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
+          return;
+        }
         const debtControls =
           el(
             'div',
@@ -4389,30 +4306,12 @@ fundCollapse(
                   0
                 );
 
-            const playerPaid =
-              playerPayments
-                .reduce(
-                  (sum, payment) =>
-                    sum +
-                    paymentAmount(
-                      payment
-                    ),
-                  0
-                );
-
-            const playerOutstanding =
-              Math.max(
-                playerDue -
-                  playerPaid,
-                0
-              );
-
-            const playerCredit =
-              Math.max(
-                playerPaid -
-                  playerDue,
-                0
-              );
+            const playerPaid = playerContributions.reduce(
+              (sum, contribution) => sum + netPaid(contribution), 0);
+            const playerOutstanding = playerContributions.reduce(
+              (sum, contribution) => sum + remainingPayment(contribution), 0);
+            const playerCredit = playerContributions.reduce(
+              (sum, contribution) => sum + paymentCredit(contribution), 0);
 
             debtContent.append(
               el(
@@ -4441,7 +4340,7 @@ fundCollapse(
                   money(
                     playerPaid
                   ),
-                  `${playerPayments.length} lần thanh toán`
+                  `${playerPayments.length} lần thanh toán • Đã trừ hoàn tiền`
                 ],
                 [
                   'Còn nợ',
@@ -4528,6 +4427,7 @@ fundCollapse(
 
                     return {
                       ...contribution,
+                      status: fundContributionStatus(contribution),
                       match_reference:
                         match
                           ? (

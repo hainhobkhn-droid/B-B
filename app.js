@@ -55,6 +55,8 @@
         data: {},
         errors: {},
         partial: {},
+        fundCollectionBalances: [],
+        fundCollectionBalancesReady: false,
         page: 'overview',
         busy: false,
         writeBusy: false,
@@ -14188,7 +14190,8 @@ preview.append(
           const [
             obligations,
             history,
-            summary
+            summary,
+            collectionBalances
           ] =
             await Promise.all([
               query(
@@ -14208,7 +14211,20 @@ preview.append(
                   'get_club_fund_summary'
                 ),
                 signal
+              ),
+              (
+                canManageFund() ||
+                canCollectFund()
               )
+                ? query(
+                    client.rpc(
+                      'get_fund_collection_balances'
+                    ),
+                    signal
+                  )
+                : Promise.resolve({
+                    data: []
+                  })
             ]);
 
           state.memberFundObligations =
@@ -14219,6 +14235,13 @@ preview.append(
 
           state.memberFundOverview =
             summary.data || null;
+
+          state.fundCollectionBalances =
+            [...(collectionBalances.data || [])];
+
+          state.fundCollectionBalancesReady =
+            canManageFund() ||
+            canCollectFund();
 
           // Delegated fund managers retain MEMBER self-service and club summary.
           if (canManageFund()) {
@@ -14439,6 +14462,8 @@ preview.append(
         state.memberFundOverview = null;
         state.memberFundObligations = [];
         state.memberFundPaymentHistory = [];
+        state.fundCollectionBalances = [];
+        state.fundCollectionBalancesReady = false;
 
         $('user-name').textContent =
           state.session.user
