@@ -1,0 +1,318 @@
+BEGIN;
+-- IAM05D1. Existing accounts retain their activation state and identities.
+-- Deploy the admin-create-member app_metadata change BEFORE this migration.
+ALTER TABLE public.profiles ADD COLUMN membership_status text;
+ALTER TABLE public.profiles ADD COLUMN membership_reviewed_by uuid
+    REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.profiles ADD COLUMN membership_reviewed_at timestamptz;
+UPDATE public.profiles SET membership_status = 'APPROVED';
+ALTER TABLE public.profiles ALTER COLUMN membership_status SET DEFAULT 'PENDING';
+ALTER TABLE public.profiles ALTER COLUMN membership_status SET NOT NULL;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_membership_status_check
+    CHECK (membership_status IN ('PENDING', 'APPROVED', 'REJECTED'));
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_membership_active_check
+    CHECK (membership_status = 'APPROVED' OR is_active IS FALSE);
+CREATE INDEX profiles_pending_signup_idx ON public.profiles(created_at, id)
+    WHERE role = 'MEMBER' AND membership_status = 'PENDING';
+
+CREATE OR REPLACE FUNCTION public.handle_new_member_signup()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+    v_full_name text;
+    v_login_name text;
+    v_phone text;
+    v_date_of_birth date;
+    v_initial_rating numeric;
+    v_default_rating numeric;
+    v_min_rating numeric;
+    v_max_rating numeric;
+    v_player_id uuid;
+    v_must_change_password boolean := false;
+    v_membership_status text := 'PENDING';
+    v_created_by uuid;
+
+begin
+    -- raw_app_meta_data is writable only by the trusted Auth Admin API.
+    -- Never trust signup user_metadata, email confirmation, or password flags.
+    if new.raw_app_meta_data ->> 'membership_source' = 'ADMIN_CREATE_MEMBER' then
+        begin
+            v_created_by := (new.raw_app_meta_data ->> 'membership_created_by')::uuid;
+        exception when invalid_text_representation then
+            raise exception 'ADMIN_PROVISIONING_ACTOR_REQUIRED' using errcode = '42501';
+        end;
+        perform 1 from public.profiles
+        where id = v_created_by and role = 'ADMIN' and is_active is true
+        for share;
+        if not found then
+            raise exception 'ADMIN_PROVISIONING_ACTOR_REQUIRED' using errcode = '42501';
+        end if;
+        v_membership_status := 'APPROVED';
+    end if;
+    select
+        rs.initial_rating,
+        rs.min_rating,
+        rs.max_rating
+    into
+        v_default_rating,
+        v_min_rating,
+        v_max_rating
+    from public.rating_settings rs
+    where rs.is_active = true;
+
+    if not found then
+        raise exception 'ACTIVE_RATING_SETTINGS_REQUIRED';
+    end if;
+
+    v_full_name :=
+        nullif(
+            trim(
+                coalesce(
+                    new.raw_user_meta_data ->> 'full_name',
+                    ''
+                )
+            ),
+            ''
+        );
+
+    if v_full_name is null then
+        raise exception 'FULL_NAME_REQUIRED';
+    end if;
+
+    v_login_name :=
+        nullif(
+            lower(
+                trim(
+                    coalesce(
+                        new.raw_user_meta_data ->> 'login_name',
+                        ''
+                    )
+                )
+            ),
+            ''
+        );
+
+    if v_login_name is not null then
+        if length(v_login_name) < 3
+           or length(v_login_name) > 32
+           or v_login_name !~ '^[a-z0-9._-]+$'
+        then
+            raise exception 'INVALID_LOGIN_NAME';
+        end if;
+
+        if exists (
+            select 1
+            from public.profiles p
+            where lower(p.login_name) = v_login_name
+        ) then
+            raise exception 'LOGIN_NAME_ALREADY_EXISTS';
+        end if;
+    end if;
+
+    v_must_change_password :=
+        coalesce(
+            lower(
+                trim(
+                    coalesce(
+                        new.raw_user_meta_data
+                            ->> 'must_change_password',
+                        'false'
+                    )
+                )
+            ) = 'true',
+            false
+        );
+
+    v_phone :=
+        nullif(
+            trim(
+                coalesce(
+                    new.raw_user_meta_data ->> 'phone',
+                    ''
+                )
+            ),
+            ''
+        );
+
+    begin
+        v_date_of_birth :=
+            nullif(
+                trim(
+                    coalesce(
+                        new.raw_user_meta_data ->> 'date_of_birth',
+                        ''
+                    )
+                ),
+                ''
+            )::date;
+    exception
+        when others then
+            raise exception 'INVALID_DATE_OF_BIRTH';
+    end;
+
+    if v_date_of_birth is not null
+       and v_date_of_birth > current_date then
+        raise exception 'INVALID_DATE_OF_BIRTH';
+    end if;
+
+    begin
+        v_initial_rating :=
+            coalesce(
+                nullif(
+                    trim(
+                        coalesce(
+                            new.raw_user_meta_data
+                                ->> 'initial_rating',
+                            ''
+                        )
+                    ),
+                    ''
+                )::numeric,
+                v_default_rating
+            );
+    exception
+        when others then
+            raise exception 'INVALID_INITIAL_RATING';
+    end;
+
+    if v_initial_rating < v_min_rating
+       or v_initial_rating > v_max_rating then
+        raise exception 'INVALID_INITIAL_RATING';
+    end if;
+
+    insert into public.players (
+        full_name,
+        player_type,
+        phone,
+        email,
+        initial_rating,
+        current_rating,
+        status,
+        joined_at,
+        date_of_birth
+    )
+    values (
+        v_full_name,
+        'CLUB',
+        v_phone,
+        new.email,
+        v_initial_rating,
+        v_initial_rating,
+        'ACTIVE',
+        current_date,
+        v_date_of_birth
+    )
+    returning id
+    into v_player_id;
+
+    insert into public.profiles (
+        id,
+        full_name,
+        login_name,
+        role,
+        is_active,
+        player_id,
+        can_collect_tournament_fee,
+        must_change_password,
+        membership_status,
+        membership_reviewed_by,
+        membership_reviewed_at
+    )
+    values (
+        new.id,
+        v_full_name,
+        v_login_name,
+        'MEMBER',
+        v_membership_status = 'APPROVED',
+        v_player_id,
+        false,
+        v_must_change_password,
+        v_membership_status,
+        v_created_by,
+        case when v_created_by is not null then now() end
+    );
+
+    insert into public.audit_logs (
+        user_id,
+        action,
+        table_name,
+        record_id,
+        old_data,
+        new_data,
+        reason
+    )
+    values (
+        coalesce(v_created_by, new.id),
+        'AUTO_PROVISION_MEMBER',
+        'profiles',
+        new.id,
+        null,
+        jsonb_build_object(
+            'membership_status', v_membership_status,
+            'created_by_admin', v_created_by,
+            'profile_id', new.id,
+            'player_id', v_player_id,
+            'full_name', v_full_name,
+            'login_name', v_login_name,
+            'email', new.email,
+            'phone', v_phone,
+            'date_of_birth', v_date_of_birth,
+            'initial_rating', v_initial_rating,
+            'rating_min', v_min_rating,
+            'rating_max', v_max_rating,
+            'role', 'MEMBER',
+            'player_type', 'CLUB',
+            'must_change_password',
+              v_must_change_password
+        ),
+        'MEMBER_SIGNUP_ACTIVE_RATING_SETTINGS'
+    );
+
+    return new;
+end;
+$function$
+;
+
+-- Existing trigger remains attached; no second provisioning trigger is created.
+REVOKE ALL ON FUNCTION public.handle_new_member_signup() FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.current_user_membership_active()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp AS $function$
+    SELECT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid()
+        AND p.is_active IS TRUE AND p.membership_status = 'APPROVED');
+$function$;
+REVOKE ALL ON FUNCTION public.current_user_membership_active() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_membership_active() TO authenticated;
+
+-- Restrictive gates intersect existing policies; they never widen access.
+-- profiles_select_own stays available for the user's pending/rejected screen.
+DO $block$
+DECLARE t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY[
+        'leagues','tournaments','fund_obligation_campaigns',
+        'tournament_registrations','tournament_payments','rating_settings',
+        'fund_rules','rating_match_weights','players','matches','rating_events',
+        'fund_payments','fund_transactions','match_players','fund_contributions'
+    ] LOOP
+        EXECUTE format('CREATE POLICY iam05d_membership_gate ON public.%I AS RESTRICTIVE
+            FOR ALL TO authenticated USING ((SELECT public.current_user_membership_active()))
+            WITH CHECK ((SELECT public.current_user_membership_active()))', t);
+    END LOOP;
+END;
+$block$;
+
+CREATE OR REPLACE FUNCTION public.get_player_directory()
+RETURNS TABLE(id uuid, full_name text, player_type text, current_rating numeric, status text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $function$
+    SELECT p.id, p.full_name, p.player_type, p.current_rating, p.status
+    FROM public.players p WHERE public.current_user_membership_active()
+    ORDER BY p.full_name, p.id;
+$function$;
+REVOKE ALL ON FUNCTION public.get_player_directory() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_player_directory() TO authenticated;
+COMMIT;
