@@ -5721,3 +5721,19 @@ tbody tr:hover{
   }
 }
 /* /IAM05C MEMBER LIFECYCLE */
+/* IAM05D APPROVAL */
+.account-ui .btn.membership-approve{
+  background:var(--green);
+  border-color:var(--green);
+  color:#fff;
+}
+.account-ui .btn.membership-approve:hover:not(:disabled){
+  filter:brightness(.94);
+}
+.account-ui .app-action-danger > .app-action-toggle{
+  background:var(--red-bg);
+  color:var(--red);
+}
+.membership-status-panel{max-width:720px; margin-inline:auto;}
+.membership-status-panel p{line-height:1.6; overflow-wrap:anywhere;}
+/* /IAM05D APPROVAL */
