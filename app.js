@@ -937,6 +937,214 @@
         ]
       ];
 
+      // UI03A1: capability-driven management workspace shared by ADMIN
+      // and delegated MEMBER. Backend remains the authority for actions.
+      function overviewManagementWorkspace(root) {
+        const cards = [];
+
+        if (canApproveMatches()) {
+          const pendingMatches =
+            ready('matches')
+              ? rows('matches').filter(
+                  match =>
+                    upper(match.status) === 'PENDING'
+                ).length
+              : null;
+
+          cards.push({
+            variant: 'pending',
+            icon: '!',
+            title: 'Trận cần xử lý',
+            value:
+              pendingMatches === null
+                ? '—'
+                : number(pendingMatches),
+            hint:
+              pendingMatches
+                ? 'Có trận đang chờ kiểm tra hoặc duyệt.'
+                : 'Không có trận chờ duyệt.',
+            action: 'Mở Trận đấu',
+            page: 'matches'
+          });
+        }
+
+        if (
+          canManageMembers() ||
+          canAdjustRating()
+        ) {
+          const activePlayers =
+            ready('players')
+              ? rows('players').filter(
+                  player =>
+                    upper(player.status) === 'ACTIVE'
+                ).length
+              : null;
+
+          cards.push({
+            variant: 'info',
+            icon: '♧',
+            title: 'VĐV & Rating',
+            value:
+              activePlayers === null
+                ? '—'
+                : number(activePlayers),
+            hint:
+              canAdjustRating()
+                ? 'Quản lý VĐV và các nghiệp vụ Rating được ủy quyền.'
+                : 'Quản lý danh sách VĐV trong phạm vi được ủy quyền.',
+            action: 'Mở VĐV',
+            page: 'players'
+          });
+        }
+
+        if (
+          canManageFund() ||
+          canCollectFund()
+        ) {
+          const unsettled =
+            ready('fund_contributions')
+              ? rows('fund_contributions').filter(
+                  contribution =>
+                    [
+                      'CHUA_DONG',
+                      'DONG_MOT_PHAN'
+                    ].includes(
+                      upper(contribution.status)
+                    )
+                ).length
+              : null;
+
+          cards.push({
+            variant:
+              unsettled > 0
+                ? 'pending'
+                : 'success',
+            icon: '₫',
+            title: 'Quỹ cần xử lý',
+            value:
+              unsettled === null
+                ? '—'
+                : number(unsettled),
+            hint:
+              unsettled
+                ? 'Có nghĩa vụ quỹ chưa hoàn tất.'
+                : 'Không có nghĩa vụ quỹ tồn đọng.',
+            action: 'Mở Quỹ',
+            page: 'fund'
+          });
+        }
+
+        if (
+          canManageTournaments() ||
+          canCollectTournamentFee()
+        ) {
+          const tournamentCount =
+            ready('tournaments')
+              ? rows('tournaments').length
+              : null;
+
+          cards.push({
+            variant: 'info',
+            icon: '⚑',
+            title: 'Giải đấu',
+            value:
+              tournamentCount === null
+                ? '—'
+                : number(tournamentCount),
+            hint:
+              canCollectTournamentFee()
+                ? 'Quản lý giải và nghiệp vụ thu phí được ủy quyền.'
+                : 'Quản lý giải đấu trong phạm vi được ủy quyền.',
+            action: 'Mở Giải đấu',
+            page: 'tournaments'
+          });
+        }
+
+        if (!cards.length) {
+          return;
+        }
+
+        const section =
+          panel(
+            'Cần xử lý',
+            root
+          );
+
+        section.classList.add(
+          'overview-management'
+        );
+
+        section.append(
+          el(
+            'p',
+            isAdmin()
+              ? 'Các nghiệp vụ quản trị cần chú ý ngay.'
+              : 'Các nghiệp vụ bạn đang được ủy quyền xử lý.',
+            'muted overview-management-intro'
+          )
+        );
+
+        const list =
+          el(
+            'div',
+            null,
+            'overview-management-grid'
+          );
+
+        cards.forEach(item => {
+          const card =
+            el(
+              'article',
+              null,
+              'overview-management-card ' +
+                'overview-management-' +
+                item.variant
+            );
+
+          const head =
+            el(
+              'div',
+              null,
+              'overview-management-head'
+            );
+
+          head.append(
+            el(
+              'span',
+              item.icon,
+              'overview-management-icon'
+            ),
+            el(
+              'h3',
+              item.title,
+              'overview-management-title'
+            )
+          );
+
+          card.append(
+            head,
+            el(
+              'strong',
+              item.value,
+              'overview-management-value'
+            ),
+            el(
+              'p',
+              item.hint,
+              'overview-management-hint'
+            ),
+            button(
+              item.action + ' →',
+              () => navigate(item.page),
+              'btn overview-management-action'
+            )
+          );
+
+          list.append(card);
+        });
+
+        section.append(list);
+      }
       function memberOverview(root) {
         sources(
           root,
@@ -1135,6 +1343,48 @@
               'HUY'
           );
 
+
+        overviewManagementWorkspace(root);
+
+        grid(
+          root,
+          [
+            [
+              'Rating',
+              raw(
+                player.current_rating
+              ) || '—',
+              'Rating hiện tại'
+            ],
+            [
+              'Trận đấu',
+              `${number(
+                ownApproved.length
+              )} trận`,
+              `Thắng ${wins} • Thua ${losses} • Hòa ${draws}`
+            ],
+            [
+              'Quỹ chưa đóng',
+              money(
+                outstandingFund
+              ),
+              outstandingFund > 0
+                ? 'Còn nghĩa vụ cần hoàn tất'
+                : 'Đã hoàn tất nghĩa vụ'
+            ],
+            [
+              'Đăng ký giải',
+              number(
+                activeRegistrations.length
+              ),
+              activeRegistrations.length
+                ? 'Đăng ký đang hoạt động'
+                : 'Chưa có đăng ký'
+            ]
+          ],
+          'overview-kpi-grid overview-member-kpis'
+        );
+
         const shortcuts =
           panel(
             'Thao tác nhanh',
@@ -1179,42 +1429,6 @@
         shortcuts.append(
           actions
         );
-
-        grid(
-          root,
-          [
-            [
-              'Rating',
-              raw(
-                player.current_rating
-              ) || '—'
-            ],
-            [
-              'Trận đã duyệt',
-              number(
-                ownApproved.length
-              )
-            ],
-            [
-              'Thắng / Thua / Hòa',
-              `${wins} / ${losses} / ${draws}`
-            ],
-            [
-              'Quỹ chưa đóng',
-              money(
-                outstandingFund
-              )
-            ],
-            [
-              'Đăng ký giải',
-              number(
-                activeRegistrations.length
-              )
-            ]
-          ],
-          'overview-kpi-grid overview-member-kpis'
-        );
-
         const recentOwn =
           ownApproved
             .slice()
@@ -1336,905 +1550,70 @@
 
         root.append(hero);
 
-        if (ready('players')) {
-          const activePlayers =
-            rows('players').filter(
-              p =>
-                upper(
-                  p.status
-                ) !==
-                'INACTIVE' &&
-                p.date_of_birth
-            );
+        overviewManagementWorkspace(root);
 
+        // UI03A2: keep the dashboard exception-first and compact.
+        if (ready('players')) {
           const today =
             new Date();
 
           const currentMonth =
-            today.getMonth();
+            today.getMonth() + 1;
 
           const currentDay =
             today.getDate();
 
-          const currentQuarter =
-            Math.floor(
-              currentMonth / 3
-            );
-
-          const birthdayRows =
-            activePlayers
-              .map(player => {
-                const parts =
-                  String(
-                    player.date_of_birth
-                  ).slice(
-                    0,
-                    10
-                  ).split('-');
-
-                const month =
-                  Number(
-                    parts[1]
-                  ) - 1;
-
-                const day =
-                  Number(
-                    parts[2]
-                  );
-
-                return {
-                  player,
-                  month,
-                  day
-                };
-              })
-              .filter(
-                item =>
-                  Number.isInteger(
-                    item.month
-                  ) &&
-                  Number.isInteger(
-                    item.day
-                  )
-              );
-
           const todayBirthdays =
-            birthdayRows.filter(
-              item =>
-                item.month ===
-                  currentMonth &&
-                item.day ===
-                  currentDay
-            );
-
-          const monthBirthdays =
-            birthdayRows
-              .filter(
-                item =>
-                  item.month ===
-                  currentMonth
-              )
-              .sort(
-                (a, b) =>
-                  a.day -
-                  b.day
-              );
-
-          const quarterBirthdays =
-            birthdayRows.filter(
-              item =>
-                Math.floor(
-                  item.month / 3
-                ) ===
-                currentQuarter
-            );
-
-          const birthdayPanel =
-            panel(
-              '🎂 Sinh nhật VĐV',
-              root
-            );
-
-          birthdayPanel.classList.add(
-            'overview-birthday-panel'
-          );
-
-          if (
-            todayBirthdays.length
-          ) {
-            const todayBox =
-              el(
-                'div',
-                null,
-                'mb-4 rounded-xl border p-4'
-              );
-
-            todayBox.append(
-              el(
-                'div',
-                '🎉 Chúc mừng sinh nhật!',
-                'font-semibold mb-2'
-              )
-            );
-
-            todayBirthdays.forEach(
-              item => {
-                todayBox.append(
-                  el(
-                    'div',
-                    `Chúc ${raw(
-                      item.player.full_name
-                    )} một ngày sinh nhật thật vui và nhiều trận thắng!`
-                  )
-                );
+            rows('players').filter(player => {
+              if (
+                upper(player.status) === 'INACTIVE' ||
+                !player.date_of_birth
+              ) {
+                return false;
               }
-            );
 
-            birthdayPanel.append(
-              todayBox
-            );
-          }
-
-          const summary =
-            el(
-              'div',
-              null,
-              'grid gap-3 sm:grid-cols-2 mb-4'
-            );
-
-          summary.append(
-            el(
-              'div',
-              `Tháng này: ${number(
-                monthBirthdays.length
-              )} VĐV`,
-              'rounded-xl border p-3'
-            ),
-            el(
-              'div',
-              `Quý này: ${number(
-                quarterBirthdays.length
-              )} VĐV`,
-              'rounded-xl border p-3'
-            )
-          );
-
-          birthdayPanel.append(
-            summary
-          );
-
-          if (
-            monthBirthdays.length
-          ) {
-            const list =
-              el(
-                'div',
-                null,
-                'space-y-2'
-              );
-
-            monthBirthdays.forEach(
-              item => {
-                list.append(
-                  el(
-                    'div',
-                    `${String(
-                      item.day
-                    ).padStart(
-                      2,
-                      '0'
-                    )}/${String(
-                      item.month + 1
-                    ).padStart(
-                      2,
-                      '0'
-                    )} • ${raw(
-                      item.player.full_name
-                    )}`,
-                    'text-sm'
-                  )
-                );
-              }
-            );
-
-            birthdayPanel.append(
-              list
-            );
-          }
-          else {
-            birthdayPanel.append(
-              el(
-                'div',
-                'Không có sinh nhật VĐV trong tháng này.',
-                'text-sm opacity-70'
-              )
-            );
-          }
-        }
-
-        if (ready('matches')) {
-          const statsNow =
-            new Date();
-
-          const statsYear =
-            statsNow.getFullYear();
-
-          const statsMonth =
-            statsNow.getMonth();
-
-          const statsQuarter =
-            Math.floor(
-              statsMonth / 3
-            );
-
-          const approvedMatches =
-            rows('matches')
-              .filter(
-                match =>
-                  upper(
-                    match.status
-                  ) ===
-                    'APPROVED' &&
-                  match.played_at
-              )
-              .map(match => {
-                const playedAt =
-                  new Date(
-                    match.played_at
-                  );
-
-                return {
-                  match,
-                  playedAt
-                };
-              })
-              .filter(
-                item =>
-                  Number.isFinite(
-                    item.playedAt
-                      .getTime()
-                  )
-              );
-
-          const monthMatches =
-            approvedMatches.filter(
-              item =>
-                item.playedAt
-                  .getFullYear() ===
-                  statsYear &&
-                item.playedAt
-                  .getMonth() ===
-                  statsMonth
-            );
-
-          const quarterMatches =
-            approvedMatches.filter(
-              item =>
-                item.playedAt
-                  .getFullYear() ===
-                  statsYear &&
-                Math.floor(
-                  item.playedAt
-                    .getMonth() / 3
-                ) ===
-                  statsQuarter
-            );
-
-          const yearMatches =
-            approvedMatches.filter(
-              item =>
-                item.playedAt
-                  .getFullYear() ===
-                  statsYear
-            );
-
-          const recentFormPanel =
-            panel(
-              '🔥 PHONG ĐỘ 5 TRẬN GẦN NHẤT',
-              root
-            );
-
-          recentFormPanel.append(
-            el(
-              'div',
-              'W = Thắng • L = Thua • D = Hòa • Kết quả mới nhất nằm bên trái.',
-              'text-sm opacity-70 mb-4'
-            )
-          );
-
-          if (
-            !ready(
-              'players',
-              'matches',
-              'match_players'
-            )
-          ) {
-            recentFormPanel.append(
-              el(
-                'div',
-                'Cần tải đủ VĐV, trận đấu và thành phần trận để tính phong độ.',
-                'text-sm opacity-70'
-              )
-            );
-          } else {
-            const approvedFormMatches =
-              new Map(
-                rows('matches')
-                  .filter(
-                    match =>
-                      upper(
-                        match.status
-                      ) ===
-                        'APPROVED' &&
-                      match.played_at
-                  )
-                  .map(
-                    match => [
-                      match.id,
-                      match
-                    ]
-                  )
-              );
-
-            const formByPlayer =
-              new Map();
-
-            const seenFormAppearances =
-              new Set();
-
-            rows('match_players')
-              .forEach(mp => {
-                const match =
-                  approvedFormMatches.get(
-                    mp.match_id
-                  );
-
-                if (
-                  !match ||
-                  !mp.player_id
-                ) {
-                  return;
-                }
-
-                const appearanceKey =
-                  `${mp.match_id}:${mp.player_id}`;
-
-                if (
-                  seenFormAppearances.has(
-                    appearanceKey
-                  )
-                ) {
-                  return;
-                }
-
-                const side =
-                  upper(
-                    pick(
-                      mp,
-                      'team',
-                      'team_side'
-                    )
-                  );
-
-                if (
-                  side !== 'A' &&
-                  side !== 'B'
-                ) {
-                  return;
-                }
-
-                const scoreA =
-                  Number(
-                    match.team_a_score
-                  );
-
-                const scoreB =
-                  Number(
-                    match.team_b_score
-                  );
-
-                if (
-                  !Number.isFinite(scoreA) ||
-                  !Number.isFinite(scoreB)
-                ) {
-                  return;
-                }
-
-                const playedAt =
-                  new Date(
-                    match.played_at
-                  );
-
-                if (
-                  !Number.isFinite(
-                    playedAt.getTime()
-                  )
-                ) {
-                  return;
-                }
-
-                let result = 'D';
-
-                if (scoreA !== scoreB) {
-                  const winner =
-                    scoreA > scoreB
-                      ? 'A'
-                      : 'B';
-
-                  result =
-                    side === winner
-                      ? 'W'
-                      : 'L';
-                }
-
-                seenFormAppearances.add(
-                  appearanceKey
-                );
-
-                if (
-                  !formByPlayer.has(
-                    mp.player_id
-                  )
-                ) {
-                  formByPlayer.set(
-                    mp.player_id,
-                    []
-                  );
-                }
-
-                formByPlayer
-                  .get(
-                    mp.player_id
-                  )
-                  .push({
-                    match_id:
-                      match.id,
-                    played_at:
-                      playedAt,
-                    match_number:
-                      match.match_number,
-                    result
-                  });
-              });
-
-            const recentFormRows =
-              rows('players')
-                .filter(
-                  player =>
-                    upper(
-                      player.status
-                    ) ===
-                    'ACTIVE'
+              const parts =
+                String(
+                  player.date_of_birth
                 )
-                .map(player => {
-                  const form =
-                    [
-                      ...(
-                        formByPlayer.get(
-                          player.id
-                        ) || []
-                      )
-                    ]
-                      .sort(
-                        (a, b) =>
-                          b.played_at.getTime() -
-                            a.played_at.getTime() ||
-                          (
-                            Number(
-                              b.match_number
-                            ) || 0
-                          ) -
-                            (
-                              Number(
-                                a.match_number
-                              ) || 0
-                            ) ||
-                          String(
-                            b.match_id
-                          ).localeCompare(
-                            String(
-                              a.match_id
-                            )
-                          )
-                      )
-                      .slice(
-                        0,
-                        5
-                      );
+                  .slice(0, 10)
+                  .split('-');
 
-                  return {
-                    player,
-                    form
-                  };
-                })
-                .sort(
-                  (a, b) =>
-                    playerName(
-                      a.player.id
-                    ).localeCompare(
-                      playerName(
-                        b.player.id
-                      ),
-                      'vi'
-                    )
-                );
-
-            if (!recentFormRows.length) {
-              recentFormPanel.append(
-                el(
-                  'div',
-                  'Chưa có VĐV đang hoạt động.',
-                  'text-sm opacity-70'
-                )
+              return (
+                Number(parts[1]) === currentMonth &&
+                Number(parts[2]) === currentDay
               );
-            } else {
-              const recentFormGrid =
-                el(
-                  'div',
-                  null,
-                  'grid gap-3 md:grid-cols-2'
-                );
+            });
 
-              recentFormRows.forEach(
-                item => {
-                  const card =
-                    el(
-                      'div',
-                      null,
-                      'rounded-xl border p-4'
-                    );
-
-                  card.append(
-                    el(
-                      'div',
-                      playerName(
-                        item.player.id
-                      ),
-                      'font-semibold mb-3'
-                    )
-                  );
-
-                  if (!item.form.length) {
-                    card.append(
-                      el(
-                        'div',
-                        'Chưa có trận',
-                        'text-sm opacity-60'
-                      )
-                    );
-
-                    recentFormGrid.append(
-                      card
-                    );
-
-                    return;
-                  }
-
-                  const formLine =
-                    el(
-                      'div',
-                      null,
-                      'flex flex-wrap gap-2'
-                    );
-
-                  const formDetail =
-                    el(
-                      'div',
-                      null,
-                      'mt-3'
-                    );
-
-                  let openedFormMatchId =
-                    null;
-
-                  function friendlyMatchType(
-                    matchType
-                  ) {
-                    const labels = {
-                      TOURNAMENT:
-                        'Giải đấu',
-                      LEAGUE:
-                        'Giải nội bộ',
-                      CLUB_RATED:
-                        'CLB Rated',
-                      FRIENDLY_RATED:
-                        'Giao hữu Rated',
-                      SELF_REPORTED:
-                        'Tự khai báo',
-                      TRAINING:
-                        'Tập luyện'
-                    };
-
-                    const key =
-                      upper(
-                        matchType
-                      );
-
-                    return (
-                      labels[key] ||
-                      raw(
-                        matchType
-                      ) ||
-                      'Không xác định'
-                    );
-                  }
-
-                  function showFormDetail(
-                    formItem
-                  ) {
-                    if (
-                      openedFormMatchId ===
-                      formItem.match_id
-                    ) {
-                      formDetail.replaceChildren();
-
-                      openedFormMatchId =
-                        null;
-
-                      return;
-                    }
-
-                    formDetail.replaceChildren();
-
-                    const match =
-                      approvedFormMatches.get(
-                        formItem.match_id
-                      );
-
-                    if (!match) {
-                      openedFormMatchId =
-                        null;
-
-                      formDetail.append(
-                        el(
-                          'div',
-                          'Không tìm thấy dữ liệu trận.',
-                          'text-sm opacity-70'
-                        )
-                      );
-
-                      return;
-                    }
-
-                    openedFormMatchId =
-                      formItem.match_id;
-
-                    const playerId =
-                      item.player.id;
-
-                    const memberships =
-                      rows('match_players')
-                        .filter(
-                          mp =>
-                            mp.match_id ===
-                              match.id
-                        );
-
-                    const currentMembership =
-                      memberships.find(
-                        mp =>
-                          mp.player_id ===
-                          playerId
-                      );
-
-                    const currentSide =
-                      upper(
-                        pick(
-                          currentMembership || {},
-                          'team',
-                          'team_side'
-                        )
-                      );
-
-                    const partnerNames =
-                      memberships
-                        .filter(mp => {
-                          const side =
-                            upper(
-                              pick(
-                                mp,
-                                'team',
-                                'team_side'
-                              )
-                            );
-
-                          return (
-                            mp.player_id !==
-                              playerId &&
-                            side ===
-                              currentSide
-                          );
-                        })
-                        .map(
-                          mp =>
-                            playerName(
-                              mp.player_id
-                            )
-                        );
-
-                    const opponentNames =
-                      memberships
-                        .filter(mp => {
-                          const side =
-                            upper(
-                              pick(
-                                mp,
-                                'team',
-                                'team_side'
-                              )
-                            );
-
-                          return (
-                            mp.player_id !==
-                              playerId &&
-                            side &&
-                            currentSide &&
-                            side !==
-                              currentSide
-                          );
-                        })
-                        .map(
-                          mp =>
-                            playerName(
-                              mp.player_id
-                            )
-                        );
-
-                    const playedAt =
-                      new Date(
-                        match.played_at
-                      );
-
-                    const playedText =
-                      Number.isFinite(
-                        playedAt.getTime()
-                      )
-                        ? new Intl.DateTimeFormat(
-                            'vi-VN',
-                            {
-                              timeZone:
-                                'Asia/Ho_Chi_Minh',
-                              day:
-                                '2-digit',
-                              month:
-                                '2-digit',
-                              year:
-                                'numeric',
-                              hour:
-                                '2-digit',
-                              minute:
-                                '2-digit'
-                            }
-                          ).format(
-                            playedAt
-                          )
-                        : 'Không rõ thời gian';
-
-                    const detailBox =
-                      el(
-                        'div',
-                        null,
-                        'rounded-xl border p-3 text-sm'
-                      );
-
-                    const closeButton =
-                      button(
-                        'Thu gọn',
-                        () => {
-                          formDetail.replaceChildren();
-
-                          openedFormMatchId =
-                            null;
-                        },
-                        'border rounded-lg px-3 py-1 text-xs mt-3'
-                      );
-
-                    closeButton.type =
-                      'button';
-
-                    detailBox.append(
-                      el(
-                        'div',
-                        `${matchCode(
-                          match
-                        )} • ${playedText}`,
-                        'font-semibold'
-                      ),
-                      el(
-                        'div',
-                        `Kết quả: ${formItem.result}`,
-                        'mt-2'
-                      ),
-                      el(
-                        'div',
-                        `Tỷ số: ${number(
-                          match.team_a_score
-                        )} – ${number(
-                          match.team_b_score
-                        )}`,
-                        'mt-1'
-                      ),
-                      el(
-                        'div',
-                        `Đồng đội: ${
-                          partnerNames.length
-                            ? partnerNames.join(
-                                ', '
-                              )
-                            : 'Không rõ'
-                        }`,
-                        'mt-1'
-                      ),
-                      el(
-                        'div',
-                        `Đối thủ: ${
-                          opponentNames.length
-                            ? opponentNames.join(
-                                ', '
-                              )
-                            : 'Không rõ'
-                        }`,
-                        'mt-1'
-                      ),
-                      el(
-                        'div',
-                        `Loại trận: ${friendlyMatchType(
-                          match.match_type
-                        )}`,
-                        'mt-1'
-                      ),
-                      closeButton
-                    );
-
-                    formDetail.append(
-                      detailBox
-                    );
-                  }
-
-                  item.form.forEach(
-                    formItem => {
-                      const resultButton =
-                        button(
-                          formItem.result,
-                          () =>
-                            showFormDetail(
-                              formItem
-                            ),
-                          'border rounded-lg px-3 py-1 font-semibold'
-                        );
-
-                      resultButton.type =
-                        'button';
-
-                      resultButton.title =
-                        'Bấm để xem/thu gọn chi tiết trận';
-
-                      formLine.append(
-                        resultButton
-                      );
-                    }
-                  );
-
-                  card.append(
-                    formLine,
-                    el(
-                      'div',
-                      `${number(
-                        item.form.length
-                      )}/5 trận gần nhất`,
-                      'text-xs opacity-60 mt-2'
-                    ),
-                    formDetail
-                  );
-                  recentFormGrid.append(
-                    card
-                  );
-                });
-
-              recentFormPanel.append(
-                recentFormGrid
+          if (todayBirthdays.length) {
+            const birthdayNotice =
+              panel(
+                '🎂 Sinh nhật hôm nay',
+                root
               );
-            }
+
+            birthdayNotice.classList.add(
+              'overview-today-notice'
+            );
+
+            birthdayNotice.append(
+              el(
+                'p',
+                todayBirthdays
+                  .map(player =>
+                    raw(player.full_name)
+                  )
+                  .join(' • '),
+                'overview-today-names'
+              ),
+              el(
+                'p',
+                `${number(
+                  todayBirthdays.length
+                )} VĐV có sinh nhật hôm nay.`,
+                'muted mb-0'
+              )
+            );
           }
         }
         sources(

@@ -5737,3 +5737,380 @@ tbody tr:hover{
 .membership-status-panel{max-width:720px; margin-inline:auto;}
 .membership-status-panel p{line-height:1.6; overflow-wrap:anywhere;}
 /* /IAM05D APPROVAL */
+
+/* UI03A1 MANAGEMENT WORKSPACE */
+.overview-management{
+  padding:18px;
+}
+
+.overview-management > h2:first-child{
+  margin-bottom:8px;
+  padding-bottom:10px;
+}
+
+.overview-management-intro{
+  margin:0 0 12px;
+}
+
+.overview-management-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:var(--ui-card-gap,10px);
+}
+
+.overview-management-card{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:154px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-left:4px solid #87978e;
+  border-radius:var(--ui-card-radius,12px);
+  background:var(--surface);
+  box-shadow:var(--shadow-1);
+}
+
+.overview-management-pending{
+  border-left-color:#d5a83b;
+}
+
+.overview-management-info{
+  border-left-color:#4e7fd1;
+}
+
+.overview-management-success{
+  border-left-color:#459b66;
+}
+
+.overview-management-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.overview-management-icon{
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  border-radius:8px;
+  background:var(--surface-3);
+  color:var(--brand-2);
+  font-weight:800;
+}
+
+.overview-management-pending .overview-management-icon{
+  background:#fff3dc;
+  color:#97631c;
+}
+
+.overview-management-info .overview-management-icon{
+  background:#e2ebfa;
+  color:#3569bb;
+}
+
+.overview-management-success .overview-management-icon{
+  background:#dff2e4;
+  color:#25814c;
+}
+
+.overview-management-title{
+  min-width:0;
+  margin:0;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.overview-management-value{
+  display:block;
+  margin-top:10px;
+  color:var(--brand);
+  font-size:24px;
+  line-height:1.1;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+
+.overview-management-hint{
+  margin:7px 0 12px;
+  color:var(--text-2);
+  font-size:11px;
+  line-height:1.45;
+}
+
+.overview-management-action{
+  width:100%;
+  min-height:40px;
+  margin-top:auto;
+  font-size:12px;
+}
+
+@media(max-width:1000px){
+  .overview-management-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:600px){
+  .overview-management{
+    padding:13px;
+  }
+
+  .overview-management-grid{
+    grid-template-columns:minmax(0,1fr);
+    gap:8px;
+  }
+
+  .overview-management-card{
+    min-height:0;
+  }
+
+  .overview-management-action{
+    min-height:44px;
+  }
+}
+/* /UI03A1 MANAGEMENT WORKSPACE */
+/* UI03A2 COMPACT DASHBOARD */
+.overview-today-notice{
+  padding:14px 16px;
+  border-left:4px solid var(--club-accent-strong);
+  background:
+    linear-gradient(
+      135deg,
+      var(--club-accent-soft),
+      var(--surface)
+    );
+}
+
+.overview-today-notice > h2:first-child{
+  margin-bottom:8px;
+  padding-bottom:8px;
+  font-size:16px;
+}
+
+.overview-today-names{
+  margin:0 0 4px;
+  color:var(--brand);
+  font-size:14px;
+  line-height:1.45;
+  font-weight:750;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:760px){
+  .overview-today-notice{
+    padding:12px;
+  }
+
+  .overview-today-notice > h2:first-child{
+    font-size:15px;
+  }
+
+  .overview-today-names{
+    font-size:13px;
+  }
+}
+/* /UI03A2 COMPACT DASHBOARD */
+/* UI03A4 COMPACT HERO + KPI */
+
+/* Dashboard hero is an introduction, not the main content block. */
+.overview-hero{
+  padding:18px 24px;
+  margin-bottom:14px;
+  border-radius:18px;
+}
+
+.overview-hero h2{
+  margin-bottom:7px;
+  font-size:clamp(24px,2.15vw,32px);
+  line-height:1.18;
+}
+
+.overview-hero p{
+  line-height:1.45;
+}
+
+.overview-hero .mb-5{
+  margin-bottom:13px;
+}
+
+.overview-hero .btn{
+  min-height:40px;
+  padding:8px 14px;
+}
+
+/* Compact KPI rhythm only on Overview. */
+.overview-kpi-grid.ui-kpi-grid{
+  --ui-card-min-height:88px;
+  --ui-card-padding:9px;
+  --ui-card-gap:9px;
+  --ui-card-stack:3px;
+  --ui-card-label-height:18px;
+  --ui-card-meta-height:17px;
+  --ui-card-value-size:19px;
+  --ui-card-label-size:10px;
+  --ui-card-meta-size:10px;
+  --ui-card-decoration:36px;
+  --ui-card-decoration-offset:-12px;
+
+  margin:10px 0 12px;
+}
+
+.overview-kpi-grid .ui-summary-card{
+  min-height:88px;
+}
+
+.overview-kpi-grid .ui-summary-card > .ui-card-label{
+  line-height:1.25;
+}
+
+.overview-kpi-grid .ui-summary-card > .ui-card-value{
+  font-size:clamp(16px,9cqi,19px);
+  line-height:1.15;
+}
+
+.overview-kpi-grid .ui-summary-card > .ui-card-meta{
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+
+/* Member now has exactly four balanced KPI cards. */
+.overview-member-kpis.ui-kpi-grid >
+.ui-summary-card:nth-child(n){
+  grid-column:span 2;
+}
+
+/* Management workspace also becomes slightly denser. */
+.overview-management{
+  padding:15px;
+}
+
+.overview-management-grid{
+  gap:9px;
+}
+
+.overview-management-card{
+  min-height:132px;
+  padding:10px;
+}
+
+.overview-management-value{
+  margin-top:8px;
+  font-size:21px;
+}
+
+.overview-management-hint{
+  margin:5px 0 9px;
+}
+
+.overview-management-action{
+  min-height:38px;
+}
+
+/* Tablet / mobile */
+@media(max-width:760px){
+
+  .overview-hero{
+    padding:13px 15px 14px;
+    margin-bottom:10px;
+    border-radius:15px;
+  }
+
+  .overview-hero h2{
+    margin-bottom:5px;
+    font-size:20px;
+  }
+
+  .overview-hero .tracking-widest{
+    margin-bottom:5px;
+  }
+
+  .overview-hero .mb-5{
+    margin-bottom:8px;
+  }
+
+  .overview-hero .btn{
+    min-height:38px;
+    padding:7px 11px;
+  }
+
+  .overview-kpi-grid.ui-kpi-grid{
+    --ui-card-min-height:86px;
+    --ui-card-padding:9px;
+    --ui-card-meta-height:28px;
+    --ui-card-value-size:18px;
+
+    grid-template-columns:
+      repeat(4,minmax(0,1fr));
+
+    gap:8px;
+    margin:8px 0 10px;
+  }
+
+  .overview-kpi-grid.ui-kpi-grid >
+  .ui-summary-card:nth-child(n){
+    grid-column:span 2;
+  }
+
+  .overview-kpi-grid .ui-summary-card{
+    min-height:86px;
+  }
+
+  /* Global UI02D hides KPI meta on mobile;
+     Overview needs it for the combined match KPI. */
+  .overview-kpi-grid
+  .ui-summary-card >
+  .ui-card-meta{
+    display:block;
+  }
+
+  .overview-kpi-grid
+  .ui-summary-card >
+  .ui-card-value{
+    font-size:17px;
+  }
+
+  .overview-management{
+    padding:11px;
+  }
+
+  .overview-management-grid{
+    gap:7px;
+  }
+
+  .overview-management-card{
+    min-height:118px;
+    padding:9px;
+  }
+
+  .overview-management-value{
+    font-size:19px;
+  }
+
+  .overview-management-hint{
+    font-size:10px;
+  }
+}
+
+@media(max-width:360px){
+
+  .overview-kpi-grid.ui-kpi-grid{
+    gap:7px;
+  }
+
+  .overview-kpi-grid .ui-summary-card{
+    min-height:88px;
+  }
+
+  .overview-kpi-grid
+  .ui-summary-card >
+  .ui-card-meta{
+    font-size:9px;
+  }
+}
+
+/* /UI03A4 COMPACT HERO + KPI */
