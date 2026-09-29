@@ -29,7 +29,7 @@ function secretKey() {
       Object.values(keys)[0] ||
       key
   } catch {
-    // Preserve deployed legacy fallback.
+    // Preserve deployed fallback behavior.
   }
 
   return key
@@ -77,7 +77,6 @@ Deno.serve(async (req) => {
         autoRefreshToken: false,
       },
     })
-
     const {
       data: callerData,
       error: callerError,
@@ -156,7 +155,6 @@ Deno.serve(async (req) => {
         400,
       )
     }
-
     const {
       data: target,
       error: targetError,
@@ -175,59 +173,156 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (!target || target.role !== 'MEMBER') {
-      return jsonResponse(
-        { error: 'TARGET_MEMBER_REQUIRED' },
-        404,
-      )
-    }
+    let cleanup:
+      | Record<string, unknown>
+      | null = null
 
-    /*
-     * Informational pre-check only.
-     *
-     * The mutation RPC performs the authoritative
-     * re-check inside its own transaction.
-     */
-    const {
-      data: snapshot,
-      error: snapshotError,
-    } = await admin.rpc(
-      'get_member_hard_delete_snapshot',
-      {
-        p_profile_id: profileId,
-      },
-    )
+    let recoveryMode = false
 
-    if (snapshotError) {
-      return jsonResponse(
+    if (target) {
+      if (target.role !== 'MEMBER') {
+        return jsonResponse(
+          { error: 'TARGET_MEMBER_REQUIRED' },
+          404,
+        )
+      }
+      const {
+        data: snapshot,
+        error: snapshotError,
+      } = await admin.rpc(
+        'get_member_hard_delete_snapshot',
         {
-          error:
-            'DELETION_SNAPSHOT_FAILED',
+          p_profile_id: profileId,
         },
-        500,
       )
-    }
 
-    if (
-      snapshot?.hard_delete_allowed !== true ||
-      Number(snapshot?.reference_total || 0) !== 0
-    ) {
-      return jsonResponse(
+      if (snapshotError) {
+        return jsonResponse(
+          {
+            error:
+              'DELETION_SNAPSHOT_FAILED',
+          },
+          500,
+        )
+      }
+
+      if (
+        snapshot?.hard_delete_allowed !== true ||
+        Number(snapshot?.reference_total || 0) !== 0
+      ) {
+        return jsonResponse(
+          {
+            error: 'MEMBER_HAS_REFERENCES',
+            preview: snapshot,
+          },
+          409,
+        )
+      }
+
+      /*
+       * IMPORTANT:
+       * public.profiles.id -> auth.users.id is ON DELETE CASCADE.
+       * Therefore public blockers must be removed BEFORE auth.deleteUser().
+       *
+       * This RPC performs the authoritative eligibility re-check and
+       * atomically deletes lifecycle audit + Profile + linked Player.
+       */
+      const {
+        data: cleanupData,
+        error: cleanupError,
+      } = await admin.rpc(
+        'admin_hard_delete_member_public',
         {
-          error:
+          p_profile_id: profileId,
+          p_actor_id: caller.id,
+          p_reason: reason,
+        },
+      )
+
+      if (cleanupError) {
+        const message =
+          cleanupError.message || ''
+
+        if (
+          message.includes(
             'MEMBER_HAS_REFERENCES',
-          preview: snapshot,
-        },
-        409,
-      )
+          )
+        ) {
+          return jsonResponse(
+            {
+              error:
+                'MEMBER_HAS_REFERENCES',
+            },
+            409,
+          )
+        }
+
+        return jsonResponse(
+          {
+            error:
+              'PUBLIC_CLEANUP_FAILED',
+          },
+          500,
+        )
+      }
+
+      cleanup =
+        cleanupData &&
+        typeof cleanupData === 'object'
+          ? cleanupData
+          : null
+    } else {
+      /*
+       * Profile missing may mean a prior attempt completed public cleanup
+       * but Auth deletion failed. Only a valid hard-delete tombstone permits
+       * Auth-only recovery.
+       */
+      const {
+        data: tombstone,
+        error: tombstoneError,
+      } = await admin
+        .from('audit_logs')
+        .select('id, record_id, old_data')
+        .eq(
+          'action',
+          'HARD_DELETE_MEMBER_ACCOUNT',
+        )
+        .eq('table_name', 'profiles')
+        .eq('record_id', profileId)
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
+
+      if (tombstoneError) {
+        return jsonResponse(
+          {
+            error:
+              'RECOVERY_TOMBSTONE_LOOKUP_FAILED',
+          },
+          500,
+        )
+      }
+
+      if (!tombstone) {
+        return jsonResponse(
+          {
+            error:
+              'TARGET_MEMBER_REQUIRED',
+          },
+          404,
+        )
+      }
+
+      recoveryMode = true
     }
 
     /*
-     * Delete Auth first.
+     * Auth deletion happens only after public blockers are gone.
      *
-     * If public cleanup subsequently fails,
-     * business/public data is preserved and the
-     * operation can be retried safely.
+     * If Auth deletion fails now, retry is safe because the tombstone allows
+     * this function to enter Auth-only recovery mode.
      */
     const {
       data: authLookup,
@@ -249,10 +344,23 @@ Deno.serve(async (req) => {
       authLookupError &&
       !authNotFound
     ) {
+      console.log(
+        'IAM05E_AUTH_LOOKUP_ERROR',
+        {
+          message:
+            authLookupError.message || null,
+          status:
+            authLookupError.status || null,
+          name:
+            authLookupError.name || null,
+        },
+      )
+
       return jsonResponse(
         {
           error:
-            'AUTH_LOOKUP_FAILED',
+            'PUBLIC_DELETED_AUTH_LOOKUP_FAILED',
+          recovery_required: true,
         },
         500,
       )
@@ -270,64 +378,30 @@ Deno.serve(async (req) => {
       )
 
       if (authDeleteError) {
+        console.log(
+          'IAM05E_AUTH_DELETE_ERROR',
+          {
+            message:
+              authDeleteError.message || null,
+            status:
+              authDeleteError.status || null,
+            name:
+              authDeleteError.name || null,
+          },
+        )
+
         return jsonResponse(
           {
             error:
-              'AUTH_DELETE_FAILED',
+              'PUBLIC_DELETED_AUTH_DELETE_FAILED',
+            auth_error:
+              authDeleteError.message || null,
+            recovery_required: true,
           },
           500,
         )
       }
     }
-
-    /*
-     * Authoritative transactional cleanup.
-     *
-     * RPC re-checks:
-     * - actor is still active ADMIN
-     * - target is still MEMBER
-     * - Player/Profile business references
-     * - non-whitelisted audit history
-     */
-    const {
-      data: cleanup,
-      error: cleanupError,
-    } = await admin.rpc(
-      'admin_hard_delete_member_public',
-      {
-        p_profile_id: profileId,
-        p_actor_id: caller.id,
-        p_reason: reason,
-      },
-    )
-
-    if (cleanupError) {
-      const message =
-        cleanupError.message || ''
-
-      if (
-        message.includes(
-          'MEMBER_HAS_REFERENCES',
-        )
-      ) {
-        return jsonResponse(
-          {
-            error:
-              'PUBLIC_CLEANUP_BLOCKED_AUTH_ALREADY_DELETED',
-          },
-          409,
-        )
-      }
-
-      return jsonResponse(
-        {
-          error:
-            'PUBLIC_CLEANUP_FAILED_AUTH_ALREADY_DELETED',
-        },
-        500,
-      )
-    }
-
     return jsonResponse({
       ok: true,
       profile_id: profileId,
@@ -339,8 +413,15 @@ Deno.serve(async (req) => {
         0,
       auth_user_deleted:
         authUserExists,
+      recovery_mode:
+        recoveryMode,
     })
-  } catch {
+  } catch (error) {
+    console.error(
+      'IAM05E_UNHANDLED_ERROR',
+      error,
+    )
+
     return jsonResponse(
       { error: 'INTERNAL_ERROR' },
       500,
