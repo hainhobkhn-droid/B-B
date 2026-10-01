@@ -6150,3 +6150,12 @@ tbody tr:hover{
 @media(max-width:640px){.account-ui .acc03-summary .member-lifecycle-summary-grid{grid-template-columns:minmax(0,1fr);}}
 .account-ui .acc03-group{grid-column:1 / -1;margin:4px 0 0;font-size:13px;}
 /* /ACC03 PRESENTATION */
+
+/* ACC04 MEMBER WORKSPACE */
+.account-ui .acc04-toolbar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;}
+.account-ui .acc04-member-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere;}
+.account-ui .acc04-member-row p{margin:4px 0 0;}
+.account-ui .acc04-queue{padding:10px;border:1px solid var(--amber);border-radius:12px;margin-bottom:12px;}
+.account-ui .acc04-queue .btn{margin:4px;white-space:normal;}
+@media(max-width:640px){.account-ui .acc04-toolbar,.account-ui .acc04-member-row{grid-template-columns:minmax(0,1fr);}.account-ui .acc04-member-row>.btn{width:100%;}}
+/* /ACC04 MEMBER WORKSPACE */

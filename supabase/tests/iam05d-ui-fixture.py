@@ -15,7 +15,7 @@ def extract(source,name):
 def fixture():
     source=(repo/'app.js').read_text(encoding='utf8')
     names=['el','button','notice','panel','badge','accountAction','membershipLabel',
-           'accountMemberSummary','memberApprovalStatus','adminMemberApproval','adminMemberLifecycle']
+           'adminMemberPermissions','accountMemberSummary','memberApprovalStatus','adminMemberApproval','accountMemberPageRows','adminMemberLifecycle']
     functions='\n'.join(extract(source,n) for n in names)
     return '''<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IAM05D Local Verification</title><link rel="stylesheet" href="/app.css">
@@ -37,7 +37,9 @@ const client={rpc:async(name,args)=>{
  let result;
  if(name.startsWith('get_')){reads++;result={data:name==='get_admin_pending_member_signups'?members.filter(m=>m.membership_status==='PENDING').map(m=>({...m})):members.map(m=>({...m})),error:null};}
  else {writes++;const m=members.find(m=>m.profile_id===args.p_profile_id);
- if(!m||m.membership_status!=='PENDING') result={data:null,error:{message:'SIGNUP_NOT_PENDING'}};
+ if(name==='admin_update_member_permissions'&&m){Object.assign(m,args.p_capabilities);m.delegated_permissions_count=Object.keys(m).filter(k=>k.startsWith('can_')&&m[k]===true).length;result={data:{success:true,changed:true}};}
+ else if(name==='admin_set_member_account_active'&&m){m.is_active=args.p_is_active;result={data:{success:true,changed:true}};}
+ else if(!m||m.membership_status!=='PENDING') result={data:null,error:{message:'SIGNUP_NOT_PENDING'}};
  else {m.membership_status=name==='admin_approve_member_signup'?'APPROVED':'REJECTED';m.is_active=m.membership_status==='APPROVED';result={data:{success:true},error:null};}}
  if(hold){hold=false;updateCounts();await new Promise(resolve=>{release=resolve;updateCounts()});release=null;}
  updateCounts();return result;
@@ -49,8 +51,7 @@ function render(){
  $('content').replaceChildren();
  const root=el('div',null,'account-ui');$('content').append(root);
  if(state.profile.role==='ADMIN'){
- accountAction(root,'Duyệt thành viên mới',adminMemberApproval,'success');
- accountAction(root,'Vòng đời tài khoản thành viên',adminMemberLifecycle);
+ accountAction(root,'Thành viên',adminMemberLifecycle);
  }else if(['PENDING','REJECTED'].includes(state.profile.membership_status)) memberApprovalStatus(root);
  else root.append(el('p','Đã duyệt — tiếp tục luồng MEMBER bình thường.','notice success'));
  updateCounts();

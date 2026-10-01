@@ -3320,11 +3320,9 @@ const fieldLabels = {
           return;
         }
 
-        accountAction(root, 'Duyệt thành viên mới', adminMemberApproval, 'success');
+        accountAction(root, 'Thành viên', adminMemberLifecycle, 'info');
         accountAction(root, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
         accountAction(root, 'Xác nhận email tài khoản', adminAccountVerification);
-        accountAction(root, 'Quản lý quyền thành viên', adminMemberPermissions);
-        accountAction(root, 'Vòng đời tài khoản thành viên', adminMemberLifecycle);
         accountAction(root, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
         accountAction(root, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
         accountAction(root, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
@@ -3356,7 +3354,7 @@ const fieldLabels = {
 
 
       // PERM01D D5: ADMIN authority is independent of delegated capabilities.
-      function adminMemberPermissions(root) {
+      function adminMemberPermissions(root, selected = null, afterChange = null) {
         if (!isAdmin()) return;
         const actor = state.session?.user?.id;
         const generation = state.generation;
@@ -3387,7 +3385,7 @@ const fieldLabels = {
         const previous = button('Trang trước', () => loadPage(Math.max(0, offset - pageSize)));
         const next = button('Trang sau', () => loadPage(offset + pageSize));
         paging.append(reload, previous, next, pageLabel);
-        section.append(paging, message, directory, editor);
+        section.append(...(selected ? [message, editor] : [paging, message, directory, editor]));
 
         function sync() {
           const blocked = reading || saving || !current();
@@ -3420,7 +3418,7 @@ const fieldLabels = {
           const actions = el('div', null, 'form-actions');
           actions.append(button('Chỉnh quyền', () => editMember(member), 'btn primary'));
 
-          summary.append(head, flags, actions);
+          summary.append(...(selected ? [] : [head]), flags, actions);
           editor.append(summary);
         }
 
@@ -3522,6 +3520,7 @@ const fieldLabels = {
                   submit.textContent = 'Lưu quyền';
                 }
                 sync();
+                if (saved && afterChange) afterChange();
               }
             }
           });
@@ -3547,6 +3546,12 @@ const fieldLabels = {
             offset = newOffset;
             loaded = true;
             pageLabel.textContent = 'Trang ' + (Math.floor(offset / pageSize) + 1);
+            if (selected) {
+              const match = members.find(m => m.profile_id === selected.profile_id);
+              if (match) { Object.assign(match, {membership_status:selected.membership_status,player_status:selected.player_status}); reading = false; if (afterSave) showMemberPermissions(match); else editMember(match); notice(message, ''); return true; }
+              if (data.length === pageSize) { reading = false; return await loadPage(newOffset + pageSize, selectedId, afterSave); }
+              throw new Error('Thành viên không còn trong danh sách quyền');
+            }
             const select = el('select', null, 'field');
             select.id = 'member-permissions-target';
             const label = el('label', 'Chọn thành viên để chỉnh quyền');
@@ -3586,6 +3591,7 @@ const fieldLabels = {
           }
         }
         sync();
+        if (selected) { void loadPage(0); return; }
         root.parentElement.addEventListener('toggle', () => {
           if (root.parentElement.open && !loaded && !reading && !saving) loadPage(offset);
         });
@@ -3645,7 +3651,7 @@ const fieldLabels = {
         box.append(actions);
       }
 
-      function adminMemberApproval(root) {
+      function adminMemberApproval(root, selected = null) {
         if (!isAdmin()) return;
         const actor = state.profile.id;
         const gen = state.generation;
@@ -3665,7 +3671,7 @@ const fieldLabels = {
         const previous = button('Trang trước', () => loadPage(Math.max(0, offset - size)));
         const next = button('Trang sau', () => loadPage(offset + size));
         paging.append(reload, previous, next, pageLabel);
-        section.append(paging, message, directory, detail);
+        section.append(...(selected ? [message, detail] : [paging, message, directory, detail]));
         function sync() {
           section.querySelectorAll('button, select, input, textarea').forEach(control => {
             control.disabled = reading || saving || !current();
@@ -3688,7 +3694,8 @@ const fieldLabels = {
             item.append(el('span', label), el('strong', value == null || value === '' ? 'Chưa có' : String(value)));
             grid.append(item);
           }
-          detail.append(accountMemberSummary(member), grid, el('p', 'Duyệt hoặc từ chối chỉ thay đổi quyền sử dụng tài khoản; giữ nguyên Player ID, Rating và lịch sử.', 'muted'));
+          if (selected && !selected.email && member.email) { const emailRow=el('div',null,'member-lifecycle-summary-item'); emailRow.append(el('span','Email đăng ký'),el('strong',member.email)); grid.prepend(emailRow); }
+          detail.append(...(selected ? [] : [accountMemberSummary(member)]), grid, el('p', 'Duyệt hoặc từ chối chỉ thay đổi quyền sử dụng tài khoản; giữ nguyên Player ID, Rating và lịch sử.', 'muted'));
           const rejectBox = el('details', null, 'app-action app-action-danger');
           rejectBox.append(el('summary', 'Từ chối', 'app-action-toggle'));
           const form = el('form', null, 'app-action-body');
@@ -3774,6 +3781,13 @@ const fieldLabels = {
             offset = newOffset;
             loaded = true;
             pageLabel.textContent = 'Trang ' + (Math.floor(offset / size) + 1);
+            if (selected) {
+              const match = members.find(m => m.profile_id === selected.profile_id);
+              if (match) { reading = false; show(match); notice(message, ''); return true; }
+              if (data.length === size) { reading = false; return await loadPage(newOffset + size); }
+              detail.append(el('p', 'Hồ sơ đã được xử lý. Tải lại danh sách để xem trạng thái mới.', 'muted'));
+              return true;
+            }
             const select = el('select', null, 'field');
             select.id = 'member-signup-target';
             const label = el('label', 'Chọn hồ sơ chờ duyệt');
@@ -3801,10 +3815,19 @@ const fieldLabels = {
             if (current()) sync();
           }
         }
+        if (selected) { void loadPage(0); return; }
         root.parentElement.addEventListener('toggle', () => {
           if (root.parentElement.open && !loaded) void loadPage(offset);
         });
         sync();
+      }
+
+      function accountMemberPageRows(members, search, membership, activation) {
+        const term = search.trim().toLocaleLowerCase('vi');
+        return members.filter(m => (!membership || m.membership_status === membership) &&
+          (!activation || String(m.is_active) === activation) &&
+          (!term || [m.full_name,m.login_name,m.email].filter(Boolean)
+            .some(v => String(v).toLocaleLowerCase('vi').includes(term))));
       }
 
       function adminMemberLifecycle(root) {
@@ -3819,7 +3842,7 @@ const fieldLabels = {
           state.generation === generation;
 
         const section = panel(
-          'Vòng đời tài khoản thành viên',
+          'Thành viên',
           root
         );
 
@@ -3849,6 +3872,8 @@ const fieldLabels = {
         );
 
         let members = [];
+        let pendingMembers = [];
+        let selectedProfileId = null;
         let offset = 0;
         let reading = false;
         let saving = false;
@@ -3856,7 +3881,46 @@ const fieldLabels = {
         let membershipRevision = 0;
         let deletionRecoveryPending = false;
 
-        const pageSize = 50;
+        const pageSize = 25;
+        const queue = el('section', null, 'acc04-queue');
+        queue.hidden = true;
+        const toolbar = el('div', null, 'acc04-toolbar');
+        const search = el('input', null, 'field');
+        search.type = 'search'; search.placeholder = 'Tìm tên hoặc nickname trong trang';
+        search.setAttribute('aria-label', 'Tìm thành viên trong trang');
+        const membershipFilter = el('select', null, 'field');
+        membershipFilter.setAttribute('aria-label', 'Lọc trạng thái duyệt');
+        for (const [value,label] of [['','Tất cả trạng thái duyệt'],['PENDING','Chờ duyệt'],['APPROVED','Đã duyệt'],['REJECTED','Đã từ chối']]) {
+          const option=el('option',label); option.value=value; membershipFilter.append(option);
+        }
+        const accountFilter = el('select', null, 'field');
+        accountFilter.setAttribute('aria-label', 'Lọc tài khoản');
+        for (const [value,label] of [['','Tất cả tài khoản'],['true','Đang hoạt động'],['false','Ngừng hoạt động']]) {
+          const option=el('option',label); option.value=value; accountFilter.append(option);
+        }
+        toolbar.append(search,membershipFilter,accountFilter);
+        const renderDirectory = () => {
+          directory.replaceChildren();
+          const shown=accountMemberPageRows(members,search.value,membershipFilter.value,accountFilter.value);
+          for (const member of shown) {
+            const row=el('article',null,'acc04-member-row');
+            const identity=el('div'); identity.append(el('strong',member.full_name||member.login_name||'Thành viên'),
+              el('p',member.login_name ? '@'+member.login_name : 'Chưa có nickname','muted'));
+            const statuses=el('div',null,'account-statuses');
+            statuses.append(el('span',membershipLabel(member),'badge acc03-'+({PENDING:'pending',APPROVED:'success',REJECTED:'danger'}[member.membership_status]||'neutral')),
+              el('span',member.is_active===true?'Đang hoạt động':'Ngừng hoạt động','badge acc03-'+(member.is_active===true?'success':'neutral')),
+              el('span','VĐV: '+playerStatusText(member.player_status),'muted'),
+              el('span',String(member.delegated_permissions_count||0)+' quyền','muted'));
+            row.append(identity,statuses,button('Xem chi tiết',()=>showMember(member),'btn'));
+            directory.append(row);
+          }
+          if (!shown.length) directory.append(el('p','Không có kết quả trong trang hiện tại.','muted'));
+          sync();
+        };
+        search.addEventListener('input',renderDirectory);
+        membershipFilter.addEventListener('change',renderDirectory);
+        accountFilter.addEventListener('change',renderDirectory);
+
 
         const reload = button(
           'Tải lại danh sách',
@@ -3883,6 +3947,9 @@ const fieldLabels = {
         );
 
         section.append(
+          queue,
+          el('p','Tìm kiếm và bộ lọc áp dụng trong trang đang tải (25 thành viên).','muted'),
+          toolbar,
           paging,
           message,
           directory,
@@ -3895,7 +3962,9 @@ const fieldLabels = {
             saving ||
             !current();
 
-          reload.disabled = blocked || deletionRecoveryPending;
+          toolbar.querySelectorAll('input, select').forEach(c => { c.disabled = blocked || deletionRecoveryPending || state.writeBusy; });
+          queue.querySelectorAll('button').forEach(c => { c.disabled = blocked || deletionRecoveryPending || state.writeBusy; });
+          reload.disabled = blocked || deletionRecoveryPending || state.writeBusy;
           previous.disabled =
             blocked || deletionRecoveryPending || offset === 0;
           next.disabled =
@@ -3917,7 +3986,7 @@ const fieldLabels = {
               'button, input, textarea, select'
             )
             .forEach(control => {
-              control.disabled = blocked;
+              if (!control.closest('.acc04-context')) control.disabled = blocked;
             });
         }
 
@@ -3982,11 +4051,13 @@ const fieldLabels = {
         function showMember(member) {
           if (
             !current() ||
-            !members.includes(member)
+            (!members.includes(member) && !pendingMembers.includes(member))
           ) {
             return;
           }
 
+          if (saving || state.writeBusy || deletionRecoveryPending) return;
+          selectedProfileId = member.profile_id;
           detail.replaceChildren();
 
           const summary = el(
@@ -4036,6 +4107,17 @@ const fieldLabels = {
           summary.append(head, distinction, dangerZone);
 
           detail.append(summary);
+          const contextual = el('div', null, 'acc04-context'); detail.append(contextual);
+          const permissionActions = el('div', null, 'form-actions');
+          summary.insertBefore(permissionActions, dangerZone);
+          permissionActions.append(button('Chỉnh quyền', () => {
+            if (!current() || saving || state.writeBusy || deletionRecoveryPending) return;
+            contextual.replaceChildren();
+            adminMemberPermissions(contextual, member, () => { root.closest('.account-ui')?.dispatchEvent(new Event('membership-changed')); });
+          }, 'btn'));
+          if (member.is_active !== true && member.membership_status === 'APPROVED') permissionActions.append(lifecycleButton);
+          if (member.membership_status === 'PENDING') adminMemberApproval(contextual, member);
+
         }
 
         function editLifecycle(member) {
@@ -4047,7 +4129,8 @@ const fieldLabels = {
             !current() ||
             reading ||
             saving ||
-            !members.includes(member)
+            state.writeBusy ||
+            (!members.includes(member) && !pendingMembers.includes(member))
           ) {
             return;
           }
@@ -4156,7 +4239,7 @@ const fieldLabels = {
                 saving ||
                 state.writeBusy ||
                 state.busy ||
-                !members.includes(member)
+                (!members.includes(member) && !pendingMembers.includes(member))
               ) {
                 return;
               }
@@ -4277,6 +4360,7 @@ const fieldLabels = {
                         : 'Ngừng tài khoản';
                   }
 
+                  if (saved && loaded) { const refreshedMember = members.find(m => m.profile_id === member.profile_id); if (refreshedMember) showMember(refreshedMember); }
                   sync();
                 }
               }
@@ -4291,7 +4375,7 @@ const fieldLabels = {
             saving ||
             state.writeBusy ||
             state.busy ||
-            !members.includes(member)
+            (!members.includes(member) && !pendingMembers.includes(member))
           ) {
             return;
           }
@@ -4561,6 +4645,7 @@ const fieldLabels = {
                     if (result?.ok !== true) throw new Error(result?.error || 'UNKNOWN_ERROR');
                     recoveryReason = null;
                     deletionRecoveryPending = false;
+                    selectedProfileId = null;
                     detail.replaceChildren();
                     await loadPage(0, null, true);
                     if (current()) notice(message, 'Đã xóa vĩnh viễn tài khoản thành công.', false, true);
@@ -4626,7 +4711,7 @@ preview.append(
             !current() ||
             deletionRecoveryPending ||
             reading ||
-            (saving && !afterSave)
+            ((saving || state.writeBusy) && !afterSave)
           ) {
             return false;
           }
@@ -4686,91 +4771,23 @@ preview.append(
                 ) + 1
               );
 
-            const select = el(
-              'select',
-              null,
-              'field'
-            );
-
-            select.id =
-              'member-lifecycle-target';
-
-            const label = el(
-              'label',
-              'Chọn thành viên'
-            );
-
-            label.htmlFor = select.id;
-
-            const placeholder = el(
-              'option',
-              'Chọn thành viên'
-            );
-
-            placeholder.value = '';
-            select.append(placeholder);
-
-            members.forEach(member => {
-              const option = el(
-                'option',
-                (
-                  member.full_name ||
-                  member.login_name ||
-                  member.profile_id
-                ) +
-                  (
-                    member.login_name
-                      ? ' • ' +
-                        member.login_name
-                      : ''
-                  ) +
-                  ' • ' + membershipLabel(member) + ' • Tài khoản: ' + (member.is_active === true ? 'Đang hoạt động' : 'Ngừng hoạt động')
-              );
-
-              option.value =
-                member.profile_id;
-
-              select.append(option);
-            });
-
-            select.addEventListener(
-              'change',
-              () => {
-                const member =
-                  members.find(
-                    item =>
-                      item.profile_id ===
-                      select.value
-                  );
-
-                if (member) {
-                  showMember(member);
-                } else if (!saving) {
-                  detail.replaceChildren();
-                }
+            renderDirectory();
+            const keepId = selectedId || selectedProfileId;
+            const chosen = members.find(m => m.profile_id === keepId);
+            // Rendering after a write is deferred until saving is cleared by its handler.
+            if (chosen && !saving) showMember(chosen);
+            try {
+              const pending = await query(client.rpc('get_admin_pending_member_signups', {p_limit:5,p_offset:0}));
+              if (!current() || revision !== membershipRevision) return false;
+              if (pending.error || !Array.isArray(pending.data)) throw new Error('PENDING_QUEUE_FAILED');
+              pendingMembers = pending.data;
+              queue.replaceChildren(); queue.hidden = pendingMembers.length === 0;
+              if (pendingMembers.length) {
+                queue.append(el('h3','Cần xử lý — '+pendingMembers.length+(pendingMembers.length===5?' hồ sơ đầu tiên':' hồ sơ chờ duyệt')));
+                for (const m of pendingMembers) queue.append(button(m.full_name || m.login_name || 'Hồ sơ chờ duyệt',()=>showMember(m),'btn'));
               }
-            );
-
-            directory.append(
-              label,
-              select
-            );
-
-            if (selectedId) {
-              select.value = selectedId;
-
-              const selectedMember =
-                members.find(
-                  item =>
-                    item.profile_id ===
-                    selectedId
-                );
-
-              if (selectedMember) {
-                showMember(
-                  selectedMember
-                );
-              }
+            } catch {
+              pendingMembers=[];queue.hidden=false;queue.replaceChildren(el('p','Chưa tải được hồ sơ cần xử lý. Hãy tải lại danh sách.','notice'));
             }
 
             notice(
