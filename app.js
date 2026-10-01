@@ -3838,6 +3838,7 @@ const fieldLabels = {
         let saving = false;
         let loaded = false;
         let membershipRevision = 0;
+        let deletionRecoveryPending = false;
 
         const pageSize = 50;
 
@@ -3878,11 +3879,12 @@ const fieldLabels = {
             saving ||
             !current();
 
-          reload.disabled = blocked;
+          reload.disabled = blocked || deletionRecoveryPending;
           previous.disabled =
-            blocked || offset === 0;
+            blocked || deletionRecoveryPending || offset === 0;
           next.disabled =
             blocked ||
+            deletionRecoveryPending ||
             !loaded ||
             members.length < pageSize;
 
@@ -3891,7 +3893,7 @@ const fieldLabels = {
               'button, select'
             )
             .forEach(control => {
-              control.disabled = blocked;
+              control.disabled = blocked || deletionRecoveryPending;
             });
 
           detail
@@ -4420,7 +4422,7 @@ const fieldLabels = {
             const resultNotice = el(
               'p',
               data.hard_delete_allowed === true
-                ? 'Không phát hiện dữ liệu nghiệp vụ/audit tham chiếu. Đây chỉ là ứng viên để xem xét hard-delete; IAM05 V1 chưa cung cấp thao tác xóa.'
+                ? 'Có thể xóa vĩnh viễn nếu máy chủ xác nhận không còn dữ liệu tham chiếu. Không thể hoàn tác; việc xóa tài khoản đăng nhập có thể cần thử lại riêng.'
                 : 'Không được hard-delete. Tài khoản có lịch sử nghiệp vụ hoặc audit và chỉ được vô hiệu hóa.',
               data.hard_delete_allowed === true
                 ? 'notice'
@@ -4551,133 +4553,80 @@ const fieldLabels = {
             if (
               data.hard_delete_allowed === true
             ) {
+              // Keep identity and reason in this preview until cleanup is confirmed.
+              let recoveryReason = null;
               const hardDeleteButton = button(
                 'Xóa vĩnh viễn',
                 async () => {
-                  if (
-                    !current() ||
-                    saving ||
-                    state.writeBusy
-                  ) {
-                    return;
-                  }
-
-                  const reason = prompt(
-                    'Nhập lý do xóa vĩnh viễn tài khoản ' +
-                      (
-                        member.login_name ||
-                        member.full_name ||
-                        member.profile_id
-                      ) +
-                      ':'
-                  );
-
+                  if (!current() || saving || state.writeBusy) return;
+                  let reason = recoveryReason;
                   if (reason === null) {
-                    return;
+                    reason = prompt('Nhập lý do xóa vĩnh viễn tài khoản ' +
+                      (member.login_name || member.full_name || member.profile_id) + ':');
+                    if (reason === null) return;
+                    reason = reason.trim();
+                    if (!reason || reason.length > 1000) {
+                      notice(message, 'Lý do xóa là bắt buộc và tối đa 1000 ký tự.', true);
+                      return;
+                    }
+                    if (!confirm('Xóa vĩnh viễn tài khoản ' +
+                      (member.login_name || member.full_name || member.profile_id) +
+                      '?\n\nTài khoản và VĐV liên kết sẽ bị xóa. Không thể hoàn tác.')) return;
                   }
-
-                  const normalizedReason =
-                    reason.trim();
-
-                  if (
-                    !normalizedReason ||
-                    normalizedReason.length > 1000
-                  ) {
-                    notice(
-                      message,
-                      'Lý do xóa là bắt buộc và tối đa 1000 ký tự.',
-                      true
-                    );
-
-                    return;
-                  }
-
-                  if (
-                    !confirm(
-                      'Xóa vĩnh viễn tài khoản ' +
-                        (
-                          member.login_name ||
-                          member.full_name ||
-                          member.profile_id
-                        ) +
-                        '?' +
-                        '\n\n' +
-                        'Thao tác này sẽ xóa Auth user, Profile và Player liên kết. Không thể hoàn tác.'
-                    )
-                  ) {
-                    return;
-                  }
-
                   saving = true;
                   state.writeBusy = true;
                   hardDeleteButton.disabled = true;
-                  hardDeleteButton.textContent =
-                    'Đang xóa…';
-
+                  hardDeleteButton.textContent = 'Đang xử lý…';
                   notice(message, '');
-
                   try {
-                    const {
-                      data: deleteData,
-                      error: deleteError
-                    } =
-                      await client.functions.invoke(
-                        'admin-hard-delete-member',
-                        {
-                          body: {
-                            profile_id:
-                              member.profile_id,
-                            reason:
-                              normalizedReason
-                          }
-                        }
-                      );
-
-                    if (deleteError) {
-                      throw deleteError;
-                    }
-
-                    if (
-                      !deleteData ||
-                      deleteData.ok !== true
-                    ) {
-                      throw new Error(
-                        deleteData?.error ||
-                        'UNKNOWN_ERROR'
-                      );
-                    }
-
-                    notice(
-                      message,
-                      'Đã xóa vĩnh viễn tài khoản thành công.',
-                      false,
-                      true
+                    const { data: deleteData, error: deleteError } = await client.functions.invoke(
+                      'admin-hard-delete-member',
+                      { body: { profile_id: member.profile_id, reason } }
                     );
-
-                    await loadPage(
-                      0,
-                      null,
-                      true
-                    );
+                    let result = deleteData;
+                    if (deleteError?.context?.clone) {
+                      try { result = await deleteError.context.clone().json(); } catch { /* Preserve original error. */ }
+                    }
+                    if (!current()) return;
+                    if (result?.recovery_required === true && result?.public_cleanup_completed === true &&
+                        result.profile_id === member.profile_id) {
+                      recoveryReason = reason;
+                      deletionRecoveryPending = true;
+                      resultNotice.textContent = result.auth_cleanup_status === 'UNCONFIRMED'
+                        ? 'Dữ liệu thành viên đã được xóa. Cần thử lại để xác nhận hoàn tất xóa tài khoản đăng nhập.'
+                        : 'Dữ liệu thành viên đã được xóa, nhưng tài khoản đăng nhập còn cần hoàn tất cleanup.';
+                      resultNotice.className = 'notice';
+                      grid.hidden = true;
+                      blockerBox.hidden = true;
+                      // Remove return-to-member: that profile no longer exists.
+                      actions.replaceChildren(hardDeleteButton);
+                      notice(message, 'Chọn “Hoàn tất xóa tài khoản đăng nhập” để thử lại.');
+                      return;
+                    }
+                    if (deleteError) throw deleteError;
+                    if (result?.ok !== true) throw new Error(result?.error || 'UNKNOWN_ERROR');
+                    recoveryReason = null;
+                    deletionRecoveryPending = false;
+                    detail.replaceChildren();
+                    await loadPage(0, null, true);
+                    if (current()) notice(message, 'Đã xóa vĩnh viễn tài khoản thành công.', false, true);
                   } catch (error) {
-                    if (current()) {
-                      notice(
-                        message,
-                        'Không thể xóa vĩnh viễn tài khoản. ' +
-                          explain(error),
-                        true
-                      );
-                    }
+                    if (current()) notice(message,
+                      (recoveryReason !== null
+                        ? 'Dữ liệu thành viên đã được xóa. Chưa xác nhận hoàn tất tài khoản đăng nhập; hãy thử lại. '
+                        : 'Chưa xác nhận hoàn tất xóa tài khoản. Có thể thử lại để kiểm tra và hoàn tất. ') + explain(error), true);
                   } finally {
                     saving = false;
                     state.writeBusy = false;
-
                     if (current()) {
+                      hardDeleteButton.disabled = false;
+                      hardDeleteButton.textContent = recoveryReason !== null
+                        ? 'Hoàn tất xóa tài khoản đăng nhập' : 'Xóa vĩnh viễn';
                       sync();
                     }
                   }
                 },
-                'danger'
+                'btn danger'
               );
 
               actions.append(
@@ -4721,6 +4670,7 @@ preview.append(
         ) {
           if (
             !current() ||
+            deletionRecoveryPending ||
             reading ||
             (saving && !afterSave)
           ) {

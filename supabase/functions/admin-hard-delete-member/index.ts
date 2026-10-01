@@ -266,11 +266,10 @@ Deno.serve(async (req) => {
         )
       }
 
-      cleanup =
-        cleanupData &&
-        typeof cleanupData === 'object'
-          ? cleanupData
-          : null
+      if (cleanupData?.success !== true) {
+        return jsonResponse({ error: 'PUBLIC_CLEANUP_UNCONFIRMED' }, 500)
+      }
+      cleanup = cleanupData
     } else {
       /*
        * Profile missing may mean a prior attempt completed public cleanup
@@ -315,6 +314,7 @@ Deno.serve(async (req) => {
         )
       }
 
+      cleanup = { player_id: tombstone.old_data?.player_id || null }
       recoveryMode = true
     }
 
@@ -361,6 +361,8 @@ Deno.serve(async (req) => {
           error:
             'PUBLIC_DELETED_AUTH_LOOKUP_FAILED',
           recovery_required: true,
+          profile_id: profileId,
+          public_cleanup_completed: true,
         },
         500,
       )
@@ -377,7 +379,7 @@ Deno.serve(async (req) => {
         profileId,
       )
 
-      if (authDeleteError) {
+      if (authDeleteError && authDeleteError.status !== 404 && authDeleteError.code !== 'user_not_found') {
         console.log(
           'IAM05E_AUTH_DELETE_ERROR',
           {
@@ -397,12 +399,24 @@ Deno.serve(async (req) => {
             auth_error:
               authDeleteError.message || null,
             recovery_required: true,
+            profile_id: profileId,
+            public_cleanup_completed: true,
           },
           500,
         )
       }
     }
+    const { data: completion, error: completionError } = await admin.rpc(
+      'complete_member_hard_delete_auth',
+      { p_profile_id: profileId, p_actor_id: caller.id },
+    )
+    if (completionError || completion?.success !== true) {
+      return jsonResponse({ error: 'AUTH_CLEANUP_COMPLETION_UNCONFIRMED',
+        recovery_required: true, profile_id: profileId,
+        public_cleanup_completed: true, auth_cleanup_status: 'UNCONFIRMED' }, 500)
+    }
     return jsonResponse({
+      auth_cleanup_status: 'COMPLETED',
       ok: true,
       profile_id: profileId,
       player_id:
