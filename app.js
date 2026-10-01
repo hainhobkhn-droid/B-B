@@ -1003,24 +1003,20 @@
           canManageFund() ||
           canCollectFund()
         ) {
-          const unsettled =
-            ready('fund_contributions')
-              ? rows('fund_contributions').filter(
-                  contribution =>
-                    [
-                      'CHUA_DONG',
-                      'DONG_MOT_PHAN'
-                    ].includes(
-                      upper(contribution.status)
-                    )
-                ).length
-              : null;
+          // DASH-FUND01: FUND04 balances are authoritative, including refunds.
+          // Never fall back to contribution.status or gross payments while unavailable.
+          const balances = state.fundCollectionBalances;
+          const balancesReady = state.fundCollectionBalancesReady === true &&
+            Array.isArray(balances) && balances.every(row =>
+              row?.amount_remaining != null && row.amount_remaining !== '' &&
+              Number.isFinite(Number(row.amount_remaining)));
+          const unsettled = balancesReady
+            ? balances.filter(row => Number(row.amount_remaining) > 0).length
+            : null;
 
           cards.push({
             variant:
-              unsettled > 0
-                ? 'pending'
-                : 'success',
+              unsettled === null ? 'info' : unsettled > 0 ? 'pending' : 'success',
             icon: '₫',
             title: 'Quỹ cần xử lý',
             value:
@@ -1028,9 +1024,11 @@
                 ? '—'
                 : number(unsettled),
             hint:
-              unsettled
-                ? 'Có nghĩa vụ quỹ chưa hoàn tất.'
-                : 'Không có nghĩa vụ quỹ tồn đọng.',
+              unsettled === null
+                ? 'Chưa tải được số liệu Quỹ'
+                : unsettled > 0
+                  ? 'Có ' + number(unsettled) + ' nghĩa vụ quỹ còn phải thu.'
+                  : 'Không có nghĩa vụ quỹ còn phải thu.',
             action: 'Mở Quỹ',
             page: 'fund'
           });
