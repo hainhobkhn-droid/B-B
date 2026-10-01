@@ -38,7 +38,8 @@
 
       function fund() {
 
-        const root = $('content');
+        const root = el('div', null, 'fund-ui');
+        $('content').append(root);
 
         sources(
           root,
@@ -83,21 +84,25 @@
                 () => {
                   body.hidden =
                     !body.hidden;
+                  toggle.ariaExpanded = String(!body.hidden);
 
                   toggle.textContent =
                     body.hidden
                       ? `▶ ${title}`
                       : `▼ Thu gọn ${title}`;
                 },
-                'border rounded-lg px-3 py-2 text-sm font-semibold w-full text-left'
+                'btn w-full text-left'
               );
 
             toggle.type =
               'button';
+            toggle.ariaExpanded = String(openByDefault);
 
             renderContent(
               body
             );
+            // A notice may set hidden=false; the section still owns its disclosure state.
+            body.hidden = !openByDefault;
 
             wrapper.append(
               toggle,
@@ -339,6 +344,41 @@
       };
 
 
+    const transactionLabel =
+      value => {
+        const code =
+          upper(
+            value || ''
+          );
+
+        const labels = {
+          THU_QUY_THUA_TRAN:
+            'Thu quỹ trận thua',
+          THU_QUY_HOA:
+            'Thu quỹ trận hòa',
+          UNG_HO:
+            'Ủng hộ',
+          TAI_TRO:
+            'Tài trợ',
+          THU_KHAC:
+            'Thu khác',
+          CHUYEN_VAO_QUY:
+            'Chuyển vào quỹ',
+          CHI_TIEU:
+            'Chi tiêu',
+          HOAN_TIEN:
+            'Hoàn tiền',
+          DIEU_CHINH:
+            'Điều chỉnh',
+          PAYMENT:
+            'Thanh toán'
+        };
+
+        return labels[code] ||
+          value ||
+          'Giao dịch quỹ';
+      };
+
     // FUND03B CAMPAIGN HELPERS
     const fundCampaignMap =
       new Map(
@@ -427,23 +467,6 @@
           null
         );
       };
-
-    const fundDebtStatus =
-      (
-        outstanding,
-        credit
-      ) => {
-        if (credit > 0) {
-          return 'Nộp dư';
-        }
-
-        if (outstanding > 0) {
-          return 'Còn nợ';
-        }
-
-        return 'Đã đủ';
-      };
-
 
     const activeContributions =
       rows('fund_contributions')
@@ -633,242 +656,35 @@
         : fundKnownCash.totalIn -
           fundKnownCash.totalOut;
 
-    if (!isAdmin()) {
-      root.append(
-        el(
-          'h2',
-          'Tổng quan quỹ CLB',
-          'font-semibold text-lg mt-2 mb-1'
-        ),
-        el(
-          'p',
-          'Thông tin tổng hợp để thành viên theo dõi minh bạch thu, chi và công nợ của CLB.',
-          'text-sm opacity-70 mb-3'
-        )
-      );
-    }
+    // FUND UI V2 WP2: one compact club summary; calculations remain above.
+    root.append(el('h2', 'Quỹ CLB', 'font-semibold text-lg mt-2 mb-1'));
+    grid(root, [
+      ['Số dư quỹ', ready('fund_transactions') ? money(fundKnownBalance) : '—'],
+      ['Tổng phải thu', ready('fund_contributions') ? money(totalDue) : '—'],
+      ['Đã thu NET', (memberFundOverview || netPaymentDataReady) ? money(totalPaid) : '—'],
+      ['Còn phải thu', (memberFundOverview || netPaymentDataReady) ? money(totalOutstanding) : '—']
+    ], 'fund-overview-kpis fund-overview-kpis-all ui-kpi-grid-compact');
 
-    grid(
-      root,
-      [
-[
-          'Số dư quỹ',
-          ready(
-            'fund_transactions'
-          )
-            ? money(
-                fundKnownBalance
-              )
-            : '—',
-          fundKnownCash.adjustmentCount > 0
-            ? 'Chưa bao gồm giao dịch Điều chỉnh'
-            : 'Theo sổ giao dịch quỹ'
-        ],
-        [
-          'Tổng thu',
-          ready(
-            'fund_transactions'
-          )
-            ? money(
-                fundKnownCash.totalIn
-              )
-            : '—',
-          'Tiền thực nhận vào quỹ'
-        ],
-        [
-          'Tổng chi',
-          ready(
-            'fund_transactions'
-          )
-            ? money(
-                fundKnownCash.totalOut
-              )
-            : '—',
-          'Chi tiêu và hoàn tiền'
-        ],
-[
-          'Tổng nghĩa vụ',
-          ready(
-            'fund_contributions'
-          )
-            ? money(totalDue)
-            : '—',
-          'Tổng khoản phải đóng hợp lệ'
-        ],
-        [
-          'Đã thanh toán',
-          (memberFundOverview || netPaymentDataReady)
-            ? money(totalPaid)
-            : '—',
-          'Thanh toán sau hoàn tiền'
-        ],
-        [
-          'Còn phải thu',
-          (memberFundOverview || netPaymentDataReady)
-            ? money(
-                totalOutstanding
-              )
-            : '—',
-          'Nghĩa vụ trừ thanh toán'
-        ],
-        [
-          'Nộp dư',
-          (memberFundOverview || netPaymentDataReady)
-            ? money(
-                totalCredit
-              )
-            : '—',
-          totalCredit > 0
-            ? 'Có số tiền thanh toán vượt nghĩa vụ'
-            : 'Không có'
-        ]
-      ],
-      'fund-overview-kpis fund-overview-kpis-all'
+    const summaryHelp = el('details', null, 'text-sm muted mb-3');
+    summaryHelp.append(
+      el('summary', 'Cách đọc số liệu quỹ', 'cursor-pointer'),
+      el('p', 'Số dư = thu vào − chi và hoàn tiền theo sổ quỹ. Tổng phải thu là nghĩa vụ hợp lệ; Đã thu NET đã trừ hoàn tiền. Công nợ được tính riêng với số dư tiền mặt.', 'mt-2')
     );
+    root.append(summaryHelp);
 
-    root.append(
-      el(
-        'p',
-        'Số dư quỹ được tính từ Sổ giao dịch: các khoản thu làm tăng quỹ, Chi tiêu và Hoàn tiền làm giảm quỹ. Công nợ VĐV được tính riêng từ nghĩa vụ đóng quỹ và sổ thanh toán.',
-        'notice'
-      )
-    );
-
-    // FUND ADMIN OBLIGATION VISIBILITY V1
-    if (canManageFund() || canCollectFund()) {
-      const recentFundObligations =
-        activeContributions
-          .slice()
-          .sort(
-            (a, b) =>
-              new Date(
-                b.created_at || 0
-              ).getTime() -
-              new Date(
-                a.created_at || 0
-              ).getTime()
-          )
-          .slice(
-            0,
-            50
-          );
-
-      root.append(
-        el(
-          'p',
-          recentFundObligations.length
-            ? `Đã ghi nhận ${recentFundObligations.length} nghĩa vụ quỹ gần nhất. Các nghĩa vụ mới sinh sau khi duyệt trận sẽ xuất hiện tại đây.`
-            : 'Chưa có nghĩa vụ quỹ nào được ghi nhận.',
-          'notice'
-        )
-      );
-
-      table(
-        root,
-        'Nghĩa vụ quỹ đã ghi nhận',
-        recentFundObligations
-          .map(
-            contribution => {
-              const match =
-                rows('matches')
-                  .find(
-                    item =>
-                      raw(item.id) ===
-                      raw(
-                        contribution.match_id
-                      )
-                  );
-
-              return {
-                ...contribution,
-                status: fundContributionStatus(contribution),
-                match_reference:
-                  match
-                    ? (
-                        'Trận ' +
-                        matchCode(match) +
-                        ' • ' +
-                        number(
-                          match.team_a_score
-                        ) +
-                        ' – ' +
-                        number(
-                          match.team_b_score
-                        )
-                      )
-                    : (
-                        contribution.match_id
-                          ? '#' +
-                            String(
-                              contribution.match_id
-                            ).slice(
-                              0,
-                              8
-                            )
-                          : '—'
-                      )
-              };
-            }
-          ),
-        [
-          [
-            'VĐV',
-            r =>
-              playerName(
-                r.player_id
-              )
-          ],
-          moneyCol(
-            'Số tiền',
-            'amount_due',
-            'amount'
-          ),
-          [
-            'Loại',
-            r =>
-              fundReasonLabel(
-                pick(
-                  r,
-                  'reason',
-                  'contribution_type',
-                  'type'
-                )
-              )
-          ],
-          col('Trạng thái', 'status'),
-          [
-            'Trận liên quan',
-            r =>
-              r.match_reference ||
-              '—'
-          ],
-          dateCol(
-            'Ghi nhận',
-            'created_at'
-          )
-        ],
-        {
-          status: true,
-          unavailable:
-            !!state.errors
-              .fund_contributions ||
-            !!state.errors
-              .matches
-        }
-      );
+    // Exceptions only; no additional KPI row or debt queue.
+    const fundExceptions = el('div', null, 'space-y-2');
+    if (fundKnownCash.adjustmentCount > 0) {
+      fundExceptions.append(el('p',
+        `${fundKnownCash.adjustmentCount} giao dịch Điều chỉnh (${money(fundKnownCash.adjustmentAmount)}) chưa tính vào số dư: chưa xác định chiều tăng/giảm.`,
+        'notice text-sm'));
     }
-
-    if (
-      fundKnownCash.adjustmentCount > 0
-    ) {
-      root.append(
-        el(
-          'p',
-          `Cảnh báo: Có ${fundKnownCash.adjustmentCount} giao dịch Điều chỉnh, tổng ${money(fundKnownCash.adjustmentAmount)}. Các giao dịch này chưa được tính vào số dư vì chưa xác định chiều tăng/giảm.`,
-          'notice'
-        )
-      );
+    if ((memberFundOverview || netPaymentDataReady) && totalCredit > 0) {
+      fundExceptions.append(el('p',
+        `Có ${money(totalCredit)} nộp dư so với nghĩa vụ. Cần đối soát các khoản liên quan.`,
+        'notice text-sm'));
     }
+    if (fundExceptions.children.length) root.append(fundExceptions);
 
         // MP01 MEMBER FUND PORTAL V1
         if (!isAdmin()) {
@@ -961,41 +777,6 @@
                   }
 
                   return 'Đã hoàn tất';
-                };
-
-              const transactionLabel =
-                value => {
-                  const code =
-                    upper(
-                      value || ''
-                    );
-
-                  const labels = {
-                    THU_QUY_THUA_TRAN:
-                      'Thu quỹ trận thua',
-                    THU_QUY_HOA:
-                      'Thu quỹ trận hòa',
-                    UNG_HO:
-                      'Ủng hộ',
-                    TAI_TRO:
-                      'Tài trợ',
-                    THU_KHAC:
-                      'Thu khác',
-                    CHUYEN_VAO_QUY:
-                      'Chuyển vào quỹ',
-                    CHI_TIEU:
-                      'Chi tiêu',
-                    HOAN_TIEN:
-                      'Hoàn tiền',
-                    DIEU_CHINH:
-                      'Điều chỉnh',
-                    PAYMENT:
-                      'Thanh toán'
-                  };
-
-                  return labels[code] ||
-                    value ||
-                    'Giao dịch quỹ';
                 };
 
               sectionRoot.append(
@@ -1355,6 +1136,8 @@
                   null,
                   'mb-3'
                 );
+
+              control.ariaLabel = labelText;
 
               box.append(
                 el(
@@ -2396,6 +2179,9 @@
             'button';
           submit.disabled = !netPaymentDataReady;
 
+          [[playerSelect, 'VĐV'], [contributionSelect, 'Khoản phải đóng'],
+            [amountInput, 'Số tiền nhận'], [paidAtInput, 'Ngày giờ nhận'], [noteInput, 'Ghi chú']]
+            .forEach(([control, label]) => { control.ariaLabel = label; });
           wrapper.append(
             playerLabel,
             playerSelect,
@@ -2820,6 +2606,9 @@
           expenseSubmit.type =
             'button';
 
+          [[expenseAmountInput, 'Số tiền chi'], [expenseDateInput, 'Ngày giờ chi'],
+            [expenseDescriptionInput, 'Nội dung chi']]
+            .forEach(([control, label]) => { control.ariaLabel = label; });
           expenseContent.append(
             el(
               'p',
@@ -2882,9 +2671,9 @@ collectionContent.append(
             batchCompareKey(batchCreatedKey(a.created_at), batchCreatedKey(b.created_at)) ||
             batchCompareKey(a.id.toLowerCase(), b.id.toLowerCase());
           // END FUND04 ordering
-          const batchDetails = el('details', null, 'fund-action fund-action-income');
-          batchDetails.append(el('summary', 'Thu gộp theo VĐV', 'fund-action-summary'));
-          const batchBody = el('div', null, 'px-4 pb-4');
+          const batchDetails = el('div');
+          batchDetails.append(el('h3', 'Thu gộp theo VĐV', 'font-semibold mb-2'));
+          const batchBody = el('div');
           const batchSelect = el('select', null, 'w-full border rounded-lg px-3 py-2');
           const batchSearch = el('input', null, 'w-full border rounded-lg px-3 py-2');
           batchSearch.placeholder = 'Tìm tên VĐV';
@@ -2939,11 +2728,9 @@ collectionContent.append(
               return;
             }
             if (!batchSelect.value) { notice(batchPreview, 'Chọn VĐV để xem nghĩa vụ và số tiền còn phải thu.'); return; }
-            grid(batchPreview, [
-              ['Tổng phải đóng', money(known.reduce((sum, c) => sum + Number(collectionBalance(c).amount_due), 0))],
-              ['Đã nộp NET', money(known.reduce((sum, c) => sum + Number(collectionBalance(c).net_paid), 0))],
-              ['Còn phải thu', money(total)]
-            ]);
+            batchPreview.append(el('p',
+              `Phải đóng ${money(known.reduce((sum, c) => sum + Number(collectionBalance(c).amount_due), 0))} • Đã nộp NET ${money(known.reduce((sum, c) => sum + Number(collectionBalance(c).net_paid), 0))} • Còn lại ${money(total)}`,
+              'text-sm font-semibold mb-3'));
             const pending = known.filter(c => Number(collectionBalance(c).amount_remaining) > 0);
             pending.sort(batchCompare);
             if (!pending.length) notice(batchPreview, 'VĐV không còn khoản phải thu.');
@@ -3009,7 +2796,7 @@ collectionContent.append(
           }
           if (state.fundBatchReceipt?.actor === batchOwner && state.fundBatchReceipt?.data) {
             const receipt = state.fundBatchReceipt.data;
-            batchDetails.open = true;
+            collectionDetails.open = true;
             batchResult.append(el('p', `Đã thu ${money(receipt.requested_amount)} • ${receipt.allocation_count} khoản • Còn ${money(receipt.total_outstanding_after)}`, 'notice'));
             table(batchResult, 'Phân bổ đã ghi nhận', receipt.allocations,
               [['Khoản', c => String(c.contribution_id).slice(0, 8)],
@@ -3017,21 +2804,30 @@ collectionContent.append(
                ['Trạng thái', c => c.status]], { status: true });
           }
 
+          // FUND UI V2 WP4: one collection entry; each flow retains its own state/guards.
+          const collectionMode = el('select', null, 'field w-full');
+          collectionMode.append(new Option('Thu gộp theo VĐV — ưu tiên', 'batch'),
+            new Option('Thu từng khoản', 'single'));
+          collectionMode.value = 'batch';
+          const modeLabel = el('label', null, 'block text-sm mb-3');
+          modeLabel.append(el('span', 'Cách thu quỹ', 'block mb-1'), collectionMode);
+          let currentCollectionMode = 'batch';
+          wrapper.hidden = true;
+          batchDetails.hidden = false;
+          collectionMode.addEventListener('change', () => {
+            if (batchBusy || batchNeedsReload || submit.textContent === 'Đang ghi nhận…') {
+              collectionMode.value = currentCollectionMode;
+              return;
+            }
+            currentCollectionMode = collectionMode.value;
+            batchDetails.hidden = currentCollectionMode !== 'batch';
+            wrapper.hidden = currentCollectionMode !== 'single';
+          });
+          collectionContent.replaceChildren(modeLabel, batchDetails, wrapper);
+
           const fundActions = [];
-
-          if (canManageFund()) {
-            fundActions.push(
-              campaignDetails,
-              expenseDetails
-            );
-          }
-
-          if (canCollectFund()) {
-            fundActions.push(
-              collectionDetails,
-              batchDetails
-            );
-          }
+          if (canCollectFund()) fundActions.push(collectionDetails);
+          if (canManageFund()) fundActions.push(campaignDetails, expenseDetails);
 
           fundActions.forEach(
             action => {
@@ -3059,9 +2855,11 @@ collectionContent.append(
             }
           );
 
-          sectionRoot.append(
-            ...fundActions
-          );
+          if (canCollectFund()) sectionRoot.append(collectionDetails);
+          if (canManageFund()) {
+            if (canCollectFund()) sectionRoot.append(el('p', 'Quản lý quỹ', 'muted text-sm mt-4 mb-2'));
+            sectionRoot.append(campaignDetails, expenseDetails);
+          }
 
           fillContributions();
         },
@@ -3069,36 +2867,16 @@ collectionContent.append(
       );
     }
 
-    // MP01 FUND MANAGEMENT REPORTS V1
+    let openFundPaymentHistory = () => {};
+
+        // MP01 FUND MANAGEMENT REPORTS V1
     if (canManageFund() || canCollectFund()) {
-    // FUND DEBT REPORT V1
-    fundCollapse(
-      'Báo cáo công nợ',
-      sectionRoot => {
+    // FUND UI V2 WP3: one workspace; report predicates remain unchanged.
+    fundCollapse('Công nợ', sectionRoot => {
         if (!debtDataComplete) {
           notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
           return;
         }
-        const wrapper =
-          el(
-            'div',
-            null,
-            'rounded-xl border p-4'
-          );
-
-        wrapper.append(
-          el(
-            'h3',
-            'Báo cáo công nợ VĐV',
-            'font-semibold mb-1'
-          ),
-          el(
-            'p',
-            'Lọc nghĩa vụ theo ngày thi đấu. Số đã nộp là thanh toán sau hoàn tiền của chính các nghĩa vụ trong kỳ.',
-            'text-sm opacity-70 mb-4'
-          )
-        );
-
         const controls =
           el(
             'div',
@@ -3581,463 +3359,6 @@ collectionContent.append(
             };
           };
 
-        const makeStat =
-          (
-            label,
-            value,
-            subtext
-          ) => {
-            const box =
-              el(
-                'div',
-                null,
-                'rounded-lg border p-3'
-              );
-
-            box.append(
-              el(
-                'div',
-                label,
-                'text-xs opacity-70'
-              ),
-              el(
-                'div',
-                value,
-                'font-semibold mt-1'
-              )
-            );
-
-            if (subtext) {
-              box.append(
-                el(
-                  'div',
-                  subtext,
-                  'text-xs opacity-60 mt-1'
-                )
-              );
-            }
-
-            return box;
-          };
-
-        const renderReport =
-          () => {
-            resultRoot
-              .replaceChildren();
-
-            notice(
-              reportMessage,
-              ''
-            );
-
-            const report =
-              getReportData();
-
-            if (
-              report.error
-            ) {
-              notice(
-                reportMessage,
-                report.error,
-                true
-              );
-
-              return;
-            }
-
-            const players =
-              report.players;
-
-            const totalDue =
-              players.reduce(
-                (
-                  sum,
-                  player
-                ) =>
-                  sum +
-                  player.due,
-                0
-              );
-
-            const totalPaid =
-              players.reduce(
-                (
-                  sum,
-                  player
-                ) =>
-                  sum +
-                  player.paid,
-                0
-              );
-
-            const totalRemaining =
-              players.reduce(
-                (
-                  sum,
-                  player
-                ) =>
-                  sum +
-                  player.remaining,
-                0
-              );
-
-            const totalOpen =
-              players.reduce(
-                (
-                  sum,
-                  player
-                ) =>
-                  sum +
-                  player.openCount,
-                0
-              );
-
-            const summary =
-              el(
-                'div',
-                null,
-                'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4'
-              );
-
-            summary.append(
-              makeStat(
-                'VĐV',
-                String(
-                  players.length
-                ),
-                onlyDebtInput.checked
-                  ? 'Còn nợ trong kỳ'
-                  : 'Có nghĩa vụ trong kỳ'
-              ),
-              makeStat(
-                'Nghĩa vụ',
-                money(
-                  totalDue
-                ),
-                'Theo các khoản trong báo cáo'
-              ),
-              makeStat(
-                'Đã nộp',
-                money(
-                  totalPaid
-                ),
-                'Cho các nghĩa vụ trong kỳ'
-              ),
-              makeStat(
-                'Còn phải thu',
-                money(
-                  totalRemaining
-                ),
-                totalOpen +
-                  ' khoản chưa hoàn tất'
-              )
-            );
-
-            resultRoot.append(
-              summary
-            );
-
-            if (
-              players.length === 0
-            ) {
-              resultRoot.append(
-                el(
-                  'div',
-                  'Không có công nợ phù hợp trong kỳ đã chọn.',
-                  'rounded-lg border p-4 text-sm opacity-70'
-                )
-              );
-
-              return;
-            }
-
-            const reportTable =
-              document.createElement(
-                'div'
-              );
-
-            reportTable.className =
-              'overflow-x-auto mb-4';
-
-            const tableEl =
-              document.createElement(
-                'table'
-              );
-
-            tableEl.className =
-              'w-full text-sm border-collapse';
-
-            const thead =
-              document.createElement(
-                'thead'
-              );
-
-            const headRow =
-              document.createElement(
-                'tr'
-              );
-
-            [
-              'VĐV',
-              'Nghĩa vụ',
-              'Đã nộp',
-              'Còn nợ',
-              'Khoản nợ'
-            ].forEach(
-              labelText => {
-                const th =
-                  document.createElement(
-                    'th'
-                  );
-
-                th.className =
-                  'text-left border-b px-3 py-2 whitespace-nowrap';
-
-                th.textContent =
-                  labelText;
-
-                headRow.append(
-                  th
-                );
-              }
-            );
-
-            thead.append(
-              headRow
-            );
-
-            const tbody =
-              document.createElement(
-                'tbody'
-              );
-
-            players.forEach(
-              player => {
-                const tr =
-                  document.createElement(
-                    'tr'
-                  );
-
-                [
-                  player.name,
-                  money(
-                    player.due
-                  ),
-                  money(
-                    player.paid
-                  ),
-                  money(
-                    player.remaining
-                  ),
-                  String(
-                    player.openCount
-                  )
-                ].forEach(
-                  (
-                    value,
-                    index
-                  ) => {
-                    const td =
-                      document.createElement(
-                        'td'
-                      );
-
-                    td.className =
-                      'border-b px-3 py-2 align-top whitespace-nowrap';
-
-                    if (
-                      index === 0 ||
-                      index === 3
-                    ) {
-                      td.classList.add(
-                        'font-semibold'
-                      );
-                    }
-
-                    td.textContent =
-                      value;
-
-                    tr.append(
-                      td
-                    );
-                  }
-                );
-
-                tbody.append(
-                  tr
-                );
-              }
-            );
-
-            tableEl.append(
-              thead,
-              tbody
-            );
-
-            reportTable.append(
-              tableEl
-            );
-
-            resultRoot.append(
-              reportTable
-            );
-
-            const detailTitle =
-              el(
-                'div',
-                'Chi tiết theo VĐV',
-                'font-semibold mb-2'
-              );
-
-            resultRoot.append(
-              detailTitle
-            );
-
-            players.forEach(
-              player => {
-                const detailBox =
-                  el(
-                    'div',
-                    null,
-                    'border rounded-lg mb-2 overflow-hidden'
-                  );
-
-                const detailButton =
-                  document.createElement(
-                    'button'
-                  );
-
-                detailButton.type =
-                  'button';
-
-                detailButton.className =
-                  'w-full flex items-center justify-between gap-3 px-3 py-3 text-left';
-
-                const detailLabel =
-                  el(
-                    'span',
-                    player.name +
-                      ' • Còn nợ ' +
-                      money(
-                        player.remaining
-                      ),
-                    'font-medium'
-                  );
-
-                const detailAction =
-                  el(
-                    'span',
-                    '▶ Chi tiết',
-                    'text-sm opacity-70 whitespace-nowrap'
-                  );
-
-                detailButton.append(
-                  detailLabel,
-                  detailAction
-                );
-
-                const detailContent =
-                  el(
-                    'div',
-                    null,
-                    'px-3 pb-3'
-                  );
-
-                detailContent.hidden =
-                  true;
-
-                player.items
-                  .sort(
-                    (a, b) =>
-                      new Date(
-                        b.match
-                          .played_at
-                      ).getTime() -
-                      new Date(
-                        a.match
-                          .played_at
-                      ).getTime()
-                  )
-                  .forEach(
-                    item => {
-                      const row =
-                        el(
-                          'div',
-                          null,
-                          'border-t py-2 text-sm'
-                        );
-
-                      const reasonText =
-                        item.reason ===
-                        'HOA'
-                          ? 'Hòa'
-                          : 'Thua';
-
-                      row.append(
-                        el(
-                          'div',
-                          (
-                            vnDateKey(
-                              item.match.played_at
-                            ) || 'Không rõ ngày'
-                          ) +
-                            ' • ' +
-                            matchCode(
-                            item.match
-                          ) +
-                            ' • ' +
-                            reasonText,
-                          'font-medium'
-                        ),
-                        el(
-                          'div',
-                          'Phải đóng ' +
-                            money(
-                              item.due
-                            ) +
-                            ' • Đã nộp ' +
-                            money(
-                              item.paid
-                            ) +
-                            ' • Còn ' +
-                            money(
-                              item.remaining
-                            ),
-                          'opacity-70 mt-1'
-                        )
-                      );
-
-                      detailContent.append(
-                        row
-                      );
-                    }
-                  );
-
-                detailButton
-                  .addEventListener(
-                    'click',
-                    () => {
-                      detailContent.hidden =
-                        !detailContent.hidden;
-
-                      detailAction.textContent =
-                        detailContent.hidden
-                          ? '▶ Chi tiết'
-                          : '▼ Thu gọn';
-                    }
-                  );
-
-                detailBox.append(
-                  detailButton,
-                  detailContent
-                );
-
-                resultRoot.append(
-                  detailBox
-                );
-              }
-            );
-
             const copyButton =
               button(
                 'Sao chép thông báo',
@@ -4204,758 +3525,257 @@ collectionContent.append(
             copyButton.type =
               'button';
 
-            const copyWrap =
-              el(
-                'div',
-                null,
-                'mt-4 flex justify-end'
-              );
-
-            copyWrap.append(
-              copyButton
-            );
-
-            resultRoot.append(
-              copyWrap
-            );
+        const mode = el('select', null, 'field');
+        mode.append(new Option('Tất cả công nợ', 'all'), new Option('Theo kỳ trận', 'report'));
+        mode.value = 'all';
+        const search = el('input', null, 'field');
+        search.type = 'search'; search.placeholder = 'Tìm VĐV trong danh sách';
+        const labeled = (title, control) => {
+          const label = el('label', null, 'block text-sm');
+          label.append(el('span', title, 'block mb-1'), control); return label;
+        };
+        const toolbar = el('div', null, 'grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3');
+        toolbar.append(labeled('Tìm VĐV', search), labeled('Phạm vi công nợ', mode));
+        const reportControls = el('div', null, 'mb-3');
+        reportControls.hidden = true;
+        reportControls.append(el('p', 'Theo kỳ trận: chỉ nghĩa vụ THUA/HÒA của trận APPROVED trong khoảng ngày thi đấu. Không bao gồm campaign. Sao chép áp dụng toàn bộ báo cáo theo kỳ, không theo ô tìm tên.', 'muted text-sm mb-2'), controls);
+        let debtPage = 0;
+        // Same active contribution scope and NET helpers as the former player view.
+        const allPlayerDebt = () => {
+          const grouped = new Map();
+          for (const c of activeContributions) {
+            if (!c.player_id) continue;
+            if (!grouped.has(c.player_id)) grouped.set(c.player_id, {
+              playerId: c.player_id, name: playerName(c.player_id), due: 0, paid: 0,
+              remaining: 0, credit: 0, openCount: 0, items: []
+            });
+            const p = grouped.get(c.player_id);
+            const due = contributionAmount(c), paid = netPaid(c), remaining = remainingPayment(c);
+            p.due += due; p.paid += paid; p.remaining += remaining; p.credit += paymentCredit(c);
+            if (remaining > 0) p.openCount++;
+            p.items.push({ contribution: c, due, paid, remaining,
+              match: rows('matches').find(m => m.id === c.match_id) });
+          }
+          return [...grouped.values()].sort((a, b) => b.remaining - a.remaining || a.name.localeCompare(b.name, 'vi'));
+        };
+        // Small client-side pager, matching the shared table's 20-row page size.
+        const paginated = (host, items, drawItem, initialPage = 0, remember = () => {}) => {
+          let page = initialPage;
+          const draw = () => {
+            host.replaceChildren();
+            const pages = Math.max(1, Math.ceil(items.length / 20));
+            page = Math.max(0, Math.min(page, pages - 1)); remember(page);
+            items.slice(page * 20, page * 20 + 20).forEach(item => host.append(drawItem(item)));
+            if (pages > 1) {
+              const nav = el('div', null, 'form-actions mt-3');
+              const previous = button('Trang trước', () => { page--; draw(); }, 'btn');
+              const next = button('Trang sau', () => { page++; draw(); }, 'btn');
+              previous.type = next.type = 'button';
+              previous.disabled = page === 0; next.disabled = page === pages - 1;
+              nav.append(previous, el('span', `${page + 1}/${pages}`), next); host.append(nav);
+            }
           };
+          draw();
+        };
+        const playerCard = (player, reportMode) => {
+          const card = el('details', null, 'rounded-lg border mb-2');
+          card.style.minWidth = '0'; card.style.overflowWrap = 'anywhere';
+          const summary = el('summary', null, 'p-3 cursor-pointer text-sm');
+          summary.append(el('strong', player.name),
+            el('span', ` • Còn nợ ${money(player.remaining)}`, 'font-semibold'),
+            el('div', `Phải thu ${money(player.due)} • Đã thu NET ${money(player.paid)} • ${player.openCount} khoản còn nợ`, 'muted mt-1'),
+            el('span', 'Xem chi tiết', 'text-sm'));
+          const body = el('div', null, 'px-3 pb-3');
+          let initialized = false;
+          card.addEventListener('toggle', () => {
+            if (!card.open || initialized) return;
+            initialized = true;
+            body.append(el('p', reportMode ? 'Chi tiết trong kỳ trận đang lọc' : 'Toàn bộ nghĩa vụ hợp lệ của VĐV', 'muted text-sm mb-2'));
+            if (player.credit > 0) body.append(el('p', `Nộp dư ${money(player.credit)} — cần đối soát.`, 'notice text-sm'));
+            const obligationList = el('div');
+            const items = player.items.slice().sort((a, b) =>
+              new Date(reportMode ? b.match.played_at : b.contribution.created_at || 0).getTime() -
+              new Date(reportMode ? a.match.played_at : a.contribution.created_at || 0).getTime());
+            paginated(obligationList, items, item => {
+              const c = item.contribution;
+              const row = el('div', null, 'border-t py-2 text-sm');
+              row.style.overflowWrap = 'anywhere';
+              const when = reportMode ? vnDateKey(item.match.played_at) : fundContributionDate(c);
+              const reference = item.match ? `Trận ${matchCode(item.match)}` :
+                c.match_id ? `Trận #${String(c.match_id).slice(0, 8)}` : fundContributionTitle(c);
+              const status = fundContributionStatus(c);
+              const statusText = ({CHUA_DONG:'Chưa đóng', DONG_MOT_PHAN:'Đóng một phần', DA_DONG:'Đã đóng', MIEN:'Miễn'})[status] || status;
+              const statusLine = el('div', null, 'muted mt-1');
+              statusLine.append(el('span', statusText, 'badge ' + (status === 'DA_DONG' ? 'good' : ['CHUA_DONG','DONG_MOT_PHAN'].includes(status) ? 'pending' : '')), el('span', ' • ' + reference));
+              row.append(el('div', `${fundContributionTitle(c)} • ${String(when || '—').slice(0, 10)}`, 'font-semibold'),
+                el('div', `Phải đóng ${money(item.due)} • Đã thu NET ${money(item.paid)} • Còn ${money(item.remaining)}`, 'mt-1'),
+                statusLine);
+              return row;
+            });
+            body.append(obligationList);
+            if (!reportMode) {
+              body.append(button('Xem lịch sử thanh toán', () => {
+                openFundPaymentHistory(player.playerId, player.items.map(item => item.contribution.id));
+              }, 'btn mt-3'));
+            }
 
-        const viewButton =
-          button(
-            'Xem báo cáo',
-            renderReport,
-            'btn primary'
-          );
-
-        viewButton.type =
-          'button';
-
-        controls.append(
-          field(
-            'Từ ngày',
-            fromInput
-          ),
-          field(
-            'Đến ngày',
-            toInput
-          ),
-          field(
-            'Bộ lọc',
-            onlyDebtWrap
-          ),
-          viewButton
-        );
-
-        wrapper.append(
-          controls,
-          reportMessage,
-          resultRoot
-        );
-
-        sectionRoot.append(
-          wrapper
-        );
+          });
+          card.append(summary, body); return card;
+        };
+        const renderDebtWorkspace = (resetPage = false) => {
+          if (resetPage) debtPage = 0;
+          resultRoot.replaceChildren(); notice(reportMessage, '');
+          const reportMode = mode.value === 'report';
+          reportControls.hidden = !reportMode;
+          let players;
+          if (reportMode) {
+            const report = getReportData();
+            if (report.error) { notice(reportMessage, report.error, true); return; }
+            players = report.players;
+          } else players = allPlayerDebt();
+          const query = search.value.trim().toLocaleLowerCase('vi');
+          const filtered = players.filter(p => p.name.toLocaleLowerCase('vi').includes(query));
+          if (reportMode || query) resultRoot.append(el('p',
+            `Trong phạm vi lọc: ${filtered.length} VĐV • Phải thu ${money(filtered.reduce((s, p) => s + p.due, 0))} • Đã thu NET ${money(filtered.reduce((s, p) => s + p.paid, 0))} • Còn thu ${money(filtered.reduce((s, p) => s + p.remaining, 0))}`,
+            'muted text-sm mb-3'));
+          if (!filtered.length) resultRoot.append(el('p', 'Không có công nợ phù hợp.', 'muted text-sm'));
+          else {
+            const list = el('div'); resultRoot.append(list);
+            paginated(list, filtered, p => playerCard(p, reportMode), debtPage, page => { debtPage = page; });
+          }
+        };
+        const viewButton = button('Xem báo cáo', () => renderDebtWorkspace(true), 'btn');
+        viewButton.type = 'button';
+        controls.append(field('Từ ngày', fromInput), field('Đến ngày', toInput), field('Bộ lọc', onlyDebtWrap), viewButton);
+        reportControls.append(copyButton);
+        mode.addEventListener('change', () => renderDebtWorkspace(true));
+        search.addEventListener('input', () => renderDebtWorkspace(true));
+        fromInput.addEventListener('change', () => renderDebtWorkspace(true));
+        toInput.addEventListener('change', () => renderDebtWorkspace(true));
+        onlyDebtInput.addEventListener('change', () => renderDebtWorkspace(true));
+        sectionRoot.append(toolbar, reportControls, reportMessage, resultRoot);
+        renderDebtWorkspace();
       }
     );
-fundCollapse(
-      'Công nợ theo VĐV',
-      sectionRoot => {
-        if (!debtDataComplete) {
-          notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
-          return;
-        }
-        const debtControls =
-          el(
-            'div',
-            null,
-            'mb-3'
-          );
-
-        debtControls.append(
-          el(
-            'div',
-            'Chọn VĐV',
-            'text-sm font-semibold mb-2'
-          )
-        );
-
-        const debtSelect =
-          el(
-            'select',
-            null,
-            'field'
-          );
-
-        debtSelect.append(
-          new Option(
-            '— Chọn VĐV —',
-            ''
-          )
-        );
-
-        const relevantPlayerIds =
-          new Set();
-
-        activeContributions
-          .forEach(
-            contribution => {
-              if (
-                contribution.player_id
-              ) {
-                relevantPlayerIds.add(
-                  contribution.player_id
-                );
-              }
-            }
-          );
-
-        rows('fund_payments')
-          .forEach(
-            payment => {
-              const contribution =
-                activeContributions
-                  .find(
-                    item =>
-                      item.id ===
-                      payment.contribution_id
-                  );
-
-              const playerId =
-                payment.player_id ||
-                contribution?.player_id;
-
-              if (playerId) {
-                relevantPlayerIds.add(
-                  playerId
-                );
-              }
-            }
-          );
-
-        rows('players')
-          .filter(
-            player =>
-              relevantPlayerIds.has(
-                player.id
-              )
-          )
-          .slice()
-          .sort(
-            (a, b) => {
-              const aInactive =
-                upper(a.status) ===
-                'INACTIVE';
-
-              const bInactive =
-                upper(b.status) ===
-                'INACTIVE';
-
-              if (
-                aInactive !==
-                bInactive
-              ) {
-                return aInactive
-                  ? 1
-                  : -1;
-              }
-
-              return playerName(
-                a.id
-              ).localeCompare(
-                playerName(
-                  b.id
-                ),
-                'vi'
-              );
-            }
-          )
-          .forEach(
-            player => {
-              const suffix =
-                upper(
-                  player.status
-                ) ===
-                'INACTIVE'
-                  ? ' • Ngừng hoạt động'
-                  : '';
-
-              debtSelect.append(
-                new Option(
-                  playerName(
-                    player.id
-                  ) +
-                    suffix,
-                  player.id
-                )
-              );
-            }
-          );
-
-        debtControls.append(
-          debtSelect
-        );
-
-        const debtContent =
-          el('div');
-
-        const renderDebt =
-          () => {
-            debtContent.innerHTML =
-              '';
-
-            const playerId =
-              debtSelect.value;
-
-            if (!playerId) {
-              debtContent.append(
-                el(
-                  'p',
-                  'Chọn một VĐV để xem công nợ và lịch sử đóng quỹ.',
-                  'muted'
-                )
-              );
-
-              return;
-            }
-
-            const selectedPlayer =
-              rows('players')
-                .find(
-                  player =>
-                    player.id ===
-                    playerId
-                );
-
-            const playerContributions =
-              activeContributions
-                .filter(
-                  contribution =>
-                    contribution.player_id ===
-                    playerId
-                )
-                .slice()
-                .sort(
-                  (a, b) =>
-                    new Date(
-                      b.created_at || 0
-                    ).getTime() -
-                    new Date(
-                      a.created_at || 0
-                    ).getTime()
-                );
-
-            const playerContributionIds =
-              new Set(
-                playerContributions
-                  .map(
-                    contribution =>
-                      contribution.id
-                  )
-              );
-
-            const playerPayments =
-              rows('fund_payments')
-                .filter(
-                  payment =>
-                    payment.player_id ===
-                      playerId ||
-                    playerContributionIds.has(
-                      payment.contribution_id
-                    )
-                )
-                .slice()
-                .sort(
-                  (a, b) =>
-                    new Date(
-                      b.paid_at ||
-                      b.created_at ||
-                      0
-                    ).getTime() -
-                    new Date(
-                      a.paid_at ||
-                      a.created_at ||
-                      0
-                    ).getTime()
-                );
-
-            const playerDue =
-              playerContributions
-                .reduce(
-                  (sum, contribution) =>
-                    sum +
-                    contributionAmount(
-                      contribution
-                    ),
-                  0
-                );
-
-            const playerPaid = playerContributions.reduce(
-              (sum, contribution) => sum + netPaid(contribution), 0);
-            const playerOutstanding = playerContributions.reduce(
-              (sum, contribution) => sum + remainingPayment(contribution), 0);
-            const playerCredit = playerContributions.reduce(
-              (sum, contribution) => sum + paymentCredit(contribution), 0);
-
-            debtContent.append(
-              el(
-                'div',
-                selectedPlayer
-                  ? playerName(
-                      selectedPlayer.id
-                    )
-                  : 'VĐV',
-                'font-semibold mb-2'
-              )
-            );
-
-            grid(
-              debtContent,
-              [
-                [
-                  'Nghĩa vụ',
-                  money(
-                    playerDue
-                  ),
-                  `${playerContributions.length} khoản`
-                ],
-                [
-                  'Đã nộp',
-                  money(
-                    playerPaid
-                  ),
-                  `${playerPayments.length} lần thanh toán • Đã trừ hoàn tiền`
-                ],
-                [
-                  'Còn nợ',
-                  money(
-                    playerOutstanding
-                  ),
-                  playerOutstanding > 0
-                    ? 'Chưa hoàn tất nghĩa vụ'
-                    : 'Đã hoàn tất'
-                ],
-                [
-                  'Nộp dư',
-                  money(
-                    playerCredit
-                  ),
-                  playerCredit > 0
-                    ? 'Thanh toán vượt nghĩa vụ'
-                    : 'Không có'
-                ]
-              ]
-            );
-            const debtStatus =
-              fundDebtStatus(
-                playerOutstanding,
-                playerCredit
-              );
-
-            debtContent.append(
-              el(
-                'div',
-                `Trạng thái: ${debtStatus}`,
-                'mt-3 text-sm font-semibold'
-              )
-            );
-
-            const obligationDetail =
-              el(
-                'div',
-                null,
-                'mt-3'
-              );
-
-            const obligationBody =
-              el(
-                'div',
-                null,
-                'mt-2'
-              );
-
-            obligationBody.hidden =
-              true;
-
-            const obligationToggle =
-              button(
-                '▶ Chi tiết nghĩa vụ',
-                () => {
-                  obligationBody.hidden =
-                    !obligationBody.hidden;
-
-                  obligationToggle.textContent =
-                    obligationBody.hidden
-                      ? '▶ Chi tiết nghĩa vụ'
-                      : '▼ Thu gọn chi tiết nghĩa vụ';
-                },
-                'border rounded-lg px-3 py-2 text-sm w-full text-left'
-              );
-
-            obligationToggle.type =
-              'button';
-
-            table(
-              obligationBody,
-              'Các khoản phải đóng',
-              playerContributions
-                .map(
-                  contribution => {
-                    const match =
-                      rows('matches')
-                        .find(
-                          item =>
-                            item.id ===
-                            contribution.match_id
-                        );
-
-                    return {
-                      ...contribution,
-                      status: fundContributionStatus(contribution),
-                      match_reference:
-                        match
-                          ? (
-                              'Trận ' +
-                              matchCode(
-                                match
-                              ) +
-                              ' • ' +
-                              number(
-                                match.team_a_score
-                              ) +
-                              ' – ' +
-                              number(
-                                match.team_b_score
-                              )
-                            )
-                          : (
-                              contribution.match_id
-                                ? '#' +
-                                  String(
-                                    contribution.match_id
-                                  ).slice(
-                                    0,
-                                    8
-                                  )
-                                : '—'
-                            )
-                    };
-                  }
-                ),
-              [
-                moneyCol(
-                  'Số tiền',
-                  'amount_due',
-                  'amount'
-                ),
-                [
-                  'Loại',
-                  r =>
-                    fundReasonLabel(
-                      pick(
-                        r,
-                        'reason',
-                        'contribution_type',
-                        'type'
-                      )
-                    )
-                ],
-                col('Trạng thái', 'status'),
-                dateCol(
-                  'Ghi nhận',
-                  'created_at'
-                ),
-                [
-                  'Trận liên quan',
-                  r =>
-                    r.match_reference ||
-                    '—'
-                ]
-              ],
-              {
-                status: true,
-                unavailable:
-                  !!state.errors
-                    .fund_contributions ||
-                  !!state.errors
-                    .matches
-              }
-            );
-
-            obligationDetail.append(
-              obligationToggle,
-              obligationBody
-            );
-
-            const paymentDetail =
-              el(
-                'div',
-                null,
-                'mt-3'
-              );
-
-            const paymentBody =
-              el(
-                'div',
-                null,
-                'mt-2'
-              );
-
-            paymentBody.hidden =
-              true;
-
-            const paymentToggle =
-              button(
-                '▶ Lịch sử thanh toán',
-                () => {
-                  paymentBody.hidden =
-                    !paymentBody.hidden;
-
-                  paymentToggle.textContent =
-                    paymentBody.hidden
-                      ? '▶ Lịch sử thanh toán'
-                      : '▼ Thu gọn lịch sử thanh toán';
-                },
-                'border rounded-lg px-3 py-2 text-sm w-full text-left'
-              );
-
-            paymentToggle.type =
-              'button';
-
-            if (!playerPayments.length) {
-              paymentBody.append(
-                el(
-                  'p',
-                  'Chưa có thanh toán.',
-                  'muted py-4'
-                )
-              );
-            } else {
-              table(
-                paymentBody,
-                'Các lần thanh toán',
-                playerPayments,
-                [
-                  moneyCol(
-                    'Số tiền',
-                    'amount'
-                  ),
-                  dateCol(
-                    'Ngày thanh toán',
-                    'paid_at',
-                    'created_at'
-                  ),
-                  col(
-                    'Ghi chú',
-                    'note',
-                    'notes'
-                  ),
-                  col(
-                    'Khoản liên quan',
-                    'contribution_id'
-                  )
-                ],
-                {
-                  unavailable:
-                    !!state.errors
-                      .fund_payments
-                }
-              );
-            }
-
-            paymentDetail.append(
-              paymentToggle,
-              paymentBody
-            );
-
-            debtContent.append(
-              obligationDetail,
-              paymentDetail
-            );
-          };
-
-        debtSelect.addEventListener(
-          'change',
-          renderDebt
-        );
-
-        renderDebt();
-
-        sectionRoot.append(
-          debtControls,
-          debtContent
-        );
-      }
-    );
-        fundCollapse(
-          'Thanh toán',
-          sectionRoot => {
-
-        table(
-            sectionRoot,
-          'Thanh toán',
-          recent(
-            rows(
-              'fund_payments'
-            ),
-            'paid_at'
-          ),
-          [
-            [
-              'VĐV',
-              r =>
-                playerName(
-                  r.player_id ||
-                    rows(
-                      'fund_contributions'
-                    ).find(
-                      c =>
-                        c.id ===
-                        r.contribution_id
-                    )?.player_id
-                )
-            ],
-            moneyCol(
-              'Số tiền',
-              'amount'
-            ),
-            dateCol(
-              'Ngày thanh toán',
-              'paid_at'
-            ),
-            col(
-              'Ghi chú',
-              'note',
-              'notes'
-            ),
-            col(
-              'Khoản liên quan',
-              'contribution_id'
-            )
-          ],
-          {
-            unavailable:
-              !!state.errors
-                .fund_payments
-          }
-        );
-          }
-        );
-        if (canManageFund()) {
-          fundCollapse(
-            'Sổ giao dịch',
-            sectionRoot => {
-
-          table(
-              sectionRoot,
-            'Sổ giao dịch',
-            recent(
-              rows(
-                'fund_transactions'
-              ).map(transaction => {
-                const match =
-                  rows(
-                    'matches'
-                  ).find(
-                    item =>
-                      item.id ===
-                      transaction.match_id
-                  );
-
-                return {
-                  ...transaction,
-                  match_reference:
-                    match
-                      ? (
-                          'Trận ' +
-                          matchCode(match) +
-                          ' • ' +
-                          number(
-                            match.team_a_score
-                          ) +
-                          ' – ' +
-                          number(
-                            match.team_b_score
-                          )
-                        )
-                      : (
-                          transaction.match_id
-                            ? '#' +
-                              String(
-                                transaction.match_id
-                              ).slice(
-                                0,
-                                8
-                              )
-                            : '—'
-                        )
-                };
-              }),
-              'transaction_date'
-            ),
-            [
-              dateCol(
-                'Thời gian',
-                'transaction_date',
-                'occurred_at',
-                'created_at'
-              ),
-              col(
-                'Loại giao dịch',
-                'transaction_type',
-                'type',
-                'entry_type'
-              ),
-              moneyCol(
-                'Số tiền',
-                'amount'
-              ),
-              col(
-                'Diễn giải',
-                'description',
-                'note',
-                'notes',
-                'reason'
-              ),
-              [
-                'Trận liên quan',
-                r =>
-                  r.match_reference ||
-                  (
-                    r.match_id
-                      ? '#' +
-                        String(
-                          r.match_id
-                        ).slice(
-                          0,
-                          8
-                        )
-                      : '—'
-                  )
-              ]
-            ],
-            {
-              unavailable:
-                !!state.errors
-                  .fund_transactions ||
-                !!state.errors
-                  .matches
-            }
-          );
-            }
-          );
-
-        }
     }
 
-        fundCollapse(
-          'Quy định quỹ',
-          sectionRoot => {
-            settings(
-              sectionRoot,
-              'fund_rules'
-            );
+        // WP5: navigation only; payments and cash ledger remain separate datasets.
+        const historyWorkspace = el('details', null, 'fund-action mt-4');
+        historyWorkspace.append(el('summary', 'Lịch sử & đối soát', 'fund-action-summary'));
+        const historyBody = el('div', null, 'p-3');
+        const historyLabel = el('label', null, 'block text-sm');
+        historyLabel.append(el('span', 'Nội dung đối soát', 'block mb-1'));
+        const historyMode = el('select', null, 'field');
+        if (canManageFund() || canCollectFund()) historyMode.append(new Option('Thanh toán', 'payments'));
+        if (canManageFund()) historyMode.append(new Option('Thu / Chi', 'ledger'));
+        historyMode.append(new Option('Quy định', 'rules'));
+        historyMode.value = canManageFund() || canCollectFund() ? 'payments' : 'rules';
+        historyLabel.append(historyMode);
+        const historyView = el('div', null, 'mt-3');
+        historyBody.append(historyLabel, historyView);
+        historyWorkspace.append(historyBody);
+        root.append(historyWorkspace);
+        let historyPlayer = null;
+        let historyContributionIds = new Set();
+
+        function renderHistoryView() {
+          historyView.replaceChildren();
+          if (historyMode.value === 'rules') {
+            settings(historyView, 'fund_rules');
+            return;
           }
-        );
+          const ledger = historyMode.value === 'ledger';
+          // Never read raw ledger in the collector-only history view.
+          if (ledger ? !canManageFund() : !(canManageFund() || canCollectFund())) return;
+          const dataset = ledger ? 'fund_transactions' : 'fund_payments';
+          historyView.append(el('p', ledger
+            ? 'Sổ tiền mặt: thu, chi, hoàn tiền và điều chỉnh. Không dùng thay công nợ.'
+            : 'Các lần ghi nhận thanh toán gross. Hoàn tiền được đối soát riêng trong Thu / Chi.', 'muted text-sm'));
+          if (state.errors[dataset]) {
+            historyView.append(el('p', 'Không tải được dữ liệu đối soát. Vui lòng tải lại.', 'notice error'));
+            return;
+          }
+          if (state.partial[dataset]) historyView.append(el('p',
+            'Danh sách chưa đầy đủ; chỉ dùng đối soát các bản ghi đã tải. Vui lòng tải lại trước khi kết luận tổng số.', 'notice'));
+          let records = rows(dataset).slice();
+          if (!ledger && historyPlayer) {
+            records = records.filter(p => p.player_id === historyPlayer || historyContributionIds.has(p.contribution_id));
+            historyView.append(el('p', 'VĐV: ' + playerName(historyPlayer), 'text-sm'));
+            historyView.append(button('Xem tất cả thanh toán', () => {
+              historyPlayer = null;
+              historyContributionIds = new Set();
+              renderHistoryView();
+            }, 'btn'));
+          }
+          const recordDate = r => ledger ? pick(r, 'transaction_date', 'occurred_at', 'created_at') : pick(r, 'paid_at', 'created_at');
+          records.sort((a, b) => (Date.parse(recordDate(b)) || 0) - (Date.parse(recordDate(a)) || 0));
+          const paymentPlayer = r => r.player_id || rows('fund_contributions').find(c => c.id === r.contribution_id)?.player_id;
+          const searchLabel = el('label', null, 'block text-sm mt-3');
+          searchLabel.append(el('span', 'Tìm trong lịch sử', 'block mb-1'));
+          const search = el('input', null, 'field');
+          search.type = 'search';
+          search.placeholder = 'Tìm tên, ghi chú hoặc mã tham chiếu';
+          searchLabel.append(search);
+          const list = el('div', null, 'space-y-2 mt-3');
+          const pager = el('div', null, 'pager mt-3');
+          historyView.append(searchLabel, list, pager);
+          let page = 0;
+          function drawHistory() {
+            list.replaceChildren();
+            pager.replaceChildren();
+            const query = search.value.trim().toLocaleLowerCase('vi');
+            const filtered = records.filter(r => (Object.values(r).map(raw).join(' ') + ' ' +
+              (ledger ? '' : playerName(paymentPlayer(r)))).toLocaleLowerCase('vi').includes(query));
+            const pages = Math.max(1, Math.ceil(filtered.length / 20));
+            page = Math.min(page, pages - 1);
+            if (!filtered.length) list.append(el('p', 'Không có bản ghi phù hợp.', 'muted text-sm'));
+            filtered.slice(page * 20, (page + 1) * 20).forEach(r => {
+              const card = el('article', null, 'rounded-lg border p-3 text-sm');
+              card.style.minWidth = '0';
+              card.style.overflowWrap = 'anywhere';
+              card.append(el('strong', ledger ? transactionLabel(pick(r, 'transaction_type', 'type', 'entry_type')) : playerName(paymentPlayer(r))));
+              card.append(el('div', money(r.amount), 'font-bold mt-1'));
+              const when = recordDate(r);
+              card.append(el('div', when && Number.isFinite(Date.parse(when))
+                ? new Date(when).toLocaleString('vi-VN') : '—', 'muted text-sm'));
+              const note = ledger ? pick(r, 'description', 'note', 'notes', 'reason') : pick(r, 'note', 'notes');
+              if (note) card.append(el('p', raw(note).length > 100 ? raw(note).slice(0, 100) + '…' : raw(note), 'mt-1'));
+              const detail = el('details', null, 'mt-2');
+              detail.append(el('summary', 'Tham chiếu', 'cursor-pointer text-sm'));
+              if (note && raw(note).length > 100) detail.append(el('p', 'Ghi chú: ' + raw(note), 'mt-1'));
+              const refs = ledger
+                ? [['Mã giao dịch', 'id'], ['Loại giao dịch', 'transaction_type'], ['Thanh toán', 'payment_id'], ['Nghĩa vụ', 'contribution_id'], ['Hoàn / đảo giao dịch', 'reversal_of_transaction_id'], ['Trạng thái', 'status']]
+                : [['Mã thanh toán', 'id'], ['Nghĩa vụ', 'contribution_id'], ['Trạng thái', 'status']];
+              refs.forEach(([label, key]) => { if (r[key] != null) detail.append(el('p', label + ': ' + raw(r[key]), 'muted mt-1')); });
+              if (ledger && r.match_id) {
+                const match = rows('matches').find(m => m.id === r.match_id);
+                detail.append(el('p', 'Trận: ' + (match ? matchCode(match) + ' • ' + number(match.team_a_score) + ' – ' + number(match.team_b_score) : raw(r.match_id)), 'muted mt-1'));
+              }
+              card.append(detail);
+              list.append(card);
+            });
+            const prev = button('Trang trước', () => { page--; drawHistory(); }, 'btn');
+            const next = button('Trang sau', () => { page++; drawHistory(); }, 'btn');
+            prev.disabled = page === 0;
+            next.disabled = page >= pages - 1;
+            pager.append(prev, el('span', `${filtered.length} bản ghi • Trang ${page + 1}/${pages}`, 'muted text-sm'), next);
+          }
+          search.addEventListener('input', () => { page = 0; drawHistory(); });
+          drawHistory();
+        }
+        historyMode.addEventListener('change', renderHistoryView);
+        historyWorkspace.addEventListener('toggle', () => {
+          if (historyWorkspace.open && !historyView.children.length) renderHistoryView();
+        });
+        openFundPaymentHistory = (playerId, contributionIds) => {
+          historyPlayer = playerId;
+          historyContributionIds = new Set(contributionIds);
+          historyMode.value = 'payments';
+          historyWorkspace.open = true;
+          renderHistoryView();
+          historyWorkspace.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        };
+
       
       }
 

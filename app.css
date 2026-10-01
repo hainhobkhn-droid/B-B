@@ -6114,3 +6114,22 @@ tbody tr:hover{
 }
 
 /* /UI03A4 COMPACT HERO + KPI */
+/* FUND UI V2 WP6: scoped responsive polish; reuse shared controls and card tokens. */
+.fund-ui{min-width:0;overflow-wrap:anywhere;}
+.fund-ui .field,
+.fund-ui input.border,
+.fund-ui select.border,
+.fund-ui textarea.border{min-width:0;max-width:100%;}
+.fund-ui .btn{min-height:44px;white-space:normal;overflow-wrap:anywhere;}
+.fund-ui .btn.text-left{justify-content:flex-start;}
+.fund-ui details:not(.fund-action) > summary{min-height:44px;padding-top:10px;padding-bottom:10px;cursor:pointer;}
+.fund-ui .rounded-lg,
+.fund-ui .rounded-xl{border-radius:var(--ui-card-radius);}
+.fund-ui .pager{margin-bottom:0;}
+.fund-ui .pager .btn{flex:0 1 auto;}
+@media(max-width:760px){
+  .fund-ui .btn.primary{width:100%;}
+  .fund-ui .pager{gap:8px;align-items:center;}
+  .fund-ui .pager > span{flex-basis:100%;order:1;text-align:center;}
+  .fund-ui .pager > .btn{flex:1;}
+}

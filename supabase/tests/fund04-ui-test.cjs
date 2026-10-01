@@ -71,10 +71,15 @@ eq(orderScope.compare({...dated,id:'a',created_at:'2026-10-01T03:00:00+07:00'},
  {...dated,id:'b',created_at:'2026-09-30T20:00:00Z'}),-1);
 eq(orderScope.compare({...dated,id:'a',created_at:null},{...dated,id:'b',created_at:'2026-09-30T20:00:00Z'}),1);
 eq(orderScope.compare({id:'a'}, {...dated,id:'b'}),1);
-const batch=f=>all(f.root).find(n=>n.tag==='details'&&n.children[0]?.textContent==='Thu gộp theo VĐV');
+const batch=f=>all(f.root).find(n=>n.tag==='div'&&n.children[0]?.textContent==='Thu gộp theo VĐV');
 (async()=>{
  for(const mode of ['admin','collector']){
   const f=mount(mode), b=batch(f);assert(b);checks++;
+  const modeSwitch=all(f.root).find(n=>n.tag==='select'&&n.children.some(o=>o.value==='batch'));
+  eq(modeSwitch.value,'batch');eq(b.hidden,false);eq(f.collection().hidden,true);
+  eq(all(f.root).filter(n=>n.tag==='details'&&n.children[0]?.textContent==='Thu quỹ').length,1);
+  modeSwitch.value='single';modeSwitch.events.change();eq(b.hidden,true);eq(f.collection().hidden,false);
+  modeSwitch.value='batch';modeSwitch.events.change();eq(b.hidden,false);eq(f.collection().hidden,true);
   const select=all(b).find(n=>n.tag==='select');select.value='p';select.events.change();
   const amount=all(b).find(n=>n.type==='number'),submit=all(b).find(n=>n.textContent==='Ghi nhận thu gộp');
   eq(amount.max,'40000');eq(amount.value,'40000');eq(submit.disabled,false);
