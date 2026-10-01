@@ -6133,3 +6133,20 @@ tbody tr:hover{
   .fund-ui .pager > span{flex-basis:100%;order:1;text-align:center;}
   .fund-ui .pager > .btn{flex:1;}
 }
+
+/* ACC03 PRESENTATION */
+.account-ui .acc03-summary{display:grid;gap:10px;min-width:0;overflow-wrap:anywhere;}
+.account-ui .acc03-summary>p{margin:0;}
+.account-ui .acc03-summary .badge{white-space:normal;max-width:100%;width:fit-content;overflow-wrap:anywhere;}
+.account-ui .acc03-success{color:var(--green);background:var(--green-bg);}
+.account-ui .acc03-pending{color:var(--amber);background:var(--amber-bg);}
+.account-ui .acc03-danger{color:var(--red);background:var(--red-bg);}
+.account-ui .acc03-neutral{color:var(--muted);background:var(--surface-2);}
+.account-ui .acc03-info{color:var(--blue);background:var(--blue-bg);}
+.account-ui .acc03-technical{font-size:12px;overflow-wrap:anywhere;}
+.account-ui .acc03-technical summary{cursor:pointer;min-height:44px;display:flex;align-items:center;}
+.account-ui .acc03-danger-zone{margin-top:12px;padding:12px;border:1px solid var(--red);border-radius:var(--ui-card-radius,12px);}
+.account-ui .acc03-danger-zone h3{color:var(--red);margin:0;}
+@media(max-width:640px){.account-ui .acc03-summary .member-lifecycle-summary-grid{grid-template-columns:minmax(0,1fr);}}
+.account-ui .acc03-group{grid-column:1 / -1;margin:4px 0 0;font-size:13px;}
+/* /ACC03 PRESENTATION */

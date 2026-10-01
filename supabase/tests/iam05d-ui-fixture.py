@@ -15,7 +15,7 @@ def extract(source,name):
 def fixture():
     source=(repo/'app.js').read_text(encoding='utf8')
     names=['el','button','notice','panel','badge','accountAction','membershipLabel',
-           'memberApprovalStatus','adminMemberApproval','adminMemberLifecycle']
+           'accountMemberSummary','memberApprovalStatus','adminMemberApproval','adminMemberLifecycle']
     functions='\n'.join(extract(source,n) for n in names)
     return '''<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IAM05D Local Verification</title><link rel="stylesheet" href="/app.css">
@@ -32,7 +32,7 @@ const explain=()=> 'Vui lòng thử lại.';
 let reads=0,writes=0,hold=false,release=null;
 let members=[];
 function updateCounts(){ $('counts').textContent='RPC đọc: '+reads+' • RPC ghi: '+writes+' • Đang chờ: '+Boolean(release); }
-function resetMembers(){ members=[1,2].map(n=>({profile_id:'member-'+n,full_name:'Nguyễn Hoàng Minh Anh tên rất dài kiểm tra giao diện thành viên '+n,login_name:'member_'+n,email:'verylongemailaddresswithoutspacesfortesting'+n+'@example.invalid',phone:'0900000000',date_of_birth:'1990-01-01',initial_rating:4.25,current_rating:4.25,created_at:'2026-09-28T10:00:00Z',player_id:'00000000-0000-0000-0000-00000000000'+n,membership_status:'PENDING',is_active:false,player_status:'ACTIVE',player_type:'CLUB',delegated_permissions_count:0})); }
+function resetMembers(){ members=[1,2,3,4].map(n=>({profile_id:'member-'+n,full_name:'Nguyễn Hoàng Minh Anh tên rất dài kiểm tra giao diện thành viên '+n,login_name:'member_'+n,email:'verylongemailaddresswithoutspacesfortesting'+n+'@example.invalid',phone:'0900000000',date_of_birth:'1990-01-01',initial_rating:4.25,current_rating:4.25,created_at:'2026-09-28T10:00:00Z',player_id:'00000000-0000-0000-0000-00000000000'+n,membership_status:['PENDING','APPROVED','APPROVED','REJECTED'][n-1],is_active:n===2,player_status:'ACTIVE',player_type:'CLUB',delegated_permissions_count:0})); }
 const client={rpc:async(name,args)=>{
  let result;
  if(name.startsWith('get_')){reads++;result={data:name==='get_admin_pending_member_signups'?members.filter(m=>m.membership_status==='PENDING').map(m=>({...m})):members.map(m=>({...m})),error:null};}

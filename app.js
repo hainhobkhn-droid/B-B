@@ -3406,18 +3406,7 @@ const fieldLabels = {
 
           const summary = el('div', null, 'member-permission-summary');
 
-          const head = el('div', null, 'member-permission-summary-head');
-          const identity = el('div');
-          identity.append(
-            el('strong', member.full_name || member.login_name || member.profile_id),
-            badge(member.is_active === true ? 'ACTIVE' : 'INACTIVE')
-          );
-
-          if (member.email || member.login_name) {
-            identity.append(el('p', member.email || member.login_name, 'muted'));
-          }
-
-          head.append(identity);
+          const head = accountMemberSummary(member, capabilities.filter(([key]) => member[key] === true).length);
 
           const flags = el('div', null, 'member-permission-summary-flags');
 
@@ -3570,7 +3559,7 @@ const fieldLabels = {
             members.forEach(member => {
               const option = el('option', (member.full_name || member.login_name || member.profile_id) +
                 (member.login_name ? ' • ' + member.login_name : '') +
-                (member.is_active === true ? ' • Hoạt động' : ' • Ngừng hoạt động'));
+                ' • Tài khoản: ' + (member.is_active === true ? 'Đang hoạt động' : 'Ngừng hoạt động'));
               option.value = member.profile_id;
               select.append(option);
             });
@@ -3608,9 +3597,41 @@ const fieldLabels = {
       // IAM05C: ADMIN-only MEMBER account lifecycle UI.
       // IAM05D: lazy ADMIN signup review. No business writes outside approval RPCs.
       function membershipLabel(member) {
-        if (member.membership_status === 'PENDING') return 'Chờ duyệt';
-        if (member.membership_status === 'REJECTED') return 'Bị từ chối';
-        return member.is_active === true ? 'Đã duyệt • Hoạt động' : 'Đã duyệt nhưng đang vô hiệu hóa';
+        return ({ PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối' })[member.membership_status]
+          || 'Không xác định trạng thái duyệt';
+      }
+
+      function accountMemberSummary(member, permissionCount = member.delegated_permissions_count) {
+        const box = el('div', null, 'acc03-summary');
+        box.append(el('strong', member.full_name || member.login_name || 'Chưa có họ tên'),
+          el('p', member.login_name ? '@' + member.login_name : 'Chưa có nickname', 'muted'));
+        const grid = el('div', null, 'member-lifecycle-summary-grid');
+        const item = (label, text, tone = '') => {
+          const row = el('div', null, 'member-lifecycle-summary-item');
+          row.append(el('span', label), el('strong', text, tone ? 'badge acc03-' + tone : ''));
+          grid.append(row);
+        };
+        const group = text => grid.append(el('h4', text, 'acc03-group'));
+        group('Tài khoản');
+        item('Email', member.email || 'Chưa được cung cấp trong danh sách');
+        item('Trạng thái duyệt', membershipLabel(member),
+          ({PENDING:'pending',APPROVED:'success',REJECTED:'danger'})[member.membership_status] || 'neutral');
+        item('Tài khoản', member.is_active === true ? 'Đang hoạt động' : member.is_active === false ? 'Ngừng hoạt động' : 'Chưa có dữ liệu',
+          member.is_active === true ? 'success' : 'neutral');
+        // Both IAM directories contain MEMBER records only; no role is inferred from activation.
+        item('Vai trò', member.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên', 'info');
+        group('Hồ sơ VĐV');
+        item('Trạng thái VĐV', member.player_status === 'ACTIVE' ? 'Đang tham gia' : member.player_status === 'INACTIVE' ? 'Ngừng tham gia' : 'Chưa có dữ liệu',
+          member.player_status === 'ACTIVE' ? 'success' : 'neutral');
+        item('Liên kết VĐV', member.player_id ? 'Đã liên kết VĐV' : 'Chưa liên kết VĐV', 'info');
+        if (member.current_rating != null) item('Rating hiện tại', Number(member.current_rating).toFixed(3));
+        group('Quyền');
+        item('Quyền được cấp', permissionCount == null ? 'Chưa có dữ liệu' : String(permissionCount) + ' / 8');
+        const technical = el('details', null, 'acc03-technical');
+        technical.append(el('summary', 'Chi tiết kỹ thuật'), el('p', 'Profile ID: ' + (member.profile_id || '—')),
+          el('p', 'Player ID: ' + (member.player_id || '—')));
+        box.append(grid, technical);
+        return box;
       }
 
       function memberApprovalStatus(root) {
@@ -3659,20 +3680,17 @@ const fieldLabels = {
           detail.replaceChildren();
           const grid = el('div', null, 'member-lifecycle-summary-grid');
           const fields = [
-            ['Họ tên', member.full_name], ['Nickname', member.login_name],
-            ['Email', member.email], ['Điện thoại', member.phone],
+            ['Điện thoại', member.phone],
             ['Ngày sinh', member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('vi-VN') : null],
             ['Ngày đăng ký', date(member.created_at)],
             ['Rating khởi tạo', member.initial_rating == null ? null : Number(member.initial_rating).toFixed(3)],
-            ['Rating hiện tại', member.current_rating == null ? null : Number(member.current_rating).toFixed(3)],
-            ['Player ID', member.player_id], ['Trạng thái', 'Chờ duyệt'],
           ];
           for (const [label, value] of fields) {
             const item = el('div', null, 'member-lifecycle-summary-item');
             item.append(el('span', label), el('strong', value == null || value === '' ? 'Chưa có' : String(value)));
             grid.append(item);
           }
-          detail.append(grid, el('p', 'Duyệt hoặc từ chối chỉ thay đổi quyền sử dụng tài khoản; giữ nguyên Player ID, Rating và lịch sử.', 'muted'));
+          detail.append(accountMemberSummary(member), grid, el('p', 'Duyệt hoặc từ chối chỉ thay đổi quyền sử dụng tài khoản; giữ nguyên Player ID, Rating và lịch sử.', 'muted'));
           const rejectBox = el('details', null, 'app-action app-action-danger');
           rejectBox.append(el('summary', 'Từ chối', 'app-action-toggle'));
           const form = el('form', null, 'app-action-body');
@@ -3979,75 +3997,7 @@ const fieldLabels = {
             'member-lifecycle-summary'
           );
 
-          const head = el(
-            'div',
-            null,
-            'member-lifecycle-summary-head'
-          );
-
-          const identity = el('div');
-
-          identity.append(
-            el(
-              'strong',
-              member.full_name ||
-                member.login_name ||
-                member.profile_id
-            ),
-            badge(
-              member.membership_status !== 'APPROVED' ? member.membership_status :
-                (member.is_active === true ? 'ACTIVE' : 'INACTIVE')
-            )
-          );
-
-          identity.append(
-            el(
-              'p',
-              member.login_name
-                ? '@' + member.login_name
-                : 'Chưa có nickname',
-              'muted'
-            )
-          );
-
-          head.append(identity);
-
-          const grid = el(
-            'div',
-            null,
-            'member-lifecycle-summary-grid'
-          );
-
-          addSummaryItem(
-            grid,
-            'Tài khoản',
-            membershipLabel(member),
-            member.membership_status !== 'APPROVED' ? member.membership_status :
-              (member.is_active === true ? 'ACTIVE' : 'INACTIVE')
-          );
-
-          addSummaryItem(
-            grid,
-            'Player ID',
-            member.player_id || 'Không liên kết'
-          );
-
-          addSummaryItem(
-            grid,
-            'Trạng thái VĐV',
-            playerStatusText(
-              member.player_status
-            ),
-            member.player_status || null
-          );
-
-          addSummaryItem(
-            grid,
-            'Quyền được ủy quyền',
-            String(
-              member.delegated_permissions_count || 0
-            ) + ' / 8'
-          );
+          const head = accountMemberSummary(member);
 
           const distinction = el(
             'p',
@@ -4063,8 +4013,8 @@ const fieldLabels = {
 
           const lifecycleButton = button(
             member.is_active === true
-              ? 'Vô hiệu hóa tài khoản'
-              : 'Kích hoạt lại tài khoản',
+              ? 'Ngừng tài khoản'
+              : 'Kích hoạt lại',
             () => editLifecycle(member),
             member.is_active === true
               ? 'btn lifecycle-deactivate'
@@ -4074,7 +4024,7 @@ const fieldLabels = {
           lifecycleButton.hidden = member.membership_status !== 'APPROVED';
 
           const previewButton = button(
-            'Kiểm tra khả năng xóa',
+            'Xem điều kiện xóa',
             () => previewDeletion(member)
           );
 
@@ -4083,12 +4033,9 @@ const fieldLabels = {
             previewButton
           );
 
-          summary.append(
-            head,
-            grid,
-            distinction,
-            actions
-          );
+          const dangerZone = el('section', null, 'acc03-danger-zone');
+          dangerZone.append(el('h3', 'Vùng nguy hiểm'), actions);
+          summary.append(head, distinction, dangerZone);
 
           detail.append(summary);
         }
@@ -4118,8 +4065,8 @@ const fieldLabels = {
             el(
               'h3',
               activating
-                ? 'Kích hoạt lại tài khoản'
-                : 'Vô hiệu hóa tài khoản'
+                ? 'Kích hoạt lại'
+                : 'Ngừng tài khoản'
             )
           );
 
@@ -4169,7 +4116,7 @@ const fieldLabels = {
             'button',
             activating
               ? 'Kích hoạt tài khoản'
-              : 'Xác nhận vô hiệu hóa',
+              : 'Ngừng tài khoản',
             activating
               ? 'btn primary'
               : 'btn lifecycle-deactivate'
@@ -4329,7 +4276,7 @@ const fieldLabels = {
                     submit.textContent =
                       activating
                         ? 'Kích hoạt tài khoản'
-                        : 'Xác nhận vô hiệu hóa';
+                        : 'Ngừng tài khoản';
                   }
 
                   sync();
@@ -4423,7 +4370,7 @@ const fieldLabels = {
               'p',
               data.hard_delete_allowed === true
                 ? 'Có thể xóa vĩnh viễn nếu máy chủ xác nhận không còn dữ liệu tham chiếu. Không thể hoàn tác; việc xóa tài khoản đăng nhập có thể cần thử lại riêng.'
-                : 'Không được hard-delete. Tài khoản có lịch sử nghiệp vụ hoặc audit và chỉ được vô hiệu hóa.',
+                : 'Không thể xóa vĩnh viễn vì có dữ liệu hoặc lịch sử tham chiếu. Có thể ngừng tài khoản.',
               data.hard_delete_allowed === true
                 ? 'notice'
                 : 'notice error'
@@ -4485,7 +4432,16 @@ const fieldLabels = {
                   ([key, value]) => {
                     blockers.push(
                       prefix +
-                      key +
+                      ({audit_logs:'Lịch sử thao tác',match_players:'Tham gia trận',rating_events:'Lịch sử Rating',
+                        rating_adjustments:'Điều chỉnh Rating',rating_adjustment_events:'Chi tiết điều chỉnh Rating',
+                        fund_contributions:'Nghĩa vụ Quỹ',fund_payments:'Thanh toán Quỹ',fund_transactions:'Thu/chi Quỹ',
+                        tournament_registrations:'Đăng ký giải',tournament_payments:'Thanh toán giải',awards:'Giải thưởng',
+                        fund_obligation_campaigns_created:'Đợt thu Quỹ đã tạo',fund_payments_confirmed:'Thanh toán Quỹ đã xác nhận',
+                        fund_transactions_created:'Thu/chi Quỹ đã tạo',leagues_created:'Mùa giải đã tạo',matches_created:'Trận đã tạo',
+                        matches_opponent_confirmed:'Trận đã xác nhận',matches_opponent_rejected:'Trận đã từ chối',
+                        rating_adjustments_created:'Điều chỉnh Rating đã tạo',tournament_expense_reversals_created:'Hoàn chi giải đã tạo',
+                        tournament_expenses_created:'Chi giải đã tạo',tournament_payment_refunds_created:'Hoàn phí giải đã tạo',
+                        tournament_payments_confirmed:'Thanh toán giải đã xác nhận',tournaments_created:'Giải đã tạo'}[key] || 'Tham chiếu khác') +
                       ': ' +
                       value
                     );
@@ -4495,12 +4451,12 @@ const fieldLabels = {
 
             collect(
               data.player_references,
-              'Player • '
+              'VĐV • '
             );
 
             collect(
               data.profile_references,
-              'Account • '
+              'Tài khoản • '
             );
 
             const blockerBox = el(
@@ -4530,7 +4486,7 @@ const fieldLabels = {
               blockerBox.append(
                 el(
                   'p',
-                  'Không phát hiện blocker.',
+                  'Chưa phát hiện dữ liệu ngăn xóa. Máy chủ sẽ kiểm tra lại khi thực hiện.',
                   'muted'
                 )
               );
@@ -4539,7 +4495,7 @@ const fieldLabels = {
             const actions = el(
               'div',
               null,
-              'form-actions'
+              'form-actions acc03-danger-zone'
             );
 
             actions.append(
@@ -4770,7 +4726,7 @@ preview.append(
                         member.login_name
                       : ''
                   ) +
-                  ' • ' + membershipLabel(member)
+                  ' • ' + membershipLabel(member) + ' • Tài khoản: ' + (member.is_active === true ? 'Đang hoạt động' : 'Ngừng hoạt động')
               );
 
               option.value =
