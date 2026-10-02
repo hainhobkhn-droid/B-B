@@ -65,7 +65,8 @@ def sdk():
     return '''window.SUPABASE_URL='https://example.invalid';window.SUPABASE_ANON_KEY='public-test';
 const mode=new URLSearchParams(location.search).get('mode')||'PENDING';
 const active=['APPROVED','ADMIN','MEMBER_NICKNAME','MEMBER_NO_NICKNAME','PASSWORD'].includes(mode);
-const profile={id:'test-user',full_name:'Thành viên kiểm thử local tên dài',login_name:mode==='MEMBER_NICKNAME'?'nickname_long_example_123':null,role:mode==='ADMIN'?'ADMIN':'MEMBER',is_active:active,membership_status:active?'APPROVED':mode,player_id:active?'fixture-player':null,must_change_password:mode==='PASSWORD',can_collect_fund:mode==='MEMBER_NICKNAME'};
+const approved=active||mode==='INACTIVE';
+const profile={id:'test-user',full_name:'Thành viên kiểm thử local tên dài',login_name:mode==='MEMBER_NICKNAME'?'nickname_long_example_123':null,role:mode==='ADMIN'?'ADMIN':'MEMBER',is_active:active,membership_status:approved?'APPROVED':mode,player_id:approved?'fixture-player':null,must_change_password:mode==='PASSWORD',can_collect_fund:mode==='MEMBER_NICKNAME'};
 const player={id:'fixture-player',full_name:profile.full_name,phone:'0900000000',date_of_birth:'1990-01-01',status:'ACTIVE',player_type:'CLUB',current_rating:4};
 const session={user:{id:'test-user',email:'test@example.invalid'}};
 let businessReads=0;

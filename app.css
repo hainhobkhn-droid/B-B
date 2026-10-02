@@ -284,7 +284,7 @@ h4{
 }
 
 .btn-compact{
-  min-height:37px;
+  min-height:44px;
   padding:8px 11px;
   font-size:12px;
 }
@@ -3097,7 +3097,7 @@ td:first-child{
   }
 
   .btn-compact{
-    min-height:32px;
+    min-height:44px;
 
     padding:6px 8px;
 
