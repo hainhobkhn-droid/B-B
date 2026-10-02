@@ -6794,51 +6794,13 @@ function voidApprovedMatchForm(root) {
         const center =
           makeNode(
             'div',
-            'space-y-3'
+            'match-management-center space-y-3'
           );
 
         root.append(center);
 
         if (isAdmin()) {
-        const createToggle =
-          makeNode(
-            'details',
-            'match-create-shell rounded-2xl border border-slate-200 bg-white shadow-sm'
-          );
-
-        const createSummary =
-          makeNode(
-            'summary',
-            'cursor-pointer select-none list-none px-5 py-4 font-semibold text-slate-900',
-            '＋ Tạo trận mới'
-          );
-
-        const createHost =
-          makeNode(
-            'div',
-            'border-t border-slate-100 p-4'
-          );
-
-        createToggle.append(
-          createSummary,
-          createHost
-        );
-
-        center.append(
-          createToggle
-        );
-
-        createMatchForm(
-          createHost
-        );
-
-        // The outer details is the single create accordion on ADMIN.
-        const createSection = createHost.querySelector('.match-action-card');
-        if (createSection) {
-          createSection.classList.remove('match-action-collapsible');
-          createSection.querySelector(':scope > h2').hidden = true;
-        }
-
+          createMatchForm(center);
         }
 
         const actionArea =
@@ -8881,11 +8843,6 @@ function voidApprovedMatchForm(root) {
             'leagues'
           ]
         );
-
-        if (canApproveMatches()) {
-          adminMatchCenter(root);
-        }
-
         if (!isAdmin()) {
           createMyPendingMatchForm(
             root,
@@ -8894,34 +8851,33 @@ function voidApprovedMatchForm(root) {
           );
 
           memberOpponentConfirmationPanel(root);
-
-          if (!canApproveMatches()) {
-            table(
-              root,
-              'Danh sách trận đấu',
-              recent(
-                rows('matches'),
-                'played_at'
-              ),
-              matchCols,
-              {
-                status: true,
-                unavailable:
-                  !!state.errors.matches,
-                dateKey: 'played_at',
-                pageSize: 20,
-                pageSizes: [
-                  20,
-                  50
-                ],
-                reportCountLabel:
-                  'trận trong phạm vi đang lọc'
-              }
-            );
-          }
         }
 
-        // Presentation only: pair lineup columns on desktop, group teams on mobile.
+        if (canApproveMatches()) {
+          adminMatchCenter(root);
+        }
+
+        table(
+          root,
+          'Tra cứu trận đấu đã diễn ra',
+          recent(
+            rows('matches'),
+            'played_at'
+          ),
+          matchCols,
+          {
+            status: true,
+            unavailable:
+              !!state.errors.matches,
+            dateKey: 'played_at',
+            pageSize: 20,
+            pageSizes: isAdmin()
+              ? [20, 50, 100]
+              : [20, 50],
+            reportCountLabel:
+              'trận trong phạm vi đang lọc'
+          }
+        );
         const lineupGrid = root.querySelector('#pending-team-a-1')?.closest('.form-grid');
         if (lineupGrid) {
           lineupGrid.classList.add('match-form-grid');

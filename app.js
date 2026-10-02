@@ -1908,29 +1908,6 @@
           ['match_players']
         );
 
-        table(
-          root,
-          'Tra cứu trận đấu đã diễn ra',
-          recent(
-            rows('matches'),
-            'played_at'
-          ),
-          matchCols,
-          {
-            unavailable:
-              !!state.errors.matches,
-            status: true,
-            dateKey: 'played_at',
-            pageSize: 20,
-            pageSizes: [
-              20,
-              50,
-              100
-            ],
-            reportCountLabel:
-              'trận trong phạm vi đang lọc'
-          }
-        );
 
         table(
           root,

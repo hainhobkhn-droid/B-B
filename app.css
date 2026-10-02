@@ -5152,19 +5152,14 @@ tbody tr:hover{
 /* MATCH UI review — scoped to this module; Theme V2 tokens remain shared. */
 .matches-ui{min-width:0;}
 .matches-ui > .panel{margin-bottom:12px;}
-.matches-ui .match-create-shell,
+.matches-ui .match-management-center{margin-bottom:12px;}
+.matches-ui .match-action-create{border-color:#bfe0ca;box-shadow:var(--shadow-1);}
 .matches-ui .match-active-action,
 .matches-ui .match-record-card{background:var(--surface);border-color:var(--border);box-shadow:var(--shadow-1);}
-.matches-ui .match-create-shell{overflow:hidden;border-left:4px solid #459b66;}
-.matches-ui .match-create-shell > summary,
 .matches-ui .match-status-summary,
 .matches-ui .match-action-card > h2:first-child{
   min-height:54px;box-sizing:border-box;padding:10px 14px;font-size:14px;line-height:1.35;
 }
-.matches-ui .match-create-shell > summary{color:#276641;background:#f3faf5;}
-.matches-ui .match-create-shell .match-action-card{border:0;box-shadow:none;margin:0;padding:0;overflow:visible;}
-.matches-ui .match-create-shell .match-action-card:hover{transform:none;}
-.matches-ui .match-create-shell .match-action-card > h2[hidden]{display:none!important;}
 .matches-ui .match-active-action .panel{margin:0;box-shadow:none;}
 .matches-ui .match-action-toggle:focus-visible,
 .matches-ui summary:focus-visible{outline:3px solid var(--brand-2);outline-offset:-3px;}
