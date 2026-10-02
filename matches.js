@@ -8907,7 +8907,15 @@ function voidApprovedMatchForm(root) {
               {
                 status: true,
                 unavailable:
-                  !!state.errors.matches
+                  !!state.errors.matches,
+                dateKey: 'played_at',
+                pageSize: 20,
+                pageSizes: [
+                  20,
+                  50
+                ],
+                reportCountLabel:
+                  'trận trong phạm vi đang lọc'
               }
             );
           }

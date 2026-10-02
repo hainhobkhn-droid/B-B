@@ -447,7 +447,93 @@
           tools.append(filter);
         }
 
+        let dateFrom = null;
+        let dateTo = null;
+        let pageSizeSelect = null;
+        let reportSummary = null;
+
+        if (opts.dateKey) {
+          dateFrom = el(
+            'input',
+            null,
+            'field'
+          );
+
+          dateFrom.type = 'date';
+
+          dateFrom.setAttribute(
+            'aria-label',
+            'Từ ngày'
+          );
+
+          dateTo = el(
+            'input',
+            null,
+            'field'
+          );
+
+          dateTo.type = 'date';
+
+          dateTo.setAttribute(
+            'aria-label',
+            'Đến ngày'
+          );
+
+          tools.append(
+            dateFrom,
+            dateTo
+          );
+        }
+
+        if (
+          Array.isArray(opts.pageSizes) &&
+          opts.pageSizes.length
+        ) {
+          pageSizeSelect = el(
+            'select',
+            null,
+            'field'
+          );
+
+          pageSizeSelect.setAttribute(
+            'aria-label',
+            'Số dòng mỗi trang'
+          );
+
+          opts.pageSizes.forEach(
+            size =>
+              pageSizeSelect.append(
+                new Option(
+                  `${size} dòng / trang`,
+                  String(size)
+                )
+              )
+          );
+
+          pageSizeSelect.value =
+            String(
+              opts.pageSize ||
+              opts.pageSizes[0]
+            );
+
+          tools.append(
+            pageSizeSelect
+          );
+        }
+
         section.append(tools);
+
+        if (opts.reportCountLabel) {
+          reportSummary = el(
+            'p',
+            '',
+            'muted mb-3'
+          );
+
+          section.append(
+            reportSummary
+          );
+        }
 
         const host = el('div');
         section.append(host);
@@ -456,6 +542,92 @@
 
         const values = r =>
           columns.map(c => c[1](r));
+
+        const currentPageSize = () => {
+          const selected =
+            Number(
+              pageSizeSelect?.value
+            );
+
+          if (
+            Number.isFinite(selected) &&
+            selected > 0
+          ) {
+            return selected;
+          }
+
+          const configured =
+            Number(opts.pageSize);
+
+          return (
+            Number.isFinite(configured) &&
+            configured > 0
+          )
+            ? configured
+            : 20;
+        };
+
+        const localDateKey = value => {
+          if (!value) {
+            return null;
+          }
+
+          const parsed =
+            new Date(value);
+
+          if (
+            !Number.isFinite(
+              parsed.getTime()
+            )
+          ) {
+            return null;
+          }
+
+          const year =
+            parsed.getFullYear();
+
+          const month =
+            String(
+              parsed.getMonth() + 1
+            ).padStart(2, '0');
+
+          const day =
+            String(
+              parsed.getDate()
+            ).padStart(2, '0');
+
+          return `${year}-${month}-${day}`;
+        };
+
+        const matchesDateRange = r => {
+          if (!opts.dateKey) {
+            return true;
+          }
+
+          const value =
+            typeof opts.dateKey ===
+              'function'
+              ? opts.dateKey(r)
+              : r?.[opts.dateKey];
+
+          const key =
+            localDateKey(value);
+
+          if (!key) {
+            return false;
+          }
+
+          return (
+            (
+              !dateFrom?.value ||
+              key >= dateFrom.value
+            ) &&
+            (
+              !dateTo?.value ||
+              key <= dateTo.value
+            )
+          );
+        };
 
         function draw() {
           host.replaceChildren();
@@ -471,6 +643,7 @@
                 !filter.value ||
                 r.status === filter.value
               ) &&
+              matchesDateRange(r) &&
               (
                 !q ||
                 values(r).some(v =>
@@ -483,10 +656,20 @@
               )
           );
 
+          const pageSize =
+            currentPageSize();
+
           const pages = Math.max(
             1,
-            Math.ceil(found.length / 20)
+            Math.ceil(
+              found.length / pageSize
+            )
           );
+
+          if (reportSummary) {
+            reportSummary.textContent =
+              `${number(found.length)} ${opts.reportCountLabel}`;
+          }
 
           page = Math.min(
             page,
@@ -553,8 +736,8 @@
 
           found
             .slice(
-              (page - 1) * 20,
-              page * 20
+              (page - 1) * pageSize,
+              page * pageSize
             )
             .forEach(r => {
               const tr = el('tr');
@@ -655,6 +838,23 @@
             }
           );
         }
+
+        [
+          dateFrom,
+          dateTo,
+          pageSizeSelect
+        ]
+          .filter(Boolean)
+          .forEach(
+            control =>
+              control.addEventListener(
+                'change',
+                () => {
+                  page = 1;
+                  draw();
+                }
+              )
+          );
 
         draw();
       }
@@ -1710,15 +1910,25 @@
 
         table(
           root,
-          'Trận đấu gần đây',
+          'Tra cứu trận đấu đã diễn ra',
           recent(
             rows('matches'),
             'played_at'
-          ).slice(0, 5),
+          ),
           matchCols,
           {
             unavailable:
-              !!state.errors.matches
+              !!state.errors.matches,
+            status: true,
+            dateKey: 'played_at',
+            pageSize: 20,
+            pageSizes: [
+              20,
+              50,
+              100
+            ],
+            reportCountLabel:
+              'trận trong phạm vi đang lọc'
           }
         );
 
