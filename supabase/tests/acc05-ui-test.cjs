@@ -1,6 +1,6 @@
 // Execute the actual frontend delete callback with minimal DOM/SDK doubles.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
-const app=fs.readFileSync(path.join(__dirname,'../../app.js'),'utf8');
+const app=fs.readFileSync(path.join(__dirname,'../../account.js'),'utf8');
 const start=app.indexOf('              let recoveryReason = null;');
 const end=app.indexOf('              actions.append(',start);
 assert(start>0&&end>start);

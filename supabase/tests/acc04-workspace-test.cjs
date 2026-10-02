@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const s=fs.readFileSync(path.join(__dirname,'../../app.js'),'utf8');
+const s=fs.readFileSync(path.join(__dirname,'../../account.js'),'utf8');
 const a=s.indexOf('      function accountMemberPageRows('),b=s.indexOf('      function adminMemberLifecycle',a),ctx={};vm.createContext(ctx);vm.runInContext(s.slice(a,b),ctx);
 const data=[{full_name:'Nguyễn An',login_name:'an',membership_status:'PENDING',is_active:false},
 {full_name:'Bình',login_name:'binh',membership_status:'APPROVED',is_active:true,email:'b@example.invalid'},

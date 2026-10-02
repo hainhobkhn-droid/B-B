@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const s=fs.readFileSync(path.join(__dirname,'../../app.js'),'utf8');const a=s.indexOf('      function memberNickname('),b=s.indexOf('      function admin()',a);
+const s=fs.readFileSync(path.join(__dirname,'../../account.js'),'utf8');const a=s.indexOf('      function memberNickname('),b=s.indexOf('      function admin()',a);
 class E{constructor(tag,text,cls){Object.assign(this,{tag,text,cls,children:[],events:{},isConnected:true,value:''})}append(...c){this.children.push(...c)}replaceChildren(...c){this.children=c}setAttribute(){}addEventListener(k,f){this.events[k]=f}}
 const all=n=>[n,...n.children.flatMap(all)];
 function mount(profile={},reply){const root=new E('div'),calls=[],notices=[];let loaded=0;const state={session:{user:{id:'u'}},generation:1,profile:{role:'MEMBER',is_active:true,membership_status:'APPROVED',login_name:null,...profile}};

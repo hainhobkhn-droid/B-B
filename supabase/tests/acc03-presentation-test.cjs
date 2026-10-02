@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'../../app.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../../account.js'),'utf8');
 const start=source.indexOf('      function membershipLabel(member)');
 const end=source.indexOf('      function memberApprovalStatus',start);
 const el=(tag,text,cls)=>({tag,text,cls,children:[],append(...items){this.children.push(...items)}});
