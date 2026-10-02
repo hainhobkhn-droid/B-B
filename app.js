@@ -1152,7 +1152,7 @@
             'players',
             'matches',
             'match_players',
-            'fund_contributions',
+            'fund_transactions',
             'tournaments',
             'tournament_registrations'
           ]
@@ -1302,26 +1302,40 @@
               item.result === 'D'
           ).length;
 
-        const ownContributions =
-          rows('fund_contributions').filter(
+        const ownFundObligations =
+          Array.isArray(
+            state.memberFundObligations
+          )
+            ? state.memberFundObligations
+            : [];
+
+        const outstandingFundReady =
+          ready('fund_transactions') &&
+          ownFundObligations.every(
             item =>
-              raw(item.player_id) ===
-              playerId &&
-              upper(item.status) ===
-              'CHUA_DONG'
+              item?.amount_remaining != null &&
+              item.amount_remaining !== '' &&
+              Number.isFinite(
+                Number(
+                  item.amount_remaining
+                )
+              )
           );
 
         const outstandingFund =
-          ownContributions.reduce(
-            (sum, item) =>
-              sum +
-              (
-                Number(
-                  item.amount_due
-                ) || 0
-              ),
-            0
-          );
+          outstandingFundReady
+            ? ownFundObligations.reduce(
+                (sum, item) =>
+                  sum +
+                  Math.max(
+                    Number(
+                      item.amount_remaining
+                    ) || 0,
+                    0
+                  ),
+                0
+              )
+            : null;
 
         const ownRegistrations =
           rows(
@@ -1365,10 +1379,14 @@
             ],
             [
               'Quỹ chưa đóng',
-              money(
-                outstandingFund
-              ),
-              outstandingFund > 0
+              outstandingFundReady
+                ? money(
+                    outstandingFund
+                  )
+                : '—',
+              !outstandingFundReady
+                ? 'Chưa tải được số liệu Quỹ'
+                : outstandingFund > 0
                 ? 'Còn nghĩa vụ cần hoàn tất'
                 : 'Đã hoàn tất nghĩa vụ'
             ],
