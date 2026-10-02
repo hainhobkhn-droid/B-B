@@ -3184,13 +3184,95 @@ const fieldLabels = {
         return action;
       }
 
+      function memberPersonalSummary(root, player) {
+        const grid = el('div', null, 'form-grid acc06-summary');
+        const add = (label, value) => {
+          const item = el('div', null, 'form-group');
+          item.append(el('span', label, 'muted'), el('strong', value)); grid.append(item);
+        };
+        add('Trạng thái duyệt', membershipLabel(state.profile));
+        add('Nickname đăng nhập', Object.prototype.hasOwnProperty.call(state.profile, 'login_name')
+          ? (state.profile.login_name || 'Chưa thiết lập') : 'Chưa tải được');
+        add('Điện thoại', player && Object.prototype.hasOwnProperty.call(player,'phone')
+          ? (player.phone || 'Chưa cập nhật') : 'Chưa tải được');
+        add('Ngày sinh', player && Object.prototype.hasOwnProperty.call(player,'date_of_birth')
+          ? (player.date_of_birth || 'Chưa cập nhật') : 'Chưa tải được');
+        const permissions = [
+          ['can_approve_matches','Duyệt trận'],['can_manage_tournaments','Quản lý giải'],
+          ['can_collect_tournament_fee','Thu phí giải'],['can_manage_fund','Quản lý Quỹ'],
+          ['can_collect_fund','Thu Quỹ'],['can_manage_members','Quản lý VĐV'],
+          ['can_adjust_rating','Điều chỉnh Rating'],['can_view_audit','Xem lịch sử thao tác']
+        ].filter(([key]) => state.profile[key] === true);
+        const details = el('details', null, 'acc06-permissions');
+        details.append(el('summary', 'Quyền được cấp: ' + permissions.length + ' (chỉ xem)'));
+        for (const [,label] of permissions) details.append(el('p',label));
+        if (!permissions.length) details.append(el('p','Bạn đang dùng quyền thành viên thông thường.','muted'));
+        root.append(grid, details);
+      }
+
+      function memberNickname(root) {
+        const actor = state.session?.user?.id;
+        const generation = state.generation;
+        const current = () => root.isConnected && state.session?.user?.id === actor &&
+          state.generation === generation && state.profile?.role === 'MEMBER' &&
+          state.profile?.is_active === true && state.profile?.membership_status === 'APPROVED';
+        if (!current()) return;
+        if (!Object.prototype.hasOwnProperty.call(state.profile,'login_name')) {
+          root.append(el('p','Chưa tải được nickname. Vui lòng tải lại tài khoản.','notice')); return;
+        }
+        if (String(state.profile.login_name || '').trim()) {
+          root.append(el('strong',state.profile.login_name,'account-name'),
+            el('p','Nickname đăng nhập đã được thiết lập và chỉ xem tại đây.','muted')); return;
+        }
+        root.append(el('p','Chưa thiết lập. Bạn có thể tạo nickname đăng nhập một lần.','muted'));
+        const form=el('form'), input=el('input',null,'field'), label=el('label','Nickname đăng nhập');
+        input.id='member-claim-nickname';label.htmlFor=input.id;
+        input.required=true;input.minLength=3;input.maxLength=32;input.autocomplete='username';
+        input.setAttribute('autocapitalize','none');input.spellcheck=false;
+        const message=el('div');message.hidden=true;message.setAttribute('role','status');
+        const submit=el('button','Tạo nickname đăng nhập','btn primary');submit.type='submit';
+        const actions=el('div',null,'form-actions');actions.append(submit);
+        form.append(label,input,el('p','3–32 ký tự: chữ a–z, số, dấu chấm, gạch dưới hoặc gạch ngang. Chữ hoa được chuyển thành chữ thường.','muted'),actions,message);
+        root.append(form);
+        let saving=false, claimed=false;
+        form.addEventListener('submit',async event=>{
+          event.preventDefault();
+          if (!current() || saving || claimed || state.writeBusy || state.busy || String(state.profile.login_name || '').trim()) return;
+          const nickname=input.value.trim().toLowerCase();
+          if (!/^[a-z0-9._-]{3,32}$/.test(nickname)) { notice(message,'Nickname cần 3–32 ký tự hợp lệ.',true);return; }
+          saving=true;state.writeBusy=true;input.disabled=submit.disabled=true;
+          notice(message,'Đang tạo nickname…');
+          try {
+            const {data,error}=await client.rpc('claim_my_nickname',{p_nickname:nickname});
+            if (error) throw error;
+            if (data?.success!==true || data.profile_id!==actor || data.login_name!==nickname) throw new Error('CLAIM_UNCONFIRMED');
+            if (!current()) return;
+            claimed=true;state.profile.login_name=data.login_name;
+            root.replaceChildren(el('strong',data.login_name,'account-name'),el('p','Đã tạo nickname đăng nhập. Nickname chỉ được thiết lập một lần.','notice success'));
+            await load();
+          } catch(error) {
+            if (!current()) return;
+            const code=String(error?.message || '');
+            notice(claimed ? $('global-message') : message, claimed
+              ? 'Đã tạo nickname nhưng chưa tải lại được tài khoản. Vui lòng tải lại.'
+              : code.includes('LOGIN_NAME_TAKEN') ? 'Nickname đã được sử dụng. Hãy chọn tên khác.'
+              : code.includes('LOGIN_NAME_ALREADY_SET') ? 'Tài khoản đã có nickname. Vui lòng tải lại trạng thái.'
+              : 'Chưa xác nhận tạo nickname. Vui lòng tải lại trạng thái trước khi thử lại.',true);
+          } finally {
+            saving=false;
+            if (state.session?.user?.id===actor) state.writeBusy=false;
+            if (current() && !claimed) input.disabled=submit.disabled=false;
+          }
+        });
+      }
+
       function admin() {
         const root = el('div', null, 'account-ui');
         $('content').append(root);
         root.append(el('p', isAdmin()
           ? 'Thông tin tài khoản và các thao tác quản trị.'
           : 'Thông tin cá nhân và bảo mật tài khoản.', 'muted account-subtitle'));
-        const p = panel('Tài khoản của bạn', root);
+        const p = panel(isAdmin() ? 'Tài khoản của bạn' : 'Tài khoản của tôi', root);
         p.classList.add('account-self');
         const identity = el('div', null, 'account-identity');
         identity.append(el('h3', raw(state.profile.full_name), 'account-name'));
@@ -3212,6 +3294,9 @@ const fieldLabels = {
           if (upper(state.profile?.role) !== 'MEMBER') {
             return;
           }
+
+          memberPersonalSummary(p, linked);
+          accountAction(root, 'Đăng nhập & nickname', memberNickname);
 
           const playerId = state.profile?.player_id;
           const player = rows('players').find(
@@ -3640,12 +3725,14 @@ const fieldLabels = {
 
       function memberApprovalStatus(root) {
         const pending = state.profile?.membership_status === 'PENDING';
-        const box = panel(pending ? 'Tài khoản đang chờ ADMIN duyệt' : 'Yêu cầu đăng ký chưa được chấp thuận', root);
+        const box = panel(pending ? 'Tài khoản đang chờ ADMIN duyệt' : 'Hồ sơ đăng ký đã bị từ chối', root);
         box.classList.add('membership-status-panel');
-        box.append(badge(pending ? 'PENDING' : 'REJECTED'));
+        const statusBadge=badge(pending ? 'PENDING' : 'REJECTED');
+        if (!pending) statusBadge.textContent='Đã từ chối';
+        box.append(statusBadge);
         box.append(el('p', pending
           ? 'Hồ sơ đăng ký đã được tiếp nhận. Bạn có thể sử dụng nghiệp vụ câu lạc bộ sau khi ADMIN duyệt. Xác nhận email và duyệt thành viên là hai bước riêng biệt.'
-          : 'Vui lòng liên hệ ADMIN để được hỗ trợ. Hồ sơ và Player ID của bạn được giữ nguyên.', 'muted'));
+          : 'Vui lòng liên hệ quản trị viên để được hỗ trợ. Hồ sơ và liên kết VĐV của bạn được giữ nguyên. Hiện chưa có chức năng gửi lại hồ sơ.', 'muted'));
         const actions = el('div', null, 'form-actions');
         actions.append(button('Kiểm tra lại trạng thái', () => load()));
         box.append(actions);
@@ -6913,6 +7000,19 @@ preview.append(
         );
       }
 
+      // ACC06B: only the server may attest Auth success and complete the flag.
+      async function changeMyPassword(password, expectedUserId) {
+        const { data, error } = await client.functions.invoke('change-my-password', { body: { password } });
+        if (error) {
+          let code = 'PASSWORD_UPDATE_UNCONFIRMED';
+          try { code = (await error.context.json())?.error || code; } catch { /* Fail closed on transport errors. */ }
+          throw Object.assign(new Error(code), { code, status: error.context?.status });
+        }
+        if (data?.success !== true || data?.profile_id !== expectedUserId || data?.must_change_password !== false) {
+          throw Object.assign(new Error('PASSWORD_UPDATE_UNCONFIRMED'), { code: 'PASSWORD_UPDATE_UNCONFIRMED' });
+        }
+      }
+
       function forcedPasswordChange(root) {
         if (
           !state.session ||
@@ -7105,50 +7205,7 @@ preview.append(
             );
 
             try {
-              const {
-                data: updateData,
-                error: updateError
-              } =
-                await client.auth
-                  .updateUser({
-                    password:
-                      password.value
-                  });
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              if (
-                !updateData?.user ||
-                updateData.user.id !==
-                  state.session.user.id
-              ) {
-                throw new Error(
-                  'PASSWORD_UPDATE_NOT_CONFIRMED'
-                );
-              }
-
-              const {
-                data: completeData,
-                error: completeError
-              } =
-                await client.rpc(
-                  'complete_my_password_change'
-                );
-
-              if (completeError) {
-                throw completeError;
-              }
-
-              if (
-                completeData?.success !==
-                true
-              ) {
-                throw new Error(
-                  'PASSWORD_CHANGE_FLAG_NOT_CLEARED'
-                );
-              }
+              await changeMyPassword(password.value, state.session.user.id);
 
               password.value = '';
               confirmPassword.value = '';
@@ -7171,7 +7228,7 @@ preview.append(
               );
 
               let text =
-                'Không đổi được mật khẩu. Vui lòng thử lại.';
+                'Chưa xác nhận hoàn tất. Hãy thử lại với một mật khẩu mới khác; nếu đã tải lại trang, vẫn thực hiện bước này.';
 
               if (
                 error?.code ===
@@ -14405,7 +14462,7 @@ preview.append(
                   'profiles'
                 )
                 .select(
-                  'id, full_name, role, is_active, membership_status, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
+                  'id, full_name, login_name, role, is_active, membership_status, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
                 )
                 .eq(
                   'id',
@@ -14909,28 +14966,7 @@ preview.append(
         try {
           const { data: sessionData, error: sessionError } = await client.auth.getSession();
           if (sessionError || !sessionData?.session) throw new Error('RECOVERY_SESSION_MISSING');
-          const { data, error } = await client.auth.updateUser({ password });
-          if (error) throw error;
-          if (!data?.user || data.user.id !== sessionData.session.user.id) throw new Error('USER_CONFIRMATION_MISSING');
-
-          const {
-            data: completeData,
-            error: completeError
-          } = await client.rpc(
-            'complete_my_password_change'
-          );
-
-          if (completeError) {
-            throw completeError;
-          }
-
-          if (
-            completeData?.success !== true
-          ) {
-            throw new Error(
-              'PASSWORD_CHANGE_FLAG_NOT_CLEARED'
-            );
-          }
+          await changeMyPassword(password, sessionData.session.user.id);
 
           $('recovery-password').value = '';
           $('recovery-password-confirm').value = '';
@@ -14944,7 +14980,7 @@ preview.append(
               ? 'Mật khẩu mới phải khác mật khẩu hiện tại.'
               : error?.status === 429
                 ? 'Đã vượt giới hạn yêu cầu. Vui lòng chờ rồi thử lại.'
-                : 'Không thể cập nhật mật khẩu. Kiểm tra kết nối; nếu liên kết hết hạn, hãy yêu cầu liên kết mới.';
+                : 'Chưa xác nhận hoàn tất. Hãy thử lại với một mật khẩu mới khác; nếu phiên hết hạn, đăng nhập bằng mật khẩu vừa đặt hoặc yêu cầu liên kết mới.';
           notice(message, text, true);
         } finally {
           state.writeBusy = false;

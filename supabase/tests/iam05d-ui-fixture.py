@@ -64,16 +64,18 @@ resetMembers();render();
 def sdk():
     return '''window.SUPABASE_URL='https://example.invalid';window.SUPABASE_ANON_KEY='public-test';
 const mode=new URLSearchParams(location.search).get('mode')||'PENDING';
-const profile={id:'test-user',full_name:'Thành viên kiểm thử local',role:mode==='ADMIN'?'ADMIN':'MEMBER',is_active:['APPROVED','ADMIN'].includes(mode),membership_status:mode==='ADMIN'?'APPROVED':mode,player_id:null,must_change_password:false};
+const active=['APPROVED','ADMIN','MEMBER_NICKNAME','MEMBER_NO_NICKNAME','PASSWORD'].includes(mode);
+const profile={id:'test-user',full_name:'Thành viên kiểm thử local tên dài',login_name:mode==='MEMBER_NICKNAME'?'nickname_long_example_123':null,role:mode==='ADMIN'?'ADMIN':'MEMBER',is_active:active,membership_status:active?'APPROVED':mode,player_id:active?'fixture-player':null,must_change_password:mode==='PASSWORD',can_collect_fund:mode==='MEMBER_NICKNAME'};
+const player={id:'fixture-player',full_name:profile.full_name,phone:'0900000000',date_of_birth:'1990-01-01',status:'ACTIVE',player_type:'CLUB',current_rating:4};
 const session={user:{id:'test-user',email:'test@example.invalid'}};
 let businessReads=0;
 function log(){let p=document.getElementById('mock-read-count');if(!p){p=document.createElement('p');p.id='mock-read-count';document.body.append(p);}p.textContent='LOCAL ONLY — business reads: '+businessReads;}
 function query(table,rpc){
  if(table!=='profiles'&&rpc!=='get_signup_rating_config'){businessReads++;log();}
- const data=table==='profiles'?profile:rpc==='get_signup_rating_config'?{initial_rating:4,min_rating:2,max_rating:8}:[];
- const q=new Proxy({}, {get:(_,key)=>key==='then'?((resolve,reject)=>Promise.resolve({data,error:null}).then(resolve,reject)):(()=>q)});return q;
+ const data=table==='profiles'?profile:table==='players'||rpc==='get_player_directory'?[player]:rpc==='get_signup_rating_config'?{initial_rating:4,min_rating:2,max_rating:8}:[];
+ let single=false; const q=new Proxy({}, {get:(_,key)=>(key==='single'||key==='maybeSingle')?(()=>{single=true;return q;}):key==='then'?((resolve,reject)=>Promise.resolve({data:single&&table==='players'?player:data,error:null}).then(resolve,reject)):(()=>q)});return q;
 }
-window.supabase={createClient:()=>({from:table=>query(table),rpc:name=>query(null,name),auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),getSession:async()=>({data:{session},error:null}),getUser:async()=>({data:{user:session.user},error:null}),signOut:async()=>({error:null})}})};
+window.supabase={createClient:()=>({from:table=>query(table),rpc:(name,args)=>{if(name==='claim_my_nickname'){profile.login_name=args.p_nickname;return Promise.resolve({data:{success:true,profile_id:profile.id,login_name:profile.login_name}});} if(name==='complete_my_password_change'){return Promise.resolve({error:{message:'Fixture completion unavailable'}});}return query(null,name);},auth:{updateUser:async()=>({data:{user:session.user},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),getSession:async()=>({data:{session},error:null}),getUser:async()=>({data:{user:session.user},error:null}),signOut:async()=>({error:null})}})};
 addEventListener('DOMContentLoaded',log);
 '''
 

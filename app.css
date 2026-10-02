@@ -6159,3 +6159,11 @@ tbody tr:hover{
 .account-ui .acc04-queue .btn{margin:4px;white-space:normal;}
 @media(max-width:640px){.account-ui .acc04-toolbar,.account-ui .acc04-member-row{grid-template-columns:minmax(0,1fr);}.account-ui .acc04-member-row>.btn{width:100%;}}
 /* /ACC04 MEMBER WORKSPACE */
+
+/* ACC06 PERSONAL ACCOUNT */
+.account-ui .acc06-summary{margin-top:12px;}
+.account-ui .acc06-summary .form-group{display:grid;gap:4px;overflow-wrap:anywhere;}
+.account-ui .acc06-permissions{margin-top:12px;overflow-wrap:anywhere;}
+.account-ui .acc06-permissions summary{cursor:pointer;min-height:44px;display:flex;align-items:center;}
+.account-ui #member-claim-nickname{width:100%;}
+/* /ACC06 PERSONAL ACCOUNT */
