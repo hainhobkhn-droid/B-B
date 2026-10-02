@@ -4196,6 +4196,7 @@ const fieldLabels = {
           const shown=accountMemberPageRows(members,search.value,membershipFilter.value,accountFilter.value);
           for (const member of shown) {
             const row=el('article',null,'acc04-member-row');
+            row.dataset.profileId = member.profile_id;
             const identity=el('div'); identity.append(el('strong',member.full_name||member.login_name||'Thành viên'),
               el('p',member.login_name ? '@'+member.login_name : 'Chưa có nickname','muted'));
             const statuses=el('div',null,'account-statuses');
@@ -4203,9 +4204,40 @@ const fieldLabels = {
               el('span',member.is_active===true?'Đang hoạt động':'Ngừng hoạt động','badge acc03-'+(member.is_active===true?'success':'neutral')),
               el('span','VĐV: '+playerStatusText(member.player_status),'muted'),
               el('span',String(member.delegated_permissions_count||0)+' quyền','muted'));
-            row.append(identity,statuses,button('Xem chi tiết',()=>showMember(member),'btn'));
+
+            const detailToggle = button(
+              selectedProfileId === member.profile_id ? 'Thu gọn' : 'Xem chi tiết',
+              () => {
+                if (selectedProfileId === member.profile_id && detail.parentElement === directory) {
+                  selectedProfileId = null;
+                  detail.replaceChildren();
+                  detail.remove();
+                  renderDirectory();
+                  return;
+                }
+                showMember(member);
+              },
+              'btn acc04-member-detail-toggle'
+            );
+            detailToggle.setAttribute(
+              'aria-expanded',
+              String(selectedProfileId === member.profile_id)
+            );
+
+            row.append(identity,statuses,detailToggle);
             directory.append(row);
+
+            if (selectedProfileId === member.profile_id && detail.childElementCount) {
+              row.after(detail);
+            }
           }
+
+          if (selectedProfileId && !shown.some(member => member.profile_id === selectedProfileId)) {
+            selectedProfileId = null;
+            detail.replaceChildren();
+            detail.remove();
+          }
+
           if (!shown.length) directory.append(el('p','Không có kết quả trong trang hiện tại.','muted'));
           sync();
         };
@@ -4351,6 +4383,19 @@ const fieldLabels = {
           if (saving || state.writeBusy || deletionRecoveryPending) return;
           selectedProfileId = member.profile_id;
           detail.replaceChildren();
+
+          const selectedRow = Array.from(
+            directory.querySelectorAll('.acc04-member-row')
+          ).find(row => row.dataset.profileId === member.profile_id);
+
+          if (selectedRow) selectedRow.after(detail);
+
+          directory.querySelectorAll('.acc04-member-detail-toggle').forEach(control => {
+            const row = control.closest('.acc04-member-row');
+            const open = row?.dataset.profileId === selectedProfileId;
+            control.textContent = open ? 'Thu gọn' : 'Xem chi tiết';
+            control.setAttribute('aria-expanded', String(open));
+          });
 
           const summary = el(
             'div',
