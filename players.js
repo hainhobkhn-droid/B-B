@@ -663,7 +663,7 @@ function collapsibleAdminSection(
 
       const description = el(
         'p',
-        'Chỉ sửa thông tin hồ sơ và trạng thái. Không sửa trực tiếp điểm khởi tạo hoặc điểm hiện tại.',
+        'Chỉ sửa thông tin hồ sơ. Trạng thái được quản lý riêng trong mục Vòng đời VĐV; điểm Rating chỉ để xem.',
         'notice'
       );
 
@@ -791,39 +791,18 @@ function collapsibleAdminSection(
         }
       );
 
-      const status = el(
-        'select',
+      const statusInfo = el(
+        'div',
         null,
-        'field'
+        'player-status-readonly'
       );
 
-      status.id =
+      statusInfo.id =
         'update-player-status';
 
-      [
-        [
-          'ACTIVE',
-          'Đang hoạt động'
-        ],
-        [
-          'INACTIVE',
-          'Ngừng hoạt động'
-        ]
-      ].forEach(
-        ([value, text]) => {
-          const option =
-            el(
-              'option',
-              text
-            );
-
-          option.value =
-            value;
-
-          status.append(
-            option
-          );
-        }
+      statusInfo.setAttribute(
+        'aria-live',
+        'polite'
       );
 
       const phone = el(
@@ -890,8 +869,8 @@ function collapsibleAdminSection(
           playerType
         ),
         fieldGroup(
-          'Trạng thái',
-          status
+          'Trạng thái (chỉ xem)',
+          statusInfo
         ),
         fieldGroup(
           'Điện thoại',
@@ -1016,12 +995,25 @@ function collapsibleAdminSection(
             ? 'GUEST'
             : 'CLUB';
 
-        status.value =
+        const currentStatus =
           upper(
             player.status
           ) === 'INACTIVE'
             ? 'INACTIVE'
             : 'ACTIVE';
+
+        statusInfo.replaceChildren(
+          el(
+            'span',
+            currentStatus === 'ACTIVE'
+              ? 'Đang hoạt động'
+              : 'Ngừng hoạt động',
+            'badge player-state-' +
+              (currentStatus === 'ACTIVE'
+                ? 'active'
+                : 'neutral')
+          )
+        );
 
         phone.value =
           raw(
@@ -1149,7 +1141,11 @@ function collapsibleAdminSection(
                 p_email:
                   null,
                 p_status:
-                  status.value,
+                  upper(
+                    player.status
+                  ) === 'INACTIVE'
+                    ? 'INACTIVE'
+                    : 'ACTIVE',
                 p_joined_at:
                   joinedAt.value ||
                   null,
@@ -1222,6 +1218,621 @@ function collapsibleAdminSection(
           }
         }
       );
+    }
+
+    function playerLifecycleManager(
+      root,
+      deleteMode = false
+    ) {
+      if (
+        !canManageMembers() ||
+        (deleteMode && !isAdmin())
+      ) {
+        return null;
+      }
+
+      const playerRows = rows('players')
+        .slice()
+        .sort((a, b) =>
+          playerName(a.id).localeCompare(
+            playerName(b.id),
+            'vi'
+          )
+        );
+
+      const section = panel(
+        deleteMode
+          ? 'Xóa vĩnh viễn VĐV'
+          : 'Vòng đời VĐV',
+        root
+      );
+
+      const message = el('div');
+      message.setAttribute('role', 'status');
+
+      if (!playerRows.length) {
+        section.append(
+          el(
+            'p',
+            'Chưa có VĐV để quản lý.',
+            'muted'
+          )
+        );
+        return null;
+      }
+
+      const playerSelect = el(
+        'select',
+        null,
+        'field'
+      );
+      playerSelect.id = deleteMode
+        ? 'delete-player-id'
+        : 'lifecycle-player-id';
+
+      playerRows.forEach(player => {
+        const status =
+          upper(player.status) === 'INACTIVE'
+            ? 'Ngừng hoạt động'
+            : 'Đang hoạt động';
+        const option = el(
+          'option',
+          `${playerName(player.id)} — ${status}`
+        );
+        option.value = player.id;
+        playerSelect.append(option);
+      });
+
+      const selectGroup = el(
+        'div',
+        null,
+        'form-group'
+      );
+      const selectLabel = el(
+        'label',
+        'Chọn VĐV'
+      );
+      selectLabel.htmlFor = playerSelect.id;
+      selectGroup.append(
+        selectLabel,
+        playerSelect
+      );
+
+      const previewBox = el(
+        'div',
+        null,
+        'player-lifecycle-preview'
+      );
+      previewBox.setAttribute(
+        'aria-live',
+        'polite'
+      );
+
+      const reason = el(
+        'textarea',
+        null,
+        'field'
+      );
+      reason.id = deleteMode
+        ? 'delete-player-reason'
+        : 'lifecycle-player-reason';
+      reason.rows = 3;
+      reason.maxLength = 1000;
+      reason.placeholder = deleteMode
+        ? 'Nhập lý do xóa vĩnh viễn'
+        : 'Nhập lý do thay đổi trạng thái';
+
+      const reasonGroup = el(
+        'div',
+        null,
+        'form-group player-lifecycle-reason'
+      );
+      const reasonLabel = el(
+        'label',
+        'Lý do (bắt buộc, tối đa 1000 ký tự)'
+      );
+      reasonLabel.htmlFor = reason.id;
+      reasonGroup.append(
+        reasonLabel,
+        reason
+      );
+
+      const submit = el(
+        'button',
+        deleteMode
+          ? 'Xóa vĩnh viễn'
+          : 'Đang tải trạng thái…',
+        deleteMode
+          ? 'btn player-lifecycle-delete'
+          : 'btn primary'
+      );
+      submit.type = 'submit';
+
+      const reloadButton = button(
+        'Kiểm tra lại',
+        () => {
+          void loadPreview();
+        },
+        'btn'
+      );
+      reloadButton.type = 'button';
+
+      const actions = el(
+        'div',
+        null,
+        'form-actions player-lifecycle-actions'
+      );
+      actions.append(
+        submit,
+        reloadButton
+      );
+
+      const form = el('form');
+      form.append(
+        selectGroup,
+        previewBox,
+        reasonGroup,
+        message,
+        actions
+      );
+
+      section.append(
+        el(
+          'p',
+          deleteMode
+            ? 'Chỉ xóa được VĐV chưa từng có dữ liệu liên quan. Backend sẽ kiểm tra lại ngay trước khi xóa.'
+            : 'Thay đổi trạng thái không xóa hoặc đặt lại lịch sử, Rating, liên kết tài khoản và dữ liệu nghiệp vụ.',
+          deleteMode
+            ? 'notice player-lifecycle-danger-note'
+            : 'notice'
+        ),
+        form
+      );
+
+      let preview = null;
+      let loading = false;
+      let saving = false;
+      let requestVersion = 0;
+
+      const current = () =>
+        root.isConnected &&
+        canManageMembers() &&
+        (!deleteMode || isAdmin());
+
+      function selectedPlayer() {
+        return playerRows.find(
+          player =>
+            String(player.id) ===
+            String(playerSelect.value)
+        ) || null;
+      }
+
+      function lifecycleErrorText(error) {
+        const code = String(
+          error?.message ||
+          error?.details ||
+          error?.code ||
+          ''
+        );
+
+        const known = [
+          ['PLAYER_NOT_FOUND', 'Không tìm thấy VĐV. Hãy tải lại danh sách.'],
+          ['PLAYER_STATUS_INVALID', 'Trạng thái VĐV không hợp lệ.'],
+          ['REASON_REQUIRED_MAX_1000', 'Lý do là bắt buộc và không được quá 1000 ký tự.'],
+          ['ADMIN_REQUIRED', 'Chỉ ADMIN đang hoạt động mới được xóa vĩnh viễn VĐV.'],
+          ['MEMBER_MANAGEMENT_PERMISSION_REQUIRED', 'Tài khoản không có quyền quản lý VĐV.'],
+          ['BUSINESS_ACCESS_REQUIRED', 'Tài khoản chưa đủ điều kiện truy cập nghiệp vụ.'],
+          ['PLAYER_STATUS_CHANGE_REQUIRES_LIFECYCLE_RPC', 'Trạng thái phải được đổi trong mục Vòng đời VĐV.']
+        ];
+
+        const match = known.find(
+          ([token]) => code.includes(token)
+        );
+        return match
+          ? match[1]
+          : explain(error);
+      }
+
+      function referenceDetails(info) {
+        const labels = [
+          ['profile_link_count', 'Tài khoản liên kết'],
+          ['match_players_count', 'Lượt tham gia trận'],
+          ['rating_events_count', 'Lịch sử Rating'],
+          ['rating_adjustments_count', 'Điều chỉnh Rating'],
+          ['rating_adjustment_events_count', 'Sự kiện điều chỉnh Rating'],
+          ['fund_contributions_count', 'Nghĩa vụ Quỹ'],
+          ['fund_payments_count', 'Thanh toán Quỹ'],
+          ['fund_transactions_count', 'Giao dịch Quỹ'],
+          ['tournament_registrations_count', 'Đăng ký giải'],
+          ['tournament_payments_count', 'Thanh toán giải'],
+          ['awards_count', 'Danh hiệu']
+        ];
+
+        return labels
+          .map(([key, label]) => [
+            label,
+            Number(info?.[key] || 0)
+          ])
+          .filter(([, count]) => count > 0);
+      }
+
+      function renderPreview() {
+        previewBox.replaceChildren();
+
+        if (!preview) {
+          previewBox.append(
+            el(
+              'p',
+              loading
+                ? 'Đang kiểm tra trạng thái và dữ liệu liên quan…'
+                : 'Chưa tải được dữ liệu vòng đời.',
+              'muted'
+            )
+          );
+          sync();
+          return;
+        }
+
+        const status =
+          upper(preview.current_status) === 'INACTIVE'
+            ? 'INACTIVE'
+            : 'ACTIVE';
+        const referenceTotal = Math.max(
+          0,
+          Number(preview.reference_total || 0)
+        );
+        const summary = el(
+          'div',
+          null,
+          'player-lifecycle-summary'
+        );
+        summary.append(
+          el(
+            'span',
+            status === 'ACTIVE'
+              ? 'Đang hoạt động'
+              : 'Ngừng hoạt động',
+            'badge player-state-' +
+              (status === 'ACTIVE'
+                ? 'active'
+                : 'neutral')
+          ),
+          el(
+            'span',
+            referenceTotal > 0
+              ? `${referenceTotal} dữ liệu liên quan`
+              : 'Chưa có dữ liệu liên quan',
+            'player-lifecycle-reference-total'
+          )
+        );
+        previewBox.append(summary);
+
+        if (deleteMode) {
+          previewBox.append(
+            el(
+              'p',
+              preview.hard_delete_allowed === true
+                ? 'Backend xác nhận VĐV hiện đủ điều kiện xóa. Điều kiện sẽ được kiểm tra lại khi xác nhận.'
+                : `VĐV đã có dữ liệu liên quan và không thể xóa vĩnh viễn. Hãy dùng Ngừng hoạt động${referenceTotal > 0 ? ` (${referenceTotal} tham chiếu)` : ''}.`,
+              preview.hard_delete_allowed === true
+                ? 'notice player-lifecycle-delete-ready'
+                : 'notice player-lifecycle-delete-blocked'
+            )
+          );
+        } else {
+          previewBox.append(
+            el(
+              'p',
+              status === 'ACTIVE'
+                ? 'Có thể ngừng hoạt động; toàn bộ lịch sử vẫn được giữ nguyên.'
+                : 'Có thể kích hoạt lại; Rating và lịch sử hiện có không thay đổi.',
+              'player-lifecycle-recommendation'
+            )
+          );
+        }
+
+        const details = referenceDetails(preview);
+        if (details.length) {
+          const disclosure = el(
+            'details',
+            null,
+            'player-lifecycle-references'
+          );
+          disclosure.append(
+            el(
+              'summary',
+              'Chi tiết dữ liệu liên quan'
+            )
+          );
+          const list = el('ul');
+          details.forEach(([label, count]) => {
+            list.append(
+              el(
+                'li',
+                `${label}: ${count}`
+              )
+            );
+          });
+          disclosure.append(list);
+          previewBox.append(disclosure);
+        }
+
+        sync();
+      }
+
+      function sync() {
+        const unavailable =
+          loading ||
+          saving ||
+          state.writeBusy ||
+          !current();
+        playerSelect.disabled = unavailable;
+        reason.disabled = unavailable;
+        reloadButton.disabled = unavailable;
+
+        if (!preview) {
+          submit.disabled = true;
+          submit.textContent = loading
+            ? 'Đang kiểm tra…'
+            : deleteMode
+              ? 'Xóa vĩnh viễn'
+              : 'Chưa có trạng thái';
+          return;
+        }
+
+        const status =
+          upper(preview.current_status) === 'INACTIVE'
+            ? 'INACTIVE'
+            : 'ACTIVE';
+        submit.textContent = saving
+          ? 'Đang xử lý…'
+          : deleteMode
+            ? 'Xóa vĩnh viễn'
+            : status === 'ACTIVE'
+              ? 'Ngừng hoạt động'
+              : 'Kích hoạt lại';
+        submit.disabled =
+          unavailable ||
+          (deleteMode &&
+            preview.hard_delete_allowed !== true);
+        submit.className = deleteMode
+          ? 'btn player-lifecycle-delete'
+          : status === 'ACTIVE'
+            ? 'btn player-lifecycle-warning'
+            : 'btn primary';
+      }
+
+      async function loadPreview(options = {}) {
+        if (!current() || saving) {
+          return;
+        }
+
+        const player = selectedPlayer();
+        if (!player) {
+          return;
+        }
+
+        const token = ++requestVersion;
+        loading = true;
+        preview = null;
+        renderPreview();
+        if (!options.keepMessage) {
+          notice(message, '');
+        }
+
+        try {
+          const { data, error } = await client.rpc(
+            'get_player_lifecycle_preview',
+            {
+              p_player_id: player.id
+            }
+          );
+          if (error) {
+            throw error;
+          }
+          if (
+            !data ||
+            typeof data !== 'object' ||
+            Array.isArray(data) ||
+            String(data.player_id) !== String(player.id)
+          ) {
+            throw new Error(
+              'PLAYER_LIFECYCLE_PREVIEW_INVALID'
+            );
+          }
+          if (!current() || token !== requestVersion) {
+            return;
+          }
+          preview = data;
+        } catch (error) {
+          if (current() && token === requestVersion) {
+            notice(
+              message,
+              'Không tải được dữ liệu vòng đời. ' +
+                lifecycleErrorText(error),
+              true
+            );
+          }
+        } finally {
+          if (token === requestVersion) {
+            loading = false;
+            renderPreview();
+          }
+        }
+      }
+
+      playerSelect.addEventListener(
+        'change',
+        () => {
+          reason.value = '';
+          void loadPreview();
+        }
+      );
+
+      form.addEventListener(
+        'submit',
+        async event => {
+          event.preventDefault();
+
+          if (
+            state.writeBusy ||
+            saving ||
+            !current() ||
+            !preview
+          ) {
+            return;
+          }
+
+          const player = selectedPlayer();
+          const cleanReason = reason.value.trim();
+
+          if (!player) {
+            notice(
+              message,
+              'Không tìm thấy VĐV đã chọn.',
+              true
+            );
+            return;
+          }
+
+          if (!cleanReason || cleanReason.length > 1000) {
+            notice(
+              message,
+              'Lý do là bắt buộc và không được quá 1000 ký tự.',
+              true
+            );
+            reason.focus();
+            return;
+          }
+
+          if (
+            deleteMode &&
+            preview.hard_delete_allowed !== true
+          ) {
+            notice(
+              message,
+              'VĐV hiện không đủ điều kiện xóa vĩnh viễn. Hãy kiểm tra lại dữ liệu liên quan.',
+              true
+            );
+            return;
+          }
+
+          const currentStatus =
+            upper(preview.current_status) === 'INACTIVE'
+              ? 'INACTIVE'
+              : 'ACTIVE';
+          const targetStatus =
+            currentStatus === 'ACTIVE'
+              ? 'INACTIVE'
+              : 'ACTIVE';
+          const actionLabel = deleteMode
+            ? 'xóa vĩnh viễn'
+            : targetStatus === 'INACTIVE'
+              ? 'ngừng hoạt động'
+              : 'kích hoạt lại';
+          const confirmation = deleteMode
+            ? `Xóa vĩnh viễn VĐV ${playerName(player.id)}?\nThao tác này không thể hoàn tác. Backend sẽ kiểm tra lại toàn bộ dữ liệu liên quan.`
+            : `${targetStatus === 'INACTIVE' ? 'Ngừng hoạt động' : 'Kích hoạt lại'} VĐV ${playerName(player.id)}?\nLịch sử và Rating sẽ được giữ nguyên.`;
+
+          if (!window.confirm(confirmation)) {
+            return;
+          }
+
+          saving = true;
+          state.writeBusy = true;
+          sync();
+          notice(
+            message,
+            `Đang ${actionLabel} VĐV…`
+          );
+
+          try {
+            const rpcName = deleteMode
+              ? 'delete_player_if_unreferenced'
+              : 'set_player_lifecycle_status';
+            const args = deleteMode
+              ? {
+                  p_player_id: player.id,
+                  p_reason: cleanReason
+                }
+              : {
+                  p_player_id: player.id,
+                  p_status: targetStatus,
+                  p_reason: cleanReason
+                };
+            const { data, error } = await client.rpc(
+              rpcName,
+              args
+            );
+
+            if (error) {
+              throw error;
+            }
+
+            if (
+              !data ||
+              data.success !== true ||
+              (deleteMode && data.deleted !== true)
+            ) {
+              throw new Error(
+                'PLAYER_LIFECYCLE_WRITE_UNCONFIRMED'
+              );
+            }
+
+            state.writeBusy = false;
+            await load();
+            state.page = 'players';
+            render();
+            notice(
+              $('global-message'),
+              deleteMode
+                ? 'Đã xóa vĩnh viễn VĐV chưa có dữ liệu liên quan.'
+                : targetStatus === 'INACTIVE'
+                  ? 'Đã chuyển VĐV sang Ngừng hoạt động. Lịch sử và Rating được giữ nguyên.'
+                  : 'Đã kích hoạt lại VĐV. Lịch sử và Rating được giữ nguyên.',
+              false,
+              true
+            );
+          } catch (error) {
+            const code = String(
+              error?.message ||
+              error?.details ||
+              ''
+            );
+
+            if (
+              deleteMode &&
+              code.includes('PLAYER_HAS_REFERENCES')
+            ) {
+              notice(
+                message,
+                'VĐV vừa phát sinh dữ liệu liên quan nên không thể xóa vĩnh viễn. Hãy dùng Ngừng hoạt động.',
+                true
+              );
+              saving = false;
+              state.writeBusy = false;
+              await loadPreview({
+                keepMessage: true
+              });
+              return;
+            }
+
+            notice(
+              message,
+              `Không thể ${actionLabel} VĐV. ` +
+                lifecycleErrorText(error),
+              true
+            );
+          } finally {
+            saving = false;
+            state.writeBusy = false;
+            sync();
+          }
+        }
+      );
+
+      sync();
+      return loadPreview;
     }
 
     function playerDetailSection(root) {
@@ -2823,6 +3434,26 @@ function collapsibleAdminSection(
           'success'
         );
 
+        let loadPromotion;
+        const promotion = collapsibleAdminSection(
+          root,
+          'Chuyển VĐV khách thành thành viên',
+          container => {
+            loadPromotion = promoteGuestForm(
+              container
+            );
+          },
+          'info'
+        );
+        promotion.toggle.addEventListener(
+          'click',
+          () => {
+            if (!promotion.body.hidden) {
+              void loadPromotion?.();
+            }
+          }
+        );
+
         collapsibleAdminSection(
           root,
           'Sửa thông tin VĐV',
@@ -2833,17 +3464,49 @@ function collapsibleAdminSection(
           },
           'info'
         );
+
+        let loadLifecycle;
+        const lifecycle = collapsibleAdminSection(
+          root,
+          'Vòng đời VĐV',
+          container => {
+            loadLifecycle = playerLifecycleManager(
+              container
+            );
+          },
+          'neutral'
+        );
+        lifecycle.toggle.addEventListener(
+          'click',
+          () => {
+            if (!lifecycle.body.hidden) {
+              void loadLifecycle?.();
+            }
+          }
+        );
       }
 
-      if (canManageMembers()) {
-        let loadPromotion;
-        const promotion = collapsibleAdminSection(
-          root, 'Chuyển VĐV khách thành thành viên',
-          container => { loadPromotion = promoteGuestForm(container); }, 'info'
+      if (isAdmin()) {
+        let loadDeletePreview;
+        const deletion = collapsibleAdminSection(
+          root,
+          'Xóa vĩnh viễn VĐV',
+          container => {
+            loadDeletePreview = playerLifecycleManager(
+              container,
+              true
+            );
+          },
+          'danger'
         );
-        promotion.toggle.addEventListener('click', () => {
-          if (!promotion.body.hidden) loadPromotion?.();
-        });
+        deletion.toggle.addEventListener(
+          'click',
+          () => {
+            if (!deletion.body.hidden) {
+              void loadDeletePreview?.();
+            }
+          }
+        );
       }
 
       playerDetailSection(root);

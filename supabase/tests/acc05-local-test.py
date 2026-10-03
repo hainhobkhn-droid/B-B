@@ -41,6 +41,12 @@ try:
  print('PASS player audit blocker / public cleanup rollback')
  reset();run(f"SELECT get_member_hard_delete_snapshot('{t}'); INSERT INTO fund_payments(player_id) VALUES('{player}');")
  fail(cleanup(),'MEMBER_HAS_REFERENCES');print('PASS blocker inserted after preview')
+ reset();partner_anchor=uid(99);run(f"INSERT INTO players(id) VALUES('{partner_anchor}'); INSERT INTO match_players(player_id,partner_player_id) VALUES('{partner_anchor}','{player}');")
+ assert run(f"SELECT get_member_hard_delete_snapshot('{t}')->'player_references'->>'match_players'")=='1'
+ fail(cleanup(),'MEMBER_HAS_REFERENCES');print('PASS match partner-only remains an ACC05 blocker')
+ reset();run(f"INSERT INTO players(id) VALUES('{partner_anchor}'); INSERT INTO tournament_registrations(player_id,partner_player_id) VALUES('{partner_anchor}','{player}');")
+ assert run(f"SELECT get_member_hard_delete_snapshot('{t}')->'player_references'->>'tournament_registrations'")=='1'
+ fail(cleanup(),'MEMBER_HAS_REFERENCES');print('PASS tournament partner-only remains an ACC05 blocker')
  reset();run(f"INSERT INTO audit_logs(user_id,action,table_name,record_id) VALUES('{t}','AUTO_PROVISION_MEMBER','profiles','{t}');")
  run(cleanup());assert run("SELECT count(*) FROM audit_logs WHERE action='HARD_DELETE_MEMBER_ACCOUNT'")=='1'
  assert run("SELECT count(*) FROM audit_logs WHERE action='AUTO_PROVISION_MEMBER'")=='0'

@@ -5231,6 +5231,24 @@ tbody tr:hover{
 .players-ui .player-state-active{background:#dff2e4;color:#276641;}
 .players-ui .player-state-neutral{background:var(--surface-3);color:var(--text-2);}
 .players-ui .player-self-badge{background:var(--club-accent-soft);color:var(--brand-2);}
+.players-ui .player-status-readonly{display:flex;align-items:center;min-height:44px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+.players-ui .app-action-danger{border-left:4px solid var(--red);}
+.players-ui .app-action-danger > .app-action-toggle{background:var(--red-bg);color:var(--red);}
+.players-ui .app-action-danger > .app-action-toggle::before{content:'!';background:#f7deda;color:var(--red);}
+.players-ui .player-lifecycle-preview{display:grid;gap:10px;min-width:0;margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:var(--ui-card-radius,12px);background:var(--surface-2);overflow-wrap:anywhere;}
+.players-ui .player-lifecycle-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0;}
+.players-ui .player-lifecycle-reference-total{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.players-ui .player-lifecycle-recommendation{margin:0;font-size:13px;color:var(--text-2);}
+.players-ui .player-lifecycle-references{font-size:12px;color:var(--text-2);}
+.players-ui .player-lifecycle-references summary{min-height:32px;padding:6px 0;color:var(--brand-2);font-weight:700;cursor:pointer;}
+.players-ui .player-lifecycle-references ul{margin:6px 0 0;padding-left:20px;columns:2;column-gap:24px;}
+.players-ui .player-lifecycle-references li{break-inside:avoid;margin-bottom:4px;}
+.players-ui .player-lifecycle-danger-note{border-color:#efcbc6;background:var(--red-bg);color:#7d342e;}
+.players-ui .player-lifecycle-delete-ready{margin:0;border-color:#b8d8c3;background:#f3faf5;color:#276641;}
+.players-ui .player-lifecycle-delete-blocked{margin:0;border-color:#efcbc6;background:var(--red-bg);color:#7d342e;}
+.players-ui .player-lifecycle-warning{background:#fff8f1!important;border-color:#e4b88f!important;color:#934f20!important;}
+.players-ui .player-lifecycle-delete{background:var(--red-bg)!important;border-color:#dca8a2!important;color:var(--red)!important;}
+.players-ui .player-lifecycle-delete:hover:not(:disabled){background:#f7deda!important;}
 .players-ui .player-card-rating{grid-area:rating;display:flex;flex-direction:column;align-items:flex-end;justify-self:stretch;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .players-ui .player-rating-label{font-size:12px;line-height:1.4;color:var(--text-2);}
 .players-ui .player-rating-value{font-size:24px;line-height:1.35;color:var(--brand);}
@@ -5272,6 +5290,8 @@ tbody tr:hover{
   .players-ui .form-actions > .primary{flex-basis:100%;}
   .players-ui .form-actions > .btn{max-width:100%;}
   .players-ui .player-promotion-actions > .btn{width:100%;}
+  .players-ui .player-lifecycle-actions > .btn{width:100%;}
+  .players-ui .player-lifecycle-references ul{columns:1;}
   .players-ui .app-action-body{padding:0 12px 12px;}
 }
 
