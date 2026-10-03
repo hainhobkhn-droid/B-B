@@ -8,6 +8,8 @@
       client,
       isAdmin,
       canManageMembers,
+      canManagePlayers,
+      canManagePlayerLifecycle,
       button,
       el,
       rows,
@@ -164,7 +166,7 @@ function collapsibleAdminSection(
       };
     }
     function createPlayerForm(root) {
-      if (!canManageMembers()) {
+      if (!canManagePlayers()) {
         return;
       }
 
@@ -484,7 +486,7 @@ function collapsibleAdminSection(
 
           if (
             state.writeBusy ||
-            !canManageMembers()
+            !canManagePlayers()
           ) {
             return;
           }
@@ -600,19 +602,18 @@ function collapsibleAdminSection(
               true
             );
           } catch (error) {
-            let text =
-              explain(error);
+            const code = String(
+              error?.message ||
+              error?.code ||
+              ''
+            );
 
-            if (error?.message) {
-              text =
-                'Không tạo được VĐV. ' +
-                String(
-                  error.message
-                ).slice(
-                  0,
-                  300
-                );
-            }
+            const text =
+              code.includes(
+                'PLAYER_MANAGEMENT_PERMISSION_REQUIRED'
+              )
+                ? 'Tài khoản không có quyền quản lý VĐV.'
+                : explain(error);
 
             notice(
               message,
@@ -637,7 +638,7 @@ function collapsibleAdminSection(
     }
 
     function updatePlayerForm(root) {
-      if (!canManageMembers()) {
+      if (!canManagePlayers()) {
         return;
       }
 
@@ -1077,7 +1078,7 @@ function collapsibleAdminSection(
 
           if (
             state.writeBusy ||
-            !canManageMembers()
+            !canManagePlayers()
           ) {
             return;
           }
@@ -1184,19 +1185,18 @@ function collapsibleAdminSection(
               true
             );
           } catch (error) {
-            let text =
-              explain(error);
+            const code = String(
+              error?.message ||
+              error?.code ||
+              ''
+            );
 
-            if (error?.message) {
-              text =
-                'Không cập nhật được VĐV. ' +
-                String(
-                  error.message
-                ).slice(
-                  0,
-                  300
-                );
-            }
+            const text =
+              code.includes(
+                'PLAYER_MANAGEMENT_PERMISSION_REQUIRED'
+              )
+                ? 'Tài khoản không có quyền quản lý VĐV.'
+                : explain(error);
 
             notice(
               message,
@@ -1510,8 +1510,8 @@ function collapsibleAdminSection(
       deleteMode = false
     ) {
       if (
-        !canManageMembers() ||
-        (deleteMode && !isAdmin())
+        (deleteMode && !isAdmin()) ||
+        (!deleteMode && !canManagePlayerLifecycle())
       ) {
         return null;
       }
@@ -1681,8 +1681,9 @@ function collapsibleAdminSection(
 
       const current = () =>
         root.isConnected &&
-        canManageMembers() &&
-        (!deleteMode || isAdmin());
+        (deleteMode
+          ? isAdmin()
+          : canManagePlayerLifecycle());
 
       function selectedPlayer() {
         return playerRows.find(
@@ -1705,7 +1706,7 @@ function collapsibleAdminSection(
           ['PLAYER_STATUS_INVALID', 'Trạng thái VĐV không hợp lệ.'],
           ['REASON_REQUIRED_MAX_1000', 'Lý do là bắt buộc và không được quá 1000 ký tự.'],
           ['ADMIN_REQUIRED', 'Chỉ ADMIN đang hoạt động mới được xóa vĩnh viễn VĐV.'],
-          ['MEMBER_MANAGEMENT_PERMISSION_REQUIRED', 'Tài khoản không có quyền quản lý VĐV.'],
+          ['PLAYER_LIFECYCLE_PERMISSION_REQUIRED', 'Tài khoản không có quyền quản lý vòng đời VĐV.'],
           ['BUSINESS_ACCESS_REQUIRED', 'Tài khoản chưa đủ điều kiện truy cập nghiệp vụ.'],
           ['PLAYER_STATUS_CHANGE_REQUIRES_LIFECYCLE_RPC', 'Trạng thái phải được đổi trong mục Vòng đời VĐV.']
         ];
@@ -3502,7 +3503,7 @@ function collapsibleAdminSection(
 
     // P0.4F: read-only preview; the RPC remains the final transactional guard.
     function promoteGuestForm(root) {
-      if (!canManageMembers()) return;
+      if (!(canManageMembers() && canManagePlayers())) return;
       const actor = state.session?.user?.id;
       const generation = state.generation;
       const section = panel('Chuyển VĐV khách thành thành viên', root);
@@ -3524,7 +3525,7 @@ function collapsibleAdminSection(
       });
       let members = [], guests = [], checked = null;
       let reading = false, saving = false, version = 0, committed = false;
-      const current = () => root.isConnected && canManageMembers() &&
+      const current = () => root.isConnected && canManageMembers() && canManagePlayers() &&
         state.profile?.is_active === true && state.session?.user?.id === actor &&
         state.generation === generation && !state.busy;
       const reload = button('Tải danh sách thành viên và khách', loadChoices, 'btn');
@@ -3634,7 +3635,26 @@ function collapsibleAdminSection(
           if (!current() || token !== version) return;
           checked = result; show(result); notice(message, '');
         } catch (error) {
-          if (current() && token === version) notice(message, 'Chưa thể xác nhận. ' + explain(error), true);
+          if (current() && token === version) {
+            const code = String(
+              error?.message ||
+              error?.code ||
+              ''
+            );
+
+            const detail =
+              code.includes(
+                'MEMBER_AND_PLAYER_MANAGEMENT_PERMISSION_REQUIRED'
+              )
+                ? 'Tài khoản cần đồng thời quyền quản lý thành viên và quyền quản lý VĐV.'
+                : explain(error);
+
+            notice(
+              message,
+              'Chưa thể xác nhận. ' + detail,
+              true
+            );
+          }
         } finally { if (token === version) sync(); }
       }
       async function promote() {
@@ -3662,7 +3682,7 @@ function collapsibleAdminSection(
           if (!current()) return;
           state.writeBusy = false;
           await load();
-          if (state.session?.user?.id !== actor || !canManageMembers()) return;
+          if (state.session?.user?.id !== actor || !(canManageMembers() && canManagePlayers())) return;
           const incomplete = state.busy || state.errors?.players || state.partial?.players ||
             !rows('players').some(p => p.id === fresh.target.id && p.player_type === 'CLUB') ||
             !rows('players').some(p => p.id === fresh.temp.id && p.status === 'INACTIVE');
@@ -3671,9 +3691,21 @@ function collapsibleAdminSection(
             'Đã chuyển thành viên thành công. Giữ nguyên Player ID, Rating và lịch sử của khách.', !!incomplete, !incomplete);
         } catch (error) {
           checked = null;
-          if (state.session?.user?.id === actor && canManageMembers()) {
-            const text = String(error?.message || '');
-            const detail = text.includes('TEMP_PLAYER_HAS_BUSINESS_DATA') ? 'Player hiện tại đã có dữ liệu nghiệp vụ.' : explain(error);
+          if (state.session?.user?.id === actor && canManageMembers() && canManagePlayers()) {
+            const text = String(
+              error?.message ||
+              error?.code ||
+              ''
+            );
+
+            const detail =
+              text.includes('TEMP_PLAYER_HAS_BUSINESS_DATA')
+                ? 'Player hiện tại đã có dữ liệu nghiệp vụ.'
+                : text.includes(
+                    'MEMBER_AND_PLAYER_MANAGEMENT_PERMISSION_REQUIRED'
+                  )
+                  ? 'Tài khoản cần đồng thời quyền quản lý thành viên và quyền quản lý VĐV.'
+                  : explain(error);
             notice(root.isConnected ? message : $('global-message'), committed ?
               'RPC đã trả phản hồi; chưa xác minh được dữ liệu sau chuyển. Hãy tải lại trang, không gửi lại thao tác. ' + detail :
               'Chưa xác nhận chuyển thành công. Tải lại danh sách để kiểm tra trước khi thử lại. ' + detail, true);
@@ -3707,7 +3739,7 @@ function collapsibleAdminSection(
         ]
       );
 
-      if (canManageMembers()) {
+      if (canManagePlayers()) {
         collapsibleAdminSection(
           root,
           'Tạo VĐV',
@@ -3718,7 +3750,9 @@ function collapsibleAdminSection(
           },
           'success'
         );
+      }
 
+      if (canManageMembers() && canManagePlayers()) {
         let loadPromotion;
         const promotion = collapsibleAdminSection(
           root,
@@ -3738,7 +3772,9 @@ function collapsibleAdminSection(
             }
           }
         );
+      }
 
+      if (canManagePlayers()) {
         collapsibleAdminSection(
           root,
           'Sửa thông tin VĐV',
@@ -3749,8 +3785,9 @@ function collapsibleAdminSection(
           },
           'info'
         );
+      }
 
-        if (isAdmin()) {
+      if (isAdmin()) {
           collapsibleAdminSection(
             root,
             'Điều chỉnh Rating ban đầu',
@@ -3759,8 +3796,9 @@ function collapsibleAdminSection(
             },
             'info'
           );
-        }
+      }
 
+      if (canManagePlayerLifecycle()) {
         let loadLifecycle;
         const lifecycle = collapsibleAdminSection(
           root,

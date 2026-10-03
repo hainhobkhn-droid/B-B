@@ -196,6 +196,12 @@
       const canManageMembers = () =>
         hasCapability('can_manage_members');
 
+      const canManagePlayers = () =>
+        hasCapability('can_manage_players');
+
+      const canManagePlayerLifecycle = () =>
+        hasCapability('can_manage_player_lifecycle');
+
       const canAdjustRating = () =>
         hasCapability('can_adjust_rating');
 
@@ -1302,7 +1308,8 @@
         }
 
         if (
-          canManageMembers() ||
+          canManagePlayers() ||
+          canManagePlayerLifecycle() ||
           canAdjustRating()
         ) {
           const activePlayers =
@@ -2069,6 +2076,8 @@
         client,
         isAdmin,
         canManageMembers,
+        canManagePlayers,
+        canManagePlayerLifecycle,
         canAdjustRating,
         button,
         el,
@@ -10516,7 +10525,7 @@ const fieldLabels = {
           const result =
             await query(
               client.rpc(
-                canManageMembers()
+                (canManagePlayers() || canManagePlayerLifecycle())
                   ? 'get_member_management_players'
                   : 'get_player_directory'
               ),
@@ -10745,7 +10754,7 @@ const fieldLabels = {
                   'profiles'
                 )
                 .select(
-                  'id, full_name, login_name, role, is_active, membership_status, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
+                  'id, full_name, login_name, role, is_active, membership_status, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_manage_players, can_manage_player_lifecycle, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
                 )
                 .eq(
                   'id',

@@ -327,7 +327,8 @@
         const permissions = [
           ['can_approve_matches','Duyệt trận'],['can_manage_tournaments','Quản lý giải'],
           ['can_collect_tournament_fee','Thu phí giải'],['can_manage_fund','Quản lý Quỹ'],
-          ['can_collect_fund','Thu Quỹ'],['can_manage_members','Quản lý VĐV'],
+          ['can_collect_fund','Thu Quỹ'],['can_manage_members','Quản lý thành viên'],
+          ['can_manage_players','Quản lý VĐV'],['can_manage_player_lifecycle','Quản lý vòng đời VĐV'],
           ['can_adjust_rating','Điều chỉnh Rating'],['can_view_audit','Xem lịch sử thao tác']
         ].filter(([key]) => state.profile[key] === true);
         const details = el('details', null, 'acc06-permissions');
@@ -579,6 +580,8 @@
           ['can_manage_fund', 'Quản lý quỹ'],
           ['can_collect_fund', 'Thu quỹ'],
           ['can_manage_members', 'Quản lý thành viên'],
+          ['can_manage_players', 'Quản lý VĐV'],
+          ['can_manage_player_lifecycle', 'Quản lý vòng đời VĐV'],
           ['can_adjust_rating', 'Điều chỉnh Rating'],
           ['can_view_audit', 'Xem Audit']
         ];
@@ -842,7 +845,7 @@
         item('Liên kết VĐV', member.player_id ? 'Đã liên kết VĐV' : 'Chưa liên kết VĐV', 'info');
         if (member.current_rating != null) item('Rating hiện tại', Number(member.current_rating).toFixed(3));
         group('Quyền');
-        item('Quyền được cấp', permissionCount == null ? 'Chưa có dữ liệu' : String(permissionCount) + ' / 8');
+        item('Quyền được cấp', permissionCount == null ? 'Chưa có dữ liệu' : String(permissionCount) + ' / 10');
         const technical = el('details', null, 'acc03-technical');
         technical.append(el('summary', 'Chi tiết kỹ thuật'), el('p', 'Profile ID: ' + (member.profile_id || '—')),
           el('p', 'Player ID: ' + (member.player_id || '—')));
