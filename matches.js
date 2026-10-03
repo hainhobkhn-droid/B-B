@@ -8870,6 +8870,7 @@ function voidApprovedMatchForm(root) {
             unavailable:
               !!state.errors.matches,
             dateKey: 'played_at',
+            mobileCards: true,
             pageSize: 20,
             pageSizes: isAdmin()
               ? [20, 50, 100]

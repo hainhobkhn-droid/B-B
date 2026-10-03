@@ -408,7 +408,22 @@
           search.placeholder
         );
 
-        tools.append(search);
+        const searchField = el(
+          'label',
+          null,
+          'table-date-filter'
+        );
+
+        searchField.append(
+          el(
+            'span',
+            'Tìm kiếm',
+            'table-date-filter-label'
+          ),
+          search
+        );
+
+        tools.append(searchField);
 
         let filter = null;
 
@@ -444,7 +459,22 @@
               )
             );
 
-          tools.append(filter);
+          const filterField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          filterField.append(
+            el(
+              'span',
+              'Trạng thái',
+              'table-date-filter-label'
+            ),
+            filter
+          );
+
+          tools.append(filterField);
         }
 
         let dateFrom = null;
@@ -479,9 +509,39 @@
             'Đến ngày'
           );
 
-          tools.append(
-            dateFrom,
+          const dateFromField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          dateFromField.append(
+            el(
+              'span',
+              'Từ ngày',
+              'table-date-filter-label'
+            ),
+            dateFrom
+          );
+
+          const dateToField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          dateToField.append(
+            el(
+              'span',
+              'Đến ngày',
+              'table-date-filter-label'
+            ),
             dateTo
+          );
+
+          tools.append(
+            dateFromField,
+            dateToField
           );
         }
 
@@ -516,9 +576,22 @@
               opts.pageSizes[0]
             );
 
-          tools.append(
+          const pageSizeField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          pageSizeField.append(
+            el(
+              'span',
+              'Số dòng / trang',
+              'table-date-filter-label'
+            ),
             pageSizeSelect
           );
+
+          tools.append(pageSizeField);
         }
 
         section.append(tools);
@@ -765,6 +838,64 @@
 
           wrap.append(t);
           host.append(wrap);
+
+          if (opts.mobileCards) {
+            const mobileCards = el(
+              'div',
+              null,
+              'table-mobile-cards'
+            );
+
+            found
+              .slice(
+                (page - 1) * pageSize,
+                page * pageSize
+              )
+              .forEach(r => {
+                const card = el(
+                  'article',
+                  null,
+                  'table-mobile-card'
+                );
+
+                values(r).forEach(
+                  (v, index) => {
+                    const cardRow = el(
+                      'div',
+                      null,
+                      'table-mobile-card-row'
+                    );
+
+                    cardRow.append(
+                      el(
+                        'span',
+                        columns[index][0],
+                        'table-mobile-card-label'
+                      )
+                    );
+
+                    const cardValue = el(
+                      'div',
+                      null,
+                      'table-mobile-card-value'
+                    );
+
+                    if (v instanceof Node) {
+                      cardValue.append(v);
+                    } else {
+                      cardValue.textContent = raw(v);
+                    }
+
+                    cardRow.append(cardValue);
+                    card.append(cardRow);
+                  }
+                );
+
+                mobileCards.append(card);
+              });
+
+            host.append(mobileCards);
+          }
 
           const pg = el(
             'div',
