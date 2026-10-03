@@ -128,13 +128,6 @@ function collapsibleAdminSection(
       body.id = 'player-action-' + adminActionSections.length;
       toggle.setAttribute('aria-controls', body.id);
       toggle.setAttribute('aria-expanded', 'false');
-      buildContent(
-        inner
-      );
-      // The accordion already names the action; avoid a repeated panel heading.
-      const repeatedHeading = inner.querySelector('.panel > h2');
-      if (repeatedHeading) repeatedHeading.hidden = true;
-
       body.append(
         inner,
         close
@@ -149,6 +142,13 @@ function collapsibleAdminSection(
         wrapper
       );
 
+      buildContent(
+        inner
+      );
+
+      // The accordion already names the action; avoid a repeated panel heading.
+      const repeatedHeading = inner.querySelector('.panel > h2');
+      if (repeatedHeading) repeatedHeading.hidden = true;
       adminActionSections.push(
         {
           title,
@@ -1218,6 +1218,291 @@ function collapsibleAdminSection(
           }
         }
       );
+    }
+
+    function initialRatingAdjustmentForm(root) {
+      if (!isAdmin()) return;
+
+      const actor = state.session?.user?.id;
+      const generation = state.generation;
+      const current = () =>
+        root.isConnected &&
+        isAdmin() &&
+        state.session?.user?.id === actor &&
+        state.generation === generation;
+
+      const playerRows = rows('players')
+        .slice()
+        .sort((a, b) =>
+          playerName(a.id).localeCompare(playerName(b.id), 'vi')
+        );
+
+      const section = panel('Điều chỉnh Rating ban đầu', root);
+      const description = el(
+        'p',
+        'Chỉ có thể điều chỉnh khi VĐV chưa có lịch sử trận Rated được duyệt. Hệ thống sẽ kiểm tra điều kiện này khi lưu.',
+        'notice'
+      );
+      const message = el('div');
+      message.hidden = true;
+      message.setAttribute('role', 'status');
+
+      if (!playerRows.length) {
+        section.append(
+          description,
+          el('p', 'Chưa có VĐV để điều chỉnh Rating.', 'muted')
+        );
+        return;
+      }
+
+      const activeRatingSettings = rows('rating_settings')
+        .find(item => item.is_active === true) || null;
+      const configuredMin = Number(activeRatingSettings?.min_rating);
+      const configuredMax = Number(activeRatingSettings?.max_rating);
+      const ratingMin = Number.isFinite(configuredMin) ? configuredMin : 2;
+      const ratingMax = Number.isFinite(configuredMax) ? configuredMax : 8;
+
+      const form = el('form');
+      const grid = el('div', null, 'form-grid');
+      const playerSelect = el('select', null, 'field');
+      playerSelect.id = 'initial-rating-player-id';
+      playerRows.forEach(player => {
+        const option = el('option', playerName(player.id));
+        option.value = player.id;
+        playerSelect.append(option);
+      });
+
+      const ratingSummary = el(
+        'div',
+        null,
+        'player-status-readonly'
+      );
+      ratingSummary.id = 'initial-rating-current-summary';
+      ratingSummary.setAttribute('aria-live', 'polite');
+
+      const ratingInput = el('input', null, 'field');
+      ratingInput.id = 'initial-rating-new-value';
+      ratingInput.type = 'number';
+      ratingInput.min = String(ratingMin);
+      ratingInput.max = String(ratingMax);
+      ratingInput.step = '0.001';
+      ratingInput.required = true;
+
+      const reason = el('textarea', null, 'field');
+      reason.id = 'initial-rating-reason';
+      reason.rows = 3;
+      reason.maxLength = 1000;
+      reason.required = true;
+
+      function fieldGroup(labelText, input) {
+        const group = el('div', null, 'form-group');
+        const label = el('label', labelText);
+        label.htmlFor = input.id;
+        group.append(label, input);
+        return group;
+      }
+
+      grid.append(
+        fieldGroup('Chọn VĐV', playerSelect),
+        fieldGroup('Rating hiện tại', ratingSummary),
+        fieldGroup('Rating mới', ratingInput),
+        fieldGroup('Lý do', reason)
+      );
+
+      const actions = el('div', null, 'form-actions');
+      const submit = el('button', 'Lưu Rating ban đầu', 'btn primary');
+      submit.type = 'submit';
+      const reset = button('Khôi phục', () => {
+        fillSelectedPlayer(true);
+        notice(message, '');
+      });
+      reset.type = 'button';
+      actions.append(submit, reset);
+      form.append(grid, actions);
+      section.append(description, message, form);
+
+      let saving = false;
+
+      function selectedPlayer() {
+        return playerRows.find(player => player.id === playerSelect.value) || null;
+      }
+
+      function ratingText(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed.toFixed(3) : '—';
+      }
+
+      function fillSelectedPlayer(clearReason = false) {
+        const player = selectedPlayer();
+        if (!player) return;
+        ratingSummary.replaceChildren(
+          el(
+            'span',
+            `Khởi tạo: ${ratingText(player.initial_rating)} • Hiện tại: ${ratingText(player.current_rating)}`,
+            'text-sm'
+          )
+        );
+        const initial = Number(player.initial_rating);
+        ratingInput.value = Number.isFinite(initial)
+          ? initial.toFixed(3)
+          : '';
+        if (clearReason) reason.value = '';
+      }
+
+      function errorText(error) {
+        const code = String(error?.message || error?.code || '');
+        if (code.includes('PLAYER_RATING_HISTORY_EXISTS')) {
+          return 'VĐV đã có lịch sử Rated. Không thể chỉnh trực tiếp Rating ban đầu.';
+        }
+        if (code.includes('PLAYER_RATING_STATE_INCONSISTENT')) {
+          return 'Dữ liệu Rating hiện tại không đồng nhất. Không thể chỉnh tự động.';
+        }
+        if (code.includes('PLAYER_RATING_OUT_OF_RANGE')) {
+          return 'Rating nằm ngoài phạm vi cho phép.';
+        }
+        if (code.includes('PLAYER_RATING_REQUIRED')) {
+          return 'Rating mới là bắt buộc và phải là một số hợp lệ.';
+        }
+        if (
+          code.includes('RATING_ACTIVE_SETTINGS_INVALID') ||
+          code.includes('RATING_ACTIVE_SETTINGS_HARD_RANGE_CONFLICT')
+        ) {
+          return 'Cấu hình Rating hiện tại không hợp lệ. Vui lòng kiểm tra cấu hình hệ thống.';
+        }
+        if (code.includes('REASON_REQUIRED_MAX_1000')) {
+          return 'Lý do là bắt buộc và không được vượt quá 1000 ký tự.';
+        }
+        if (code.includes('PLAYER_NOT_FOUND')) {
+          return 'Không tìm thấy VĐV đã chọn. Hãy tải lại danh sách.';
+        }
+        if (code.includes('ADMIN_REQUIRED')) {
+          return 'Chỉ ADMIN đang hoạt động mới được điều chỉnh Rating ban đầu.';
+        }
+        if (code.includes('BUSINESS_ACCESS_REQUIRED')) {
+          return 'Tài khoản hiện không được phép thực hiện thao tác nghiệp vụ này.';
+        }
+        if (code.includes('AUTH_REQUIRED')) {
+          return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        }
+        return explain(error);
+      }
+
+      function sync() {
+        const disabled = saving || state.writeBusy || !current();
+        playerSelect.disabled = disabled;
+        ratingInput.disabled = disabled;
+        reason.disabled = disabled;
+        reset.disabled = disabled;
+        submit.disabled = disabled;
+        submit.textContent = saving
+          ? 'Đang lưu…'
+          : 'Lưu Rating ban đầu';
+      }
+
+      playerSelect.addEventListener('change', () => {
+        fillSelectedPlayer(true);
+        notice(message, '');
+      });
+      fillSelectedPlayer();
+      sync();
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (saving || state.writeBusy || !current()) return;
+
+        notice(message, '');
+        const player = selectedPlayer();
+        if (!player) {
+          notice(message, 'Không tìm thấy VĐV đã chọn.', true);
+          return;
+        }
+
+        const rating = Number(ratingInput.value);
+        if (
+          !ratingInput.value.trim() ||
+          !Number.isFinite(rating)
+        ) {
+          notice(message, 'Rating mới là bắt buộc và phải là một số hợp lệ.', true);
+          ratingInput.focus();
+          return;
+        }
+        if (rating < ratingMin || rating > ratingMax) {
+          notice(
+            message,
+            `Rating phải từ ${ratingMin.toFixed(3)} đến ${ratingMax.toFixed(3)}.`,
+            true
+          );
+          ratingInput.focus();
+          return;
+        }
+
+        const trimmedReason = reason.value.trim();
+        if (!trimmedReason) {
+          notice(message, 'Lý do là bắt buộc.', true);
+          reason.focus();
+          return;
+        }
+        if (trimmedReason.length > 1000) {
+          notice(message, 'Lý do không được vượt quá 1000 ký tự.', true);
+          reason.focus();
+          return;
+        }
+
+        saving = true;
+        state.writeBusy = true;
+        sync();
+        notice(message, 'Đang kiểm tra lịch sử Rated và lưu thay đổi…');
+
+        try {
+          const { data, error } = await client.rpc(
+            'set_player_initial_rating_before_history',
+            {
+              p_player_id: player.id,
+              p_rating: rating,
+              p_reason: trimmedReason
+            }
+          );
+          if (error) throw error;
+          if (!current()) return;
+
+          if (data?.changed === true) {
+            const nextInitial = Number(data.new_initial_rating);
+            const nextCurrent = Number(data.new_current_rating);
+            player.initial_rating = Number.isFinite(nextInitial)
+              ? nextInitial
+              : rating;
+            player.current_rating = Number.isFinite(nextCurrent)
+              ? nextCurrent
+              : rating;
+            reason.value = '';
+            state.writeBusy = false;
+            saving = false;
+            state.page = 'players';
+            render();
+            notice(
+              $('global-message'),
+              'Đã cập nhật Rating ban đầu.',
+              false,
+              true
+            );
+            return;
+          }
+
+          if (data?.changed === false) {
+            fillSelectedPlayer(true);
+            notice(message, 'Rating ban đầu không thay đổi.');
+            return;
+          }
+
+          throw new Error('RATING_UPDATE_UNCONFIRMED');
+        } catch (error) {
+          if (current()) notice(message, errorText(error), true);
+        } finally {
+          saving = false;
+          if (state.session?.user?.id === actor) state.writeBusy = false;
+          if (root.isConnected) sync();
+        }
+      });
     }
 
     function playerLifecycleManager(
@@ -3464,6 +3749,17 @@ function collapsibleAdminSection(
           },
           'info'
         );
+
+        if (isAdmin()) {
+          collapsibleAdminSection(
+            root,
+            'Điều chỉnh Rating ban đầu',
+            container => {
+              initialRatingAdjustmentForm(container);
+            },
+            'info'
+          );
+        }
 
         let loadLifecycle;
         const lifecycle = collapsibleAdminSection(

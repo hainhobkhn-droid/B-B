@@ -327,6 +327,7 @@ function findById(fixture, id) {
       '▶ Tạo VĐV',
       '▶ Chuyển VĐV khách thành thành viên',
       '▶ Sửa thông tin VĐV',
+      '▶ Điều chỉnh Rating ban đầu',
       '▶ Vòng đời VĐV',
       '▶ Xóa vĩnh viễn VĐV'
     ]
