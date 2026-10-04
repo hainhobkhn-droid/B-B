@@ -3548,33 +3548,32 @@ function collapsibleAdminSection(
         data.forEach(item => input.append(new Option(
           `${item.full_name || 'Chưa có tên'}`, item.id)));
       }
-      async function allRows(tableName, columns, filters) {
-        const result = [];
-        for (let offset = 0; ; offset += 500) {
-          let query = client.from(tableName).select(columns).order('id').range(offset, offset + 499);
-          for (const [key, value] of filters) query = query.eq(key, value);
-          const { data, error } = await query;
-          if (error) throw error;
-          if (!Array.isArray(data)) throw new Error('Không đọc được danh sách.');
-          result.push(...data);
-          if (data.length < 500) return result;
-        }
-      }
       async function loadChoices() {
         if (!current() || reading || saving || committed || state.writeBusy) return;
         reading = true; checked = null; const token = ++version;
         preview.replaceChildren(); sync();
         notice(message, 'Đang tải danh sách…');
         try {
-          const result = await Promise.all([
-            client.rpc('get_admin_member_promotion_candidates'),
-            allRows('players', 'id,full_name,player_type,status,current_rating', [['player_type', 'GUEST'], ['status', 'ACTIVE']])
-          ]);
+          const result = await client.rpc('get_guest_member_promotion_candidates');
           if (!current() || token !== version) return;
-          if (result[0].error) throw result[0].error;
-          if (!Array.isArray(result[0].data)) throw new Error('Không đọc được danh sách MEMBER.');
-          members = result[0].data.map(item => ({ id: item.profile_id, full_name: item.profile_full_name, player_id: item.player_id }));
-          guests = result[1];
+          if (result.error) throw result.error;
+          if (!Array.isArray(result.data)) throw new Error('Không đọc được danh sách chuyển thành viên.');
+          members = result.data
+            .filter(item => item.candidate_kind === 'MEMBER_TARGET')
+            .map(item => ({
+              id: item.profile_id,
+              full_name: item.profile_full_name,
+              player_id: item.player_id
+            }));
+          guests = result.data
+            .filter(item => item.candidate_kind === 'GUEST_SOURCE')
+            .map(item => ({
+              id: item.player_id,
+              full_name: item.player_full_name,
+              player_type: item.player_type,
+              status: item.status,
+              current_rating: item.current_rating
+            }));
           options(account, members, '— Chọn tài khoản MEMBER —');
           options(guest, guests, '— Chọn GUEST ACTIVE —');
           notice(message, !members.length ? 'Không có MEMBER đang hoạt động có Player liên kết.' :
