@@ -29,6 +29,7 @@
         'fund_contributions',
         'fund_payments',
         'fund_transactions',
+        'leagues',
         'tournaments',
        'tournament_registrations',
         'tournament_payments'
@@ -46,6 +47,7 @@
         fund_contributions: 'Khoản đóng góp',
         fund_payments: 'Thanh toán',
         fund_transactions: 'Sổ giao dịch',
+        leagues: 'Giải nội bộ',
         tournaments: 'Giải đấu'
       };
 

@@ -1055,11 +1055,14 @@
         );
       };
 
-    league.append(
+    const createLeaguePlaceholder =
       new Option(
         'Chọn giải nội bộ',
         ''
-      )
+      );
+
+    league.append(
+      createLeaguePlaceholder
     );
 
     rows('leagues')
@@ -1105,6 +1108,15 @@
           );
         }
       );
+
+    if (league.options.length === 1) {
+      createLeaguePlaceholder.textContent =
+        state.errors.leagues
+          ? 'Không tải được danh sách giải nội bộ'
+          : Array.isArray(state.data.leagues)
+            ? 'Chưa có giải nội bộ phù hợp'
+            : 'Đang tải danh sách giải nội bộ…';
+    }
 
     leagueGroup.append(
       leagueLabel,
@@ -3979,11 +3991,14 @@
 
           league.replaceChildren();
 
-          league.append(
+          const editLeaguePlaceholder =
             new Option(
               'Chọn giải nội bộ',
               ''
-            )
+            );
+
+          league.append(
+            editLeaguePlaceholder
           );
 
           sortedLeagues()
@@ -4047,6 +4062,15 @@
             league.value !== currentId
           ) {
             league.value = '';
+          }
+
+          if (league.options.length === 1) {
+            editLeaguePlaceholder.textContent =
+              state.errors.leagues
+                ? 'Không tải được danh sách giải nội bộ'
+                : Array.isArray(state.data.leagues)
+                  ? 'Chưa có giải nội bộ phù hợp'
+                  : 'Đang tải danh sách giải nội bộ…';
           }
         }
 
