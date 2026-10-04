@@ -110,6 +110,30 @@ Không refactor hierarchy/layout trong WP-C3.
 
 # 13. Final status
 
-**READY FOR PRODUCTION DEPLOY**
+## 13.1 Deployment evidence
 
-Chưa ghi CLOSED trước production frontend verification.
+- Source commit: `2924222680eff4ea237c90093dcecf0fa8b529e3` (`fix: load leagues for match workflows`).
+- Push: `main -> origin/main` PASS, range `95fb2d2..2924222`.
+- GitHub Pages workflow: `pages-build-deployment #78` completed successfully in 35 seconds on 2026-10-04.
+- Production `index.html` serves:
+  - `matches.js?v=wp-c3-league-data-source-20261004-1`;
+  - `app.js?v=wp-c3-league-data-source-20261004-1`.
+- Production asset responses were reloaded with browser cache disabled and returned HTTP 200.
+- Served `app.js` contains the shared `leagues` loader entry and `Giải nội bộ` error label.
+- Served `matches.js` contains the approved loading, empty and loader-error messages.
+- No backend/RLS/data mutation was performed.
+
+## 13.2 Runtime verification
+
+- Local authenticated ADMIN browser smoke: PASS before deploy; Match create form loaded and, with the same production dataset of 0 League rows, displayed `Chưa có giải nội bộ phù hợp` with no application console error.
+- Production unauthenticated page and asset runtime: PASS; cache tags and served source verified.
+- Production authenticated ADMIN desktop/mobile smoke: NOT RUN because no existing production session was available in the browser.
+- Production authenticated MEMBER smoke: NOT RUN because no existing MEMBER session was available. No account or credential was created or transferred for this check.
+- Real production populated-selector smoke: NOT RUN because production has 0 League rows. The populated path remains covered by the Node fixture.
+- Loader-error path remains covered by the local fixture; production RLS/loader was not intentionally broken.
+
+## 13.3 Final status
+
+**DEPLOYED / PARTIALLY VERIFIED**
+
+To reach `CLOSED / VERIFIED PRODUCTION`, run authenticated ADMIN desktop/mobile and MEMBER smoke with existing sessions, then verify populated options after a legitimate League row exists.
