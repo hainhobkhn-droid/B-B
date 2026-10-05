@@ -80,3 +80,35 @@ Changed files: app.css, index.html, supabase/tests/wp-c5-information-hierarchy-u
 ## 19. Final status
 
 PARTIALLY VERIFIED. Local implementation/static regression and ADMIN top-level desktop/mobile smoke PASS. Residual role-session and expanded-state browser coverage above prevents claiming comprehensive runtime verification. Production mutation = NO; stage/commit/push/deploy = NO.
+
+## 20. WP-C6D deployment evidence
+
+The preparation record above is historical. Direct user approval authorized this deployment and a report-only follow-up commit.
+
+- Implementation commit: `0da7b380768c08de60c8a9f822ff02362137a548`, exactly five reviewed files.
+- Pre-deploy source drift: PASS. Only responsive CSS, stylesheet cache tag and corresponding tests/report changed; no application JS, business DOM order, RPC, backend or capability changes.
+- Pre-commit gates: all 16 frontend CJS suites PASS, 21 JS/CJS syntax checks PASS, 18 Python AST checks PASS, UTF-8/no BOM/no U+FFFD/trailing whitespace PASS, staged diff check PASS.
+- Initial push was blocked by automatic approval review. After direct user confirmation, normal push `main -> origin/main` succeeded; HEAD and origin/main both equal the implementation SHA.
+- GitHub Pages workflow [37285502683](https://github.com/hainhobkhn-droid/B-B/actions/runs/37285502683): completed / success for this SHA. GitHub deployment status success; published URL https://hainhobkhn-droid.github.io/B-B/.
+- Served index stylesheet tag: `wp-c6-responsive-mobile-20261005-1`, PASS. The five unchanged JS tags retain WP-C5.
+- Exact byte/SHA-256 parity PASS for app.css, app.js, account.js, players.js, matches.js and fund.js. CSS SHA-256: `3af47a81f23e37b75444f0d98086fd24b953b753b6968d96676ee2cffa5e64a1`.
+
+### Runtime evidence and limitations
+
+Production-origin tab had no authenticated session and displayed login. No credentials were copied/entered and no account was created. Authenticated ADMIN smoke used the existing localhost session on the six byte-identical served production assets. This is production-asset runtime verification, not a claim of authenticated production-origin browser execution.
+
+- Desktop 1280px: eight pages PASS for navigation/layout and no page overflow.
+- Mobile 390px: eight pages PASS for navigation/layout and no page overflow.
+- Narrow 320px: Matches, Players, Ranking and Contribution PASS for navigation/layout and no page overflow.
+- Ranking retains rank, name, rating and match count; long names wrap. Narrow screens naturally require more name lines; no sorting/formula/own-player scope changed. ADMIN session cannot prove normal MEMBER own-player context.
+- Contribution remains recognition/Cống hiến, not a separate obligations portal. Financial obligations, amounts and status are Fund surface data. Contribution summary values remain readable; exhaustive expanded history permutations NOT RUN.
+- Expanded Player create, Match create, Fund collection, Tournament create and Account member-create forms at 390px: PASS for opening and page overflow, respectively 7/15/7/9/5 visible fields. No submit or mutation. Account screenshot inspected. No captured console errors in the smoke session.
+- Populated Match/Fund/Contribution expanded-history permutations: NOT RUN / residual gap; no destructive or payment action used to manufacture data.
+- Delegated MEMBER browser: NOT RUN. Normal MEMBER browser: NOT RUN. Existing offline permission fixtures PASS; no new production identity created.
+- WP-C5 hierarchy, WP-C4 shared accordion, WP-C3 League, WP-C2 promotion and Match P1.2/P1.2b regression suites PASS. No ad-hoc runtime source patch.
+
+### Final deployment gate
+
+**DEPLOYED / PARTIALLY VERIFIED.** Pages publication and asset parity PASS; ADMIN production-asset desktop/mobile runtime PASS. Missing authenticated production-origin/delegated/normal sessions and exhaustive expanded-history states remain explicit verification gaps. Do not claim CLOSED.
+
+Production business/database mutation = NO. No SQL/migration/Edge deployment. WP-C7/WP-C8/WP-C9 not started. Remaining accessibility/live-region and large-dataset/search concerns are deferred. Report-only documentation follow-up is allowed; no additional source is staged.
