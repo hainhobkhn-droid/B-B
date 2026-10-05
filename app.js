@@ -234,6 +234,110 @@
         return n;
       }
 
+      // WP-C4 SHARED ACTION ACCORDION START
+      let actionAccordionSequence = 0;
+
+      function actionAccordion(options = {}) {
+        const {
+          root = null,
+          title,
+          semantic = 'neutral',
+          icon = null,
+          expanded = false,
+          group = null,
+          onOpen = null,
+          render: renderContent = null,
+          className = ''
+        } = options;
+
+        if (!title) {
+          throw new Error('ACTION_ACCORDION_TITLE_REQUIRED');
+        }
+
+        const allowedSemantics = new Set([
+          'create',
+          'info',
+          'warning',
+          'danger',
+          'neutral'
+        ]);
+        const resolvedSemantic = allowedSemantics.has(semantic)
+          ? semantic
+          : 'neutral';
+        const defaultIcons = {
+          create: '+',
+          info: '✎',
+          warning: '!',
+          danger: '!',
+          neutral: '›'
+        };
+        const panelId =
+          `action-accordion-${state.generation || 0}-${++actionAccordionSequence}`;
+        const wrapper = el(
+          'section',
+          null,
+          `action-accordion action-accordion-${resolvedSemantic}${className ? ` ${className}` : ''}`
+        );
+        const toggle = el('button', null, 'action-accordion-toggle');
+        const iconNode = el(
+          'span',
+          icon || defaultIcons[resolvedSemantic],
+          'action-accordion-icon'
+        );
+        const titleNode = el('span', title, 'action-accordion-title');
+        const chevron = el('span', '›', 'action-accordion-chevron');
+        const body = el('div', null, 'action-accordion-panel');
+
+        toggle.type = 'button';
+        toggle.setAttribute('aria-controls', panelId);
+        iconNode.setAttribute('aria-hidden', 'true');
+        chevron.setAttribute('aria-hidden', 'true');
+        body.id = panelId;
+
+        const controller = {
+          wrapper,
+          toggle,
+          body,
+          title,
+          setExpanded(next) {
+            const open = !!next;
+            if (open && Array.isArray(group)) {
+              group.forEach(item => {
+                if (item !== controller) {
+                  item.setExpanded(false);
+                }
+              });
+            }
+            const wasOpen = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', String(open));
+            body.hidden = !open;
+            wrapper.classList.toggle('is-expanded', open);
+            if (open && !wasOpen && typeof onOpen === 'function') {
+              void onOpen(controller);
+            }
+          }
+        };
+
+        toggle.append(iconNode, titleNode, chevron);
+        toggle.addEventListener('click', () => {
+          controller.setExpanded(body.hidden);
+        });
+        wrapper.append(toggle, body);
+
+        if (Array.isArray(group)) {
+          group.push(controller);
+        }
+        if (root) {
+          root.append(wrapper);
+        }
+        if (typeof renderContent === 'function') {
+          renderContent(body, controller);
+        }
+        controller.setExpanded(expanded);
+        return controller;
+      }
+      // WP-C4 SHARED ACTION ACCORDION END
+
       function notice(target, text, isError = false, isSuccess = false) {
         target.replaceChildren();
         target.hidden = !text;
@@ -2082,6 +2186,7 @@
         canManagePlayerLifecycle,
         canAdjustRating,
         button,
+        actionAccordion,
         el,
         rows,
         raw,
@@ -2132,6 +2237,7 @@
             isAdmin,
             canApproveMatches,
             button,
+            actionAccordion,
             panel,
             el,
             rows,
@@ -2170,6 +2276,7 @@
       canManageFund,
       canCollectFund,
       button,
+      actionAccordion,
       el,
       rows,
       raw,
@@ -3270,6 +3377,7 @@ const fieldLabels = {
             client,
             isAdmin,
             button,
+            actionAccordion,
             panel,
             el,
             rows,
@@ -4720,59 +4828,20 @@ const fieldLabels = {
               () => {};
 
             if (canManageTournaments()) {
-              const createWrapper =
-                el(
-                  'section',
-                  null,
-                  'app-action app-action-success mb-4'
-                );
-
-              const createToggle =
-                button(
-                  '＋ Tạo giải đấu',
-                  () => {
-                    const opening =
-                      createBody.hidden;
-
-                    if (opening) {
-                      closeTournamentDetail();
-
-                      editBody.hidden =
-                        true;
-
-                      editToggle.textContent =
-                        '✎ Sửa thông tin giải';
-
-                      lifecycleBody.hidden =
-                        true;
-
-                      lifecycleToggle.textContent =
-                        '⇄ Chuyển trạng thái giải';
-                    }
-
-                    createBody.hidden =
-                      !opening;
-
-                    createToggle.textContent =
-                      createBody.hidden
-                        ? '＋ Tạo giải đấu'
-                        : '− Thu gọn tạo giải';
-                  },
-                  'app-action-toggle'
-                );
-
-              createToggle.type =
-                'button';
-
-              const createBody =
-                el(
-                  'div',
-                  null,
-                  'app-action-body'
-                );
-
-              createBody.hidden =
-                true;
+              const tournamentAdminActionGroup = [];
+              const createAction = actionAccordion({
+                title: 'Tạo giải đấu',
+                semantic: 'create',
+                icon: '+',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: createWrapper,
+                toggle: createToggle,
+                body: createBody
+              } = createAction;
 
               const description =
                 el(
@@ -5259,65 +5328,20 @@ const fieldLabels = {
                 form
               );
 
-              createWrapper.append(
-                createToggle,
-                createBody
-              );
-
               // TOURNAMENT EDIT UI V1B
-              const editWrapper =
-                el(
-                  'section',
-                  null,
-                  'app-action app-action-info mb-4'
-                );
-
-              const editToggle =
-                button(
-                  '✎ Sửa thông tin giải',
-                  () => {
-                    const opening =
-                      editBody.hidden;
-
-                    if (opening) {
-                      closeTournamentDetail();
-
-                      createBody.hidden =
-                        true;
-
-                      createToggle.textContent =
-                        '＋ Tạo giải đấu';
-
-                      lifecycleBody.hidden =
-                        true;
-
-                      lifecycleToggle.textContent =
-                        '⇄ Chuyển trạng thái giải';
-                    }
-
-                    editBody.hidden =
-                      !opening;
-
-                    editToggle.textContent =
-                      editBody.hidden
-                        ? '✎ Sửa thông tin giải'
-                        : '− Thu gọn sửa giải';
-                  },
-                  'app-action-toggle'
-                );
-
-              editToggle.type =
-                'button';
-
-              const editBody =
-                el(
-                  'div',
-                  null,
-                  'app-action-body'
-                );
-
-              editBody.hidden =
-                true;
+              const editAction = actionAccordion({
+                title: 'Sửa thông tin giải',
+                semantic: 'info',
+                icon: '✎',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: editWrapper,
+                toggle: editToggle,
+                body: editBody
+              } = editAction;
 
               const editDescription =
                 el(
@@ -6052,65 +6076,20 @@ const fieldLabels = {
                 editForm
               );
 
-              editWrapper.append(
-                editToggle,
-                editBody
-              );
-
               // TOURNAMENT LIFECYCLE UI V1C
-              const lifecycleWrapper =
-                el(
-                  'section',
-                  null,
-                  'app-action app-action-neutral mb-4'
-                );
-
-              const lifecycleToggle =
-                button(
-                  '⇄ Chuyển trạng thái giải',
-                  () => {
-                    const opening =
-                      lifecycleBody.hidden;
-
-                    if (opening) {
-                      closeTournamentDetail();
-
-                      createBody.hidden =
-                        true;
-
-                      createToggle.textContent =
-                        '＋ Tạo giải đấu';
-
-                      editBody.hidden =
-                        true;
-
-                      editToggle.textContent =
-                        '✎ Sửa thông tin giải';
-                    }
-
-                    lifecycleBody.hidden =
-                      !opening;
-
-                    lifecycleToggle.textContent =
-                      lifecycleBody.hidden
-                        ? '⇄ Chuyển trạng thái giải'
-                        : '− Thu gọn trạng thái giải';
-                  },
-                  'app-action-toggle'
-                );
-
-              lifecycleToggle.type =
-                'button';
-
-              const lifecycleBody =
-                el(
-                  'div',
-                  null,
-                  'app-action-body'
-                );
-
-              lifecycleBody.hidden =
-                true;
+              const lifecycleAction = actionAccordion({
+                title: 'Chuyển trạng thái giải',
+                semantic: 'neutral',
+                icon: '⇄',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: lifecycleWrapper,
+                toggle: lifecycleToggle,
+                body: lifecycleBody
+              } = lifecycleAction;
 
               const lifecycleDescription =
                 el(
@@ -6692,72 +6671,21 @@ const fieldLabels = {
                 lifecycleForm
               );
 
-              lifecycleWrapper.append(
-                lifecycleToggle,
-                lifecycleBody
-              );
-
 
               // TOURNAMENT REGISTRATION UI V1F.1
-              const registrationWrapper =
-                el(
-                  'section',
-                  null,
-                  'app-action app-action-success mb-4'
-                );
-
-              const registrationToggle =
-                button(
-                  '👥 Đăng ký VĐV',
-                  () => {
-                    const opening =
-                      registrationBody.hidden;
-
-                    if (opening) {
-                      closeTournamentDetail();
-
-                      createBody.hidden =
-                        true;
-
-                      createToggle.textContent =
-                        '＋ Tạo giải đấu';
-
-                      editBody.hidden =
-                        true;
-
-                      editToggle.textContent =
-                        '✎ Sửa thông tin giải';
-
-                      lifecycleBody.hidden =
-                        true;
-
-                      lifecycleToggle.textContent =
-                        '⇄ Chuyển trạng thái giải';
-                    }
-
-                    registrationBody.hidden =
-                      !opening;
-
-                    registrationToggle.textContent =
-                      registrationBody.hidden
-                        ? '👥 Đăng ký VĐV'
-                        : '− Thu gọn đăng ký VĐV';
-                  },
-                  'app-action-toggle'
-                );
-
-              registrationToggle.type =
-                'button';
-
-              const registrationBody =
-                el(
-                  'div',
-                  null,
-                  'app-action-body'
-                );
-
-              registrationBody.hidden =
-                true;
+              const registrationAction = actionAccordion({
+                title: 'Đăng ký VĐV',
+                semantic: 'create',
+                icon: '👥',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: registrationWrapper,
+                toggle: registrationToggle,
+                body: registrationBody
+              } = registrationAction;
 
               const registrationDescription =
                 el(
@@ -7537,72 +7465,12 @@ const fieldLabels = {
                 registrationForm
               );
 
-              registrationWrapper.append(
-                registrationToggle,
-                registrationBody
-              );
-
-              /*
-                Không sửa sâu callback V1A/V1B/V1C.
-                Chỉ thêm listener cùng cấp để đóng Registration
-                khi Admin mở action khác.
-              */
-              createToggle.addEventListener(
-                'click',
-                () => {
-                  registrationBody.hidden =
-                    true;
-
-                  registrationToggle.textContent =
-                    '👥 Đăng ký VĐV';
-                }
-              );
-
-              editToggle.addEventListener(
-                'click',
-                () => {
-                  registrationBody.hidden =
-                    true;
-
-                  registrationToggle.textContent =
-                    '👥 Đăng ký VĐV';
-                }
-              );
-
-              lifecycleToggle.addEventListener(
-                'click',
-                () => {
-                  registrationBody.hidden =
-                    true;
-
-                  registrationToggle.textContent =
-                    '👥 Đăng ký VĐV';
-                }
-              );
+              // Shared group keeps only one ADMIN tournament action open.
               closeTournamentAdminActions =
                 () => {
-                  createBody.hidden =
-                    true;
-
-                  createToggle.textContent =
-                    '＋ Tạo giải đấu';
-
-                  editBody.hidden =
-                    true;
-
-                  editToggle.textContent =
-                    '✎ Sửa thông tin giải';
-
-                  lifecycleBody.hidden =
-                    true;
-
-                  lifecycleToggle.textContent =
-                    '⇄ Chuyển trạng thái giải';
-                  registrationBody.hidden =
-                    true;
-
-                  registrationToggle.textContent =
-                    '👥 Đăng ký VĐV';
+                  tournamentAdminActionGroup.forEach(
+                    action => action.setExpanded(false)
+                  );
                 };
 
               root.append(
@@ -7618,44 +7486,18 @@ const fieldLabels = {
           upper(state.profile?.role) === 'MEMBER' &&
           state.profile?.is_active === true
         ) {
-          const myRegistrationWrapper =
-            el(
-              'section',
-              null,
-              'app-action app-action-success mb-4'
-            );
-
-          const myRegistrationBody =
-            el(
-              'div',
-              null,
-              'app-action-body'
-            );
-
-          myRegistrationBody.hidden =
-            true;
-
-          const myRegistrationToggle =
-            button(
-              '📝 Đăng ký giải của tôi',
-              () => {
-                const opening =
-                  myRegistrationBody.hidden;
-
-                if (opening) {
-                  closeTournamentDetail();
-                }
-
-                myRegistrationBody.hidden =
-                  !opening;
-
-                myRegistrationToggle.textContent =
-                  myRegistrationBody.hidden
-                    ? '📝 Đăng ký giải của tôi'
-                    : '− Thu gọn đăng ký';
-              },
-              'app-action-toggle'
-            );
+          const myRegistrationAction = actionAccordion({
+            title: 'Đăng ký giải của tôi',
+            semantic: 'create',
+            icon: '📝',
+            onOpen: closeTournamentDetail,
+            className: 'mb-4'
+          });
+          const {
+            wrapper: myRegistrationWrapper,
+            toggle: myRegistrationToggle,
+            body: myRegistrationBody
+          } = myRegistrationAction;
 
           const myRegistrationDescription =
             el(
@@ -8231,11 +8073,6 @@ const fieldLabels = {
             myRegistrationDescription,
             myRegistrationMessage,
             myRegistrationForm
-          );
-
-          myRegistrationWrapper.append(
-            myRegistrationToggle,
-            myRegistrationBody
           );
 
           root.append(

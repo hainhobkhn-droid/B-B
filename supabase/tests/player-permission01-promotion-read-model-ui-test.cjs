@@ -62,6 +62,46 @@ function walk(node) {
   ];
 }
 
+
+function actionAccordionFactory(make) {
+  return ({
+    root = null,
+    title,
+    semantic = 'neutral',
+    group = null,
+    onOpen = null,
+    render = null,
+    className = ''
+  }) => {
+    const wrapper = make('section', '', `action-accordion action-accordion-${semantic}${className ? ` ${className}` : ''}`);
+    const toggle = make('button', title, 'action-accordion-toggle');
+    const body = make('div', '', 'action-accordion-panel');
+    const controller = {
+      wrapper,
+      toggle,
+      body,
+      title,
+      setExpanded(open) {
+        if (open && Array.isArray(group)) {
+          group.forEach(item => item !== controller && item.setExpanded(false));
+        }
+        const wasOpen = !body.hidden;
+        body.hidden = !open;
+        toggle.attributes['aria-expanded'] = String(!!open);
+        if (open && !wasOpen && onOpen) return onOpen(controller);
+      }
+    };
+    body.hidden = true;
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => controller.setExpanded(body.hidden));
+    wrapper.append(toggle, body);
+    if (Array.isArray(group)) group.push(controller);
+    if (root) root.append(wrapper);
+    if (render) render(body, controller);
+    return controller;
+  };
+}
+
 function content(node) {
   return [
     node.textContent,
@@ -166,6 +206,7 @@ function mount({
       node.addEventListener('click', fn);
       return node;
     },
+    actionAccordion: actionAccordionFactory(make),
     el: make,
     rows: table => state.data[table] || [],
     raw: value => value == null ? '' : String(value),

@@ -9,20 +9,60 @@ const original={id:'original',payment_id:'pay',transaction_type:'THU_QUY_THUA_TR
 const refund={id:'refund',reversal_of_transaction_id:'original',payment_id:null,transaction_type:'HOAN_TIEN',amount:40000};
 const num=x=>x==null?null:Number(x);
 class Element{
- constructor(tag,text=''){this.tag=tag;this.textContent=text??'';this.children=[];this.events={};this.value='';this.dataset={};this.style={};this.classList={add(){}};}
+ constructor(tag,text='',className=''){this.tag=tag;this.textContent=text??'';this.className=className||'';this.children=[];this.events={};this.attributes={};this.value='';this.dataset={};this.style={};this.classList={add(){}};}
  append(...nodes){for(const n of nodes){this.children.push(n);if(n&&typeof n==='object')n.parent=this;}}
  replaceChildren(...nodes){this.children=[];this.append(...nodes);}
  set innerHTML(v){this.children=[];} get innerHTML(){return '';}
  get options(){return this.children;}
  addEventListener(name,fn){this.events[name]=fn;}
 }
+
+function actionAccordionFactory(make) {
+  return ({
+    root = null,
+    title,
+    semantic = 'neutral',
+    group = null,
+    onOpen = null,
+    render = null,
+    className = ''
+  }) => {
+    const wrapper = make('section', '', `action-accordion action-accordion-${semantic}${className ? ` ${className}` : ''}`);
+    const toggle = make('button', title, 'action-accordion-toggle');
+    const body = make('div', '', 'action-accordion-panel');
+    const controller = {
+      wrapper,
+      toggle,
+      body,
+      title,
+      setExpanded(open) {
+        if (open && Array.isArray(group)) {
+          group.forEach(item => item !== controller && item.setExpanded(false));
+        }
+        const wasOpen = !body.hidden;
+        body.hidden = !open;
+        toggle.attributes['aria-expanded'] = String(!!open);
+        if (open && !wasOpen && onOpen) return onOpen(controller);
+      }
+    };
+    body.hidden = true;
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => controller.setExpanded(body.hidden));
+    wrapper.append(toggle, body);
+    if (Array.isArray(group)) group.push(controller);
+    if (root) root.append(wrapper);
+    if (render) render(body, controller);
+    return controller;
+  };
+}
+
 function all(n){return [n,...n.children.flatMap(c=>c instanceof Element?all(c):[])];}
 function text(n){return [n.textContent,...n.children.map(c=>c instanceof Element?text(c):String(c))].join(' ');}
 function mount(mode='admin',partial=false,missing=false){
  const root=new Element('main'),global=new Element('div'),grids=[],tables=[],calls=[];
  const data={fund_contributions:[{...contribution}],fund_payments:[{...payment}],fund_transactions:[{...original},{...refund}],fund_obligation_campaigns:[],players:[{id:'p',full_name:'Test Player',status:'ACTIVE'}],matches:[{id:'m',status:'APPROVED',played_at:'2026-09-03T10:00:00Z',team_a_score:11,team_b_score:9}]};
  if(mode==='collector')data.fund_transactions=[];
- const el=(tag,t,cls)=>new Element(tag,t);
+ const el=(tag,t,cls)=>new Element(tag,t,cls);
  const document={createElement:el,body:new Element('body')};
  const window={};vm.runInNewContext(source,{window,document,Option:function(t,v){const n=el('option',t);n.value=v;return n;},console});
  let api;
@@ -31,6 +71,7 @@ function mount(mode='admin',partial=false,missing=false){
  el,rows:t=>data[t]||[],raw:x=>x==null?'':String(x),upper:x=>String(x||'').toUpperCase(),num,
  pick:(o,...keys)=>keys.map(k=>o[k]).find(v=>v!=null),grid:(n,items)=>grids.push(items),number:String,dateCol:()=>[],col:()=>[],money:String,moneyCol:()=>[],ready:()=>!partial,recent:x=>x,settings(){},sources(){},table:(n,title,rows)=>tables.push({title,rows}),panel(){},notice:(n,t)=>n.textContent=t,playerName:()=> 'Test Player',matchCode:()=> 'M1',
  button:(label,fn)=>{const n=el('button',label);n.events.click=fn;return n;},
+ actionAccordion:actionAccordionFactory(el),
  load:async()=>{},render:()=>{root.replaceChildren();grids.length=0;tables.length=0;api.fund();},
  client:{rpc:async(name,args)=>{calls.push({name,args});
  if(name==='record_member_fund_payment'){
@@ -77,7 +118,7 @@ const batch=f=>all(f.root).find(n=>n.tag==='div'&&n.children[0]?.textContent==='
   const f=mount(mode), b=batch(f);assert(b);checks++;
   const modeSwitch=all(f.root).find(n=>n.tag==='select'&&n.children.some(o=>o.value==='batch'));
   eq(modeSwitch.value,'batch');eq(b.hidden,false);eq(f.collection().hidden,true);
-  eq(all(f.root).filter(n=>n.tag==='details'&&n.children[0]?.textContent==='Thu quỹ').length,1);
+  eq(all(f.root).filter(n=>n.tag==='section'&&n.className.includes('action-accordion')&&n.children[0]?.textContent==='Thu quỹ').length,1);
   modeSwitch.value='single';modeSwitch.events.change();eq(b.hidden,true);eq(f.collection().hidden,false);
   modeSwitch.value='batch';modeSwitch.events.change();eq(b.hidden,false);eq(f.collection().hidden,true);
   const select=all(b).find(n=>n.tag==='select');select.value='p';select.events.change();

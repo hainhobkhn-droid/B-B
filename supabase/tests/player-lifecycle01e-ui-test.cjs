@@ -77,6 +77,46 @@ function walk(node) {
   ];
 }
 
+
+function actionAccordionFactory(make) {
+  return ({
+    root = null,
+    title,
+    semantic = 'neutral',
+    group = null,
+    onOpen = null,
+    render = null,
+    className = ''
+  }) => {
+    const wrapper = make('section', '', `action-accordion action-accordion-${semantic}${className ? ` ${className}` : ''}`);
+    const toggle = make('button', title, 'action-accordion-toggle');
+    const body = make('div', '', 'action-accordion-panel');
+    const controller = {
+      wrapper,
+      toggle,
+      body,
+      title,
+      setExpanded(open) {
+        if (open && Array.isArray(group)) {
+          group.forEach(item => item !== controller && item.setExpanded(false));
+        }
+        const wasOpen = !body.hidden;
+        body.hidden = !open;
+        toggle.attributes['aria-expanded'] = String(!!open);
+        if (open && !wasOpen && onOpen) return onOpen(controller);
+      }
+    };
+    body.hidden = true;
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => controller.setExpanded(body.hidden));
+    wrapper.append(toggle, body);
+    if (Array.isArray(group)) group.push(controller);
+    if (root) root.append(wrapper);
+    if (render) render(body, controller);
+    return controller;
+  };
+}
+
 function content(node) {
   return [
     node.textContent,
@@ -240,6 +280,10 @@ function mount({
     isAdmin: () =>
       role === 'ADMIN',
     canManageMembers: () =>
+      role === 'ADMIN',
+    canManagePlayers: () =>
+      role === 'ADMIN',
+    canManagePlayerLifecycle: () =>
       role === 'ADMIN' || canManage,
     button: (label, fn, className = 'btn') => {
       const button = make(
@@ -250,6 +294,7 @@ function mount({
       button.addEventListener('click', fn);
       return button;
     },
+    actionAccordion: actionAccordionFactory(make),
     el: make,
     rows: table =>
       context.state.data[table] || [],
@@ -320,25 +365,25 @@ function findById(fixture, id) {
     admin.all()
       .filter(node =>
         node.tag === 'button' &&
-        node.className === 'app-action-toggle'
+        node.className === 'action-accordion-toggle'
       )
       .map(node => node.textContent),
     [
-      '▶ Tạo VĐV',
-      '▶ Chuyển VĐV khách thành thành viên',
-      '▶ Sửa thông tin VĐV',
-      '▶ Điều chỉnh Rating ban đầu',
-      '▶ Vòng đời VĐV',
-      '▶ Xóa vĩnh viễn VĐV'
+      'Tạo VĐV',
+      'Chuyển VĐV khách thành thành viên',
+      'Sửa thông tin VĐV',
+      'Điều chỉnh Rating ban đầu',
+      'Vòng đời VĐV',
+      'Xóa vĩnh viễn VĐV'
     ]
   );
   const lifecycleToggle = findByText(
     admin,
     'button',
-    '▶ Vòng đời VĐV'
+    'Vòng đời VĐV'
   );
   assert(lifecycleToggle);
-  assert(findByText(admin, 'button', '▶ Xóa vĩnh viễn VĐV'));
+  assert(findByText(admin, 'button', 'Xóa vĩnh viễn VĐV'));
   await fire(lifecycleToggle, 'click');
   assert(admin.calls.some(call =>
     call.name === 'get_player_lifecycle_preview'
@@ -365,7 +410,7 @@ function findById(fixture, id) {
   const inactive = mount({ status: 'INACTIVE' });
   assert(inactive.text().includes('Ngừng hoạt động'));
   await fire(
-    findByText(inactive, 'button', '▶ Vòng đời VĐV'),
+    findByText(inactive, 'button', 'Vòng đời VĐV'),
     'click'
   );
   assert(findByText(inactive, 'button', 'Kích hoạt lại'));
@@ -386,15 +431,15 @@ function findById(fixture, id) {
     role: 'MEMBER',
     canManage: true
   });
-  assert(findByText(manager, 'button', '▶ Vòng đời VĐV'));
-  assert(!findByText(manager, 'button', '▶ Xóa vĩnh viễn VĐV'));
+  assert(findByText(manager, 'button', 'Vòng đời VĐV'));
+  assert(!findByText(manager, 'button', 'Xóa vĩnh viễn VĐV'));
 
   const member = mount({
     role: 'MEMBER',
     canManage: false
   });
-  assert(!findByText(member, 'button', '▶ Vòng đời VĐV'));
-  assert(!findByText(member, 'button', '▶ Xóa vĩnh viễn VĐV'));
+  assert(!findByText(member, 'button', 'Vòng đời VĐV'));
+  assert(!findByText(member, 'button', 'Xóa vĩnh viễn VĐV'));
   assert(member.text().includes('Ngừng hoạt động') === false);
 
   const blockedDelete = mount({
@@ -406,7 +451,7 @@ function findById(fixture, id) {
     }
   });
   await fire(
-    findByText(blockedDelete, 'button', '▶ Xóa vĩnh viễn VĐV'),
+    findByText(blockedDelete, 'button', 'Xóa vĩnh viễn VĐV'),
     'click'
   );
   assert(blockedDelete.text().includes('không thể xóa vĩnh viễn'));
@@ -414,7 +459,7 @@ function findById(fixture, id) {
 
   const deleteAllowed = mount();
   await fire(
-    findByText(deleteAllowed, 'button', '▶ Xóa vĩnh viễn VĐV'),
+    findByText(deleteAllowed, 'button', 'Xóa vĩnh viễn VĐV'),
     'click'
   );
   const deleteReason = findById(
@@ -430,7 +475,7 @@ function findById(fixture, id) {
 
   const racedDelete = mount({ deleteRace: true });
   await fire(
-    findByText(racedDelete, 'button', '▶ Xóa vĩnh viễn VĐV'),
+    findByText(racedDelete, 'button', 'Xóa vĩnh viễn VĐV'),
     'click'
   );
   const racedReason = findById(

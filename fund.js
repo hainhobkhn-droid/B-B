@@ -11,6 +11,7 @@
         canManageFund,
         canCollectFund,
         button,
+        actionAccordion,
         el,
         rows,
         raw,
@@ -1069,26 +1070,16 @@
         'Thao tác quỹ',
         sectionRoot => {
           // FUND ACTIONS TREE V1
+          const fundActionGroup = [];
 
           // FUND03B CREATE OBLIGATION CAMPAIGN
-          const campaignDetails =
-            document.createElement(
-              'details'
-            );
-
-          campaignDetails.className =
-            'fund-action fund-action-income';
-
-          const campaignSummary =
-            document.createElement(
-              'summary'
-            );
-
-          campaignSummary.className =
-            'fund-action-summary';
-
-          campaignSummary.textContent =
-            'Tạo khoản phải đóng';
+          const campaignAction = actionAccordion({
+            group: fundActionGroup,
+            title: 'Tạo khoản phải đóng',
+            semantic: 'create',
+            icon: '+'
+          });
+          const campaignDetails = campaignAction.wrapper;
 
           const campaignContent =
             el(
@@ -1520,29 +1511,17 @@
             campaignBox
           );
 
-          campaignDetails.append(
-            campaignSummary,
+          campaignAction.body.append(
             campaignContent
           );
 
-          const collectionDetails =
-            document.createElement(
-              'details'
-            );
-
-          collectionDetails.className =
-            'fund-action fund-action-income';
-
-          const collectionSummary =
-            document.createElement(
-              'summary'
-            );
-
-          collectionSummary.className =
-            'fund-action-summary';
-
-          collectionSummary.textContent =
-            'Thu quỹ';
+          const collectionAction = actionAccordion({
+            group: fundActionGroup,
+            title: 'Thu quỹ',
+            semantic: 'create',
+            icon: '+'
+          });
+          const collectionDetails = collectionAction.wrapper;
 
           const collectionContent =
             el(
@@ -2198,26 +2177,15 @@
             message
           );
 
-          
+
           // FUND EXPENSE UI V1
-          const expenseDetails =
-            document.createElement(
-              'details'
-            );
-
-          expenseDetails.className =
-            'fund-action fund-action-expense';
-
-          const expenseSummary =
-            document.createElement(
-              'summary'
-            );
-
-          expenseSummary.className =
-            'fund-action-summary';
-
-          expenseSummary.textContent =
-            'Chi quỹ';
+          const expenseAction = actionAccordion({
+            group: fundActionGroup,
+            title: 'Chi quỹ',
+            semantic: 'warning',
+            icon: '−'
+          });
+          const expenseDetails = expenseAction.wrapper;
 
           const expenseContent =
             el(
@@ -2626,16 +2594,14 @@
             expenseMessage
           );
 
-          expenseDetails.append(
-            expenseSummary,
+          expenseAction.body.append(
             expenseContent
           );
 collectionContent.append(
             wrapper
           );
 
-          collectionDetails.append(
-            collectionSummary,
+          collectionAction.body.append(
             collectionContent
           );
 
@@ -2796,7 +2762,7 @@ collectionContent.append(
           }
           if (state.fundBatchReceipt?.actor === batchOwner && state.fundBatchReceipt?.data) {
             const receipt = state.fundBatchReceipt.data;
-            collectionDetails.open = true;
+            collectionAction.setExpanded(true);
             batchResult.append(el('p', `Đã thu ${money(receipt.requested_amount)} • ${receipt.allocation_count} khoản • Còn ${money(receipt.total_outstanding_after)}`, 'notice'));
             table(batchResult, 'Phân bổ đã ghi nhận', receipt.allocations,
               [['Khoản', c => String(c.contribution_id).slice(0, 8)],
@@ -2824,36 +2790,6 @@ collectionContent.append(
             wrapper.hidden = currentCollectionMode !== 'single';
           });
           collectionContent.replaceChildren(modeLabel, batchDetails, wrapper);
-
-          const fundActions = [];
-          if (canCollectFund()) fundActions.push(collectionDetails);
-          if (canManageFund()) fundActions.push(campaignDetails, expenseDetails);
-
-          fundActions.forEach(
-            action => {
-              action.addEventListener(
-                'toggle',
-                () => {
-                  if (!action.open) {
-                    return;
-                  }
-
-                  fundActions
-                    .filter(
-                      other =>
-                        other !==
-                        action
-                    )
-                    .forEach(
-                      other => {
-                        other.open =
-                          false;
-                      }
-                    );
-                }
-              );
-            }
-          );
 
           if (canCollectFund()) sectionRoot.append(collectionDetails);
           if (canManageFund()) {
@@ -3776,7 +3712,7 @@ collectionContent.append(
           historyWorkspace.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
         };
 
-      
+
       }
 
       return {

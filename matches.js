@@ -13,6 +13,7 @@
       isAdmin,
       canApproveMatches,
   button,
+      actionAccordion,
       panel,
       el,
       rows,
@@ -34,79 +35,6 @@
       // PICK UI System v1
       // ============================================================
 
-      function makeMatchActionAccordion(
-        section,
-        initiallyOpen = false
-      ) {
-        if (!section) {
-          return;
-        }
-
-        section.classList.add(
-          'match-action-collapsible'
-        );
-
-        const heading =
-          section.querySelector(
-            ':scope > h2:first-child'
-          );
-
-        if (!heading) {
-          return;
-        }
-
-        heading.classList.add(
-          'match-action-toggle'
-        );
-
-        heading.tabIndex = 0;
-        heading.setAttribute(
-          'role',
-          'button'
-        );
-
-        const setOpen = open => {
-          section.classList.toggle(
-            'is-open',
-            !!open
-          );
-
-          heading.setAttribute(
-            'aria-expanded',
-            open
-              ? 'true'
-              : 'false'
-          );
-        };
-
-        const toggle = () => {
-          setOpen(
-            !section.classList.contains(
-              'is-open'
-            )
-          );
-        };
-
-        heading.addEventListener(
-          'click',
-          toggle
-        );
-
-        heading.addEventListener(
-          'keydown',
-          event => {
-            if (
-              event.key === 'Enter' ||
-              event.key === ' '
-            ) {
-              event.preventDefault();
-              toggle();
-            }
-          }
-        );
-
-        setOpen(initiallyOpen);
-      }
 
       function prepareMatchFormLayout(
         section,
@@ -446,20 +374,13 @@
           return;
         }
 
-        const section = panel(
-          'Tạo trận mới',
-          root
-        );
-
-        section.classList.add(
-          'match-action-card',
-          'match-action-create'
-        );
-
-        makeMatchActionAccordion(
-          section,
-          false
-        );
+        const section = actionAccordion({
+          root,
+          title: 'Tạo trận mới',
+          semantic: 'create',
+          icon: '+',
+          className: 'match-action-card match-action-create'
+        }).body;
 
         queueMicrotask(
           () =>
@@ -1629,20 +1550,14 @@
           return;
         }
 
-        const section = panel(
-          'Tạo trận của tôi',
-          root
-        );
-
-        section.classList.add(
-          'match-action-card',
-          'match-action-create'
-        );
-
-        makeMatchActionAccordion(
-          section,
-          initiallyOpen
-        );
+        const section = actionAccordion({
+          root,
+          title: 'Tạo trận của tôi',
+          semantic: 'create',
+          icon: '+',
+          expanded: initiallyOpen,
+          className: 'match-action-card match-action-create'
+        }).body;
 
         queueMicrotask(
           () =>
@@ -7532,26 +7447,13 @@ function voidApprovedMatchForm(root) {
           return;
         }
 
-        const section = panel(
-          '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
-          root
-        );
-
-        section.classList.add(
-          'match-action-card',
-          'match-action-approve',
-          'match-confirm-section'
-        );
-
-        makeMatchActionAccordion(
-          section,
-          false
-        );
-
-        const heading =
-          section.querySelector(
-            ':scope > h2:first-child'
-          );
+        const section = actionAccordion({
+          root,
+          title: '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
+          semantic: 'warning',
+          icon: '!',
+          className: 'match-action-card match-action-approve match-confirm-section'
+        }).body;
 
         const message = el(
           'div',

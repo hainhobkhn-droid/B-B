@@ -12,6 +12,7 @@
         client,
         isAdmin,
         button,
+        actionAccordion,
         panel,
         el,
         rows,
@@ -302,13 +303,13 @@
 
       // Account presentation only; existing loaders and action handlers are unchanged.
       function accountAction(root, title, renderBody, variant = 'info') {
-        const action = el('details', null, 'app-action app-action-' + variant);
-        const toggle = el('summary', title, 'app-action-toggle');
-        const body = el('div', null, 'app-action-body');
-        action.append(toggle, body);
-        root.append(action);
-        renderBody(body);
-        return action;
+        const semantic = variant === 'success' ? 'create' : variant;
+        return actionAccordion({
+          root,
+          title,
+          semantic,
+          render: renderBody
+        }).wrapper;
       }
 
       function memberPersonalSummary(root, player) {

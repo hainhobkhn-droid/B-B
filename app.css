@@ -3839,43 +3839,6 @@ td:first-child{
    docs/PICK-UI-SYSTEM-V1.md
    ========================================================= */
 
-.match-action-collapsible{
-  position:relative;
-}
-
-.match-action-collapsible > h2:first-child{
-  cursor:pointer;
-  user-select:none;
-}
-
-.match-action-collapsible > h2:first-child::after{
-  content:"\203A";
-  margin-left:auto;
-  font-size:24px;
-  font-weight:700;
-  line-height:1;
-  opacity:.55;
-  transform:rotate(90deg);
-  transition:transform var(--ease);
-}
-
-.match-action-collapsible.is-open > h2:first-child::after{
-  transform:rotate(-90deg);
-}
-
-.match-action-collapsible:not(.is-open) > :not(h2:first-child){
-  display:none!important;
-}
-
-.match-action-collapsible:not(.is-open){
-  padding-bottom:0!important;
-}
-
-.match-action-collapsible:not(.is-open) > h2:first-child{
-  margin-bottom:0!important;
-  border-bottom:0;
-}
-
 .match-form-grid{
   align-items:start;
 }
@@ -5209,11 +5172,6 @@ tbody tr:hover{
 /* PICK Players UI v1 — module scope, shared Theme V2 tokens. */
 .players-ui{min-width:0;}
 .players-ui [hidden]{display:none!important;}
-.players-ui .app-action{margin-bottom:10px;}
-.players-ui .app-action-toggle{min-height:54px;font-size:14px;line-height:1.35;}
-.players-ui .app-action-toggle::before{width:30px;height:30px;flex-basis:30px;}
-.players-ui .app-action-body .panel{margin:0;padding:12px 0 0;border:0;box-shadow:none;background:transparent;}
-.players-ui .app-action-body .panel:hover{transform:none;}
 .players-ui .field,
 .players-ui .form-group{min-width:0;max-width:100%;}
 .players-ui .form-actions{display:flex;flex-wrap:wrap;gap:8px;}
@@ -5232,9 +5190,6 @@ tbody tr:hover{
 .players-ui .player-state-neutral{background:var(--surface-3);color:var(--text-2);}
 .players-ui .player-self-badge{background:var(--club-accent-soft);color:var(--brand-2);}
 .players-ui .player-status-readonly{display:flex;align-items:center;min-height:44px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
-.players-ui .app-action-danger{border-left:4px solid var(--red);}
-.players-ui .app-action-danger > .app-action-toggle{background:var(--red-bg);color:var(--red);}
-.players-ui .app-action-danger > .app-action-toggle::before{content:'!';background:#f7deda;color:var(--red);}
 .players-ui .player-lifecycle-preview{display:grid;gap:10px;min-width:0;margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:var(--ui-card-radius,12px);background:var(--surface-2);overflow-wrap:anywhere;}
 .players-ui .player-lifecycle-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0;}
 .players-ui .player-lifecycle-reference-total{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
@@ -5246,7 +5201,6 @@ tbody tr:hover{
 .players-ui .player-lifecycle-danger-note{border-color:#efcbc6;background:var(--red-bg);color:#7d342e;}
 .players-ui .player-lifecycle-delete-ready{margin:0;border-color:#b8d8c3;background:#f3faf5;color:#276641;}
 .players-ui .player-lifecycle-delete-blocked{margin:0;border-color:#efcbc6;background:var(--red-bg);color:#7d342e;}
-.players-ui .player-lifecycle-warning{background:#fff8f1!important;border-color:#e4b88f!important;color:#934f20!important;}
 .players-ui .player-lifecycle-delete{background:var(--red-bg)!important;border-color:#dca8a2!important;color:var(--red)!important;}
 .players-ui .player-lifecycle-delete:hover:not(:disabled){background:#f7deda!important;}
 .players-ui .player-card-rating{grid-area:rating;display:flex;flex-direction:column;align-items:flex-end;justify-self:stretch;white-space:nowrap;font-variant-numeric:tabular-nums;}
@@ -5292,7 +5246,6 @@ tbody tr:hover{
   .players-ui .player-promotion-actions > .btn{width:100%;}
   .players-ui .player-lifecycle-actions > .btn{width:100%;}
   .players-ui .player-lifecycle-references ul{columns:1;}
-  .players-ui .app-action-body{padding:0 12px 12px;}
 }
 
 /* PICK Ranking UI v1 — scoped presentation; Theme V2 shared tokens. */
@@ -6343,3 +6296,189 @@ tbody tr:hover{
   }
 }
 /* /MATCH DATE FILTER DESKTOP ALIGNMENT */
+
+
+/* =========================================================
+   WP-C4 SHARED ACTION ACCORDION
+   PICK UI System V2 — substantial action workflows
+   ========================================================= */
+
+.action-accordion{
+  --action-accent:#87978e;
+  --action-ink:var(--text-2);
+  --action-soft:var(--surface-2);
+  overflow:hidden;
+  border:1px solid var(--border);
+  border-left:4px solid var(--action-accent);
+  border-radius:var(--ui-card-radius,12px);
+  background:var(--surface);
+  box-shadow:var(--shadow-1);
+  transition:
+    transform var(--ease),
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+.action-accordion + .action-accordion{
+  margin-top:var(--ui-card-gap,10px);
+}
+
+.action-accordion:hover{
+  transform:translateY(-1px);
+  border-color:var(--border-strong);
+  box-shadow:var(--shadow-2);
+}
+
+.action-accordion.is-expanded{
+  border-color:var(--action-accent);
+  box-shadow:var(--shadow-2);
+}
+
+.action-accordion-toggle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-height:54px;
+  padding:11px 13px;
+  border:0;
+  background:var(--action-soft);
+  color:var(--action-ink);
+  text-align:left;
+  font-size:14px;
+  font-weight:760;
+  line-height:1.35;
+  cursor:pointer;
+  user-select:none;
+}
+
+.action-accordion-toggle:hover{
+  filter:brightness(.985);
+}
+
+.action-accordion-icon{
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  border-radius:9px;
+  background:color-mix(in srgb,var(--action-accent) 16%,var(--surface));
+  color:var(--action-accent);
+  font-size:17px;
+  font-weight:850;
+  line-height:1;
+}
+
+.action-accordion-title{
+  min-width:0;
+  flex:1 1 auto;
+  overflow-wrap:anywhere;
+}
+
+.action-accordion-chevron{
+  margin-left:auto;
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:22px;
+  font-weight:750;
+  line-height:1;
+  transition:transform var(--ease);
+}
+
+.action-accordion.is-expanded .action-accordion-chevron{
+  transform:rotate(90deg);
+}
+
+.action-accordion-panel{
+  padding:0 13px 13px;
+  min-width:0;
+}
+
+.action-accordion-panel > :first-child{
+  margin-top:12px;
+}
+
+.action-accordion-create{
+  --action-accent:var(--green);
+  --action-ink:#276641;
+  --action-soft:var(--green-bg);
+}
+
+.action-accordion-info{
+  --action-accent:var(--blue);
+  --action-ink:#315ca1;
+  --action-soft:var(--blue-bg);
+}
+
+.action-accordion-warning{
+  --action-accent:var(--amber);
+  --action-ink:#855714;
+  --action-soft:var(--amber-bg);
+}
+
+.action-accordion-danger{
+  --action-accent:var(--red);
+  --action-ink:#8f3d34;
+  --action-soft:var(--red-bg);
+}
+
+.action-accordion-neutral{
+  --action-accent:var(--brand-2);
+  --action-ink:var(--brand-2);
+  --action-soft:var(--surface-2);
+}
+
+.players-ui .action-accordion-panel .panel,
+.account-ui .action-accordion-panel > .panel{
+  margin:0;
+  padding:12px 0 0;
+  border:0;
+  box-shadow:none;
+  background:transparent;
+}
+
+.players-ui .action-accordion-panel .panel:hover,
+.account-ui .action-accordion-panel > .panel:hover{
+  transform:none;
+}
+
+.account-ui .action-accordion-panel > .panel:only-child > h2:first-child{
+  display:none;
+}
+
+.account-ui .system-config-ui > .action-accordion{
+  margin-top:var(--ui-card-section-gap,12px);
+}
+
+.players-ui .player-lifecycle-danger{
+  background:var(--red-bg)!important;
+  border-color:#dca8a2!important;
+  color:var(--red)!important;
+}
+
+.players-ui .player-lifecycle-danger:hover:not(:disabled){
+  background:#f7deda!important;
+}
+
+@media (max-width:700px){
+  .action-accordion-toggle{
+    min-height:50px;
+    padding:10px;
+    gap:9px;
+    font-size:13px;
+  }
+
+  .action-accordion-icon{
+    width:28px;
+    height:28px;
+    flex-basis:28px;
+    border-radius:8px;
+    font-size:16px;
+  }
+
+  .action-accordion-panel{
+    padding:0 10px 10px;
+  }
+}
+/* /WP-C4 SHARED ACTION ACCORDION */

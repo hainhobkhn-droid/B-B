@@ -71,6 +71,46 @@ function walk(node) {
   ];
 }
 
+
+function actionAccordionFactory(make) {
+  return ({
+    root = null,
+    title,
+    semantic = 'neutral',
+    group = null,
+    onOpen = null,
+    render = null,
+    className = ''
+  }) => {
+    const wrapper = make('section', '', `action-accordion action-accordion-${semantic}${className ? ` ${className}` : ''}`);
+    const toggle = make('button', title, 'action-accordion-toggle');
+    const body = make('div', '', 'action-accordion-panel');
+    const controller = {
+      wrapper,
+      toggle,
+      body,
+      title,
+      setExpanded(open) {
+        if (open && Array.isArray(group)) {
+          group.forEach(item => item !== controller && item.setExpanded(false));
+        }
+        const wasOpen = !body.hidden;
+        body.hidden = !open;
+        toggle.attributes['aria-expanded'] = String(!!open);
+        if (open && !wasOpen && onOpen) return onOpen(controller);
+      }
+    };
+    body.hidden = true;
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => controller.setExpanded(body.hidden));
+    wrapper.append(toggle, body);
+    if (Array.isArray(group)) group.push(controller);
+    if (root) root.append(wrapper);
+    if (render) render(body, controller);
+    return controller;
+  };
+}
+
 function content(node) {
   return [
     node.textContent,
@@ -182,11 +222,14 @@ function mount({
     },
     isAdmin: () => role === 'ADMIN',
     canManageMembers: () => role === 'ADMIN' || canManage,
+    canManagePlayers: () => role === 'ADMIN' || canManage,
+    canManagePlayerLifecycle: () => role === 'ADMIN' || canManage,
     button: (label, fn, className = 'btn') => {
       const node = make('button', label, className);
       node.addEventListener('click', fn);
       return node;
     },
+    actionAccordion: actionAccordionFactory(make),
     el: make,
     rows: table => context.state.data[table] || [],
     raw: value => value == null ? '' : String(value),
@@ -254,18 +297,18 @@ function fillValid(fixture, rating = '4.250', reason = 'Đánh giá đầu vào 
   console.log('PASS Rating selector enabled after connected accordion mount');
   const manager = mount({ role: 'MEMBER', canManage: true });
   const member = mount({ role: 'MEMBER', canManage: false });
-  assert(findByText(admin, 'button', '▶ Điều chỉnh Rating ban đầu'));
-  assert(!findByText(manager, 'button', '▶ Điều chỉnh Rating ban đầu'));
-  assert(!findByText(member, 'button', '▶ Điều chỉnh Rating ban đầu'));
+  assert(findByText(admin, 'button', 'Điều chỉnh Rating ban đầu'));
+  assert(!findByText(manager, 'button', 'Điều chỉnh Rating ban đầu'));
+  assert(!findByText(member, 'button', 'Điều chỉnh Rating ban đầu'));
   assert.deepEqual(
-    admin.all().filter(node => node.tag === 'button' && node.className === 'app-action-toggle').map(node => node.textContent),
+    admin.all().filter(node => node.tag === 'button' && node.className === 'action-accordion-toggle').map(node => node.textContent),
     [
-      '▶ Tạo VĐV',
-      '▶ Chuyển VĐV khách thành thành viên',
-      '▶ Sửa thông tin VĐV',
-      '▶ Điều chỉnh Rating ban đầu',
-      '▶ Vòng đời VĐV',
-      '▶ Xóa vĩnh viễn VĐV'
+      'Tạo VĐV',
+      'Chuyển VĐV khách thành thành viên',
+      'Sửa thông tin VĐV',
+      'Điều chỉnh Rating ban đầu',
+      'Vòng đời VĐV',
+      'Xóa vĩnh viễn VĐV'
     ]
   );
   console.log('PASS ADMIN-only action placement and delegated/MEMBER visibility');
@@ -374,8 +417,10 @@ function fillValid(fixture, rating = '4.250', reason = 'Đánh giá đầu vào 
   assert(source.includes('function promoteGuestForm'));
   assert(source.includes('function playerLifecycleManager'));
   assert(appSource.includes("'get_signup_rating_config'"));
-  assert(cssSource.includes('.players-ui .app-action-toggle{min-height:54px'));
-  assert(cssSource.includes('.players-ui .app-action-toggle::before{width:30px'));
+  assert(cssSource.includes('.action-accordion-toggle{'));
+  assert(cssSource.includes('min-height:54px;'));
+  assert(cssSource.includes('.action-accordion-icon{'));
+  assert(cssSource.includes('width:30px;'));
   assert(cssSource.includes('.players-ui .form-actions > .primary{flex-basis:100%;}'));
   assert(source.includes("el('div', null, 'form-grid')"));
   console.log('PASS creation/signup/promotion/lifecycle source boundaries and shared responsive Action Accordion');

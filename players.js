@@ -11,6 +11,7 @@
       canManagePlayers,
       canManagePlayerLifecycle,
       button,
+      actionAccordion,
       el,
       rows,
       raw,
@@ -39,132 +40,39 @@
     }
 
     // PLAYER ACTIONS VISUAL V1
-    
+
     // PLAYER ADMIN ACCORDION V1
     const adminActionSections = [];
-function collapsibleAdminSection(
+    function collapsibleAdminSection(
       root,
       title,
       buildContent,
-      variant = 'neutral'
+      variant = 'neutral',
+      onOpen = null
     ) {
-      const wrapper =
-        el(
-          'div',
-          null,
-          `app-action app-action-${variant} mb-3`
-        );
-
-      const toggle =
-        button(
-          `▶ ${title}`,
-          () => {
-            const willOpen =
-              body.hidden;
-
-            if (willOpen) {
-              adminActionSections.forEach(
-                item => {
-                  if (
-                    item.body !==
-                    body
-                  ) {
-                    item.body.hidden =
-                      true;
-                    item.toggle.setAttribute('aria-expanded', 'false');
-
-                    item.toggle.textContent =
-                      `▶ ${item.title}`;
-                  }
-                }
-              );
-            }
-
-            body.hidden =
-              !willOpen;
-            toggle.setAttribute('aria-expanded', String(willOpen));
-
-            toggle.textContent =
-              body.hidden
-                ? `▶ ${title}`
-                : `▼ ${title}`;
-          },
-          'app-action-toggle'
-        );
-
-      toggle.type =
-        'button';
-
-      const body =
-        el(
-          'div',
-          null,
-          'app-action-body'
-        );
-
-      body.hidden =
-        true;
-
-      const inner =
-        el(
-          'div'
-        );
-
-      const close =
-        button(
-          'Thu gọn',
-          () => {
-            body.hidden =
-              true;
-            toggle.setAttribute('aria-expanded', 'false');
-
-            toggle.textContent =
-              `▶ ${title}`;
-          },
-          'btn player-section-close mt-3'
-        );
-
-      close.type =
-        'button';
-
-      body.id = 'player-action-' + adminActionSections.length;
-      toggle.setAttribute('aria-controls', body.id);
-      toggle.setAttribute('aria-expanded', 'false');
-      body.append(
-        inner,
-        close
-      );
-
-      wrapper.append(
-        toggle,
-        body
-      );
-
-      root.append(
-        wrapper
-      );
-
-      buildContent(
-        inner
-      );
-
-      // The accordion already names the action; avoid a repeated panel heading.
-      const repeatedHeading = inner.querySelector('.panel > h2');
-      if (repeatedHeading) repeatedHeading.hidden = true;
-      adminActionSections.push(
-        {
-          title,
-          toggle,
-          body
+      const semantic = variant === 'success' ? 'create' : variant;
+      const controller = actionAccordion({
+        root,
+        title,
+        semantic,
+        group: adminActionSections,
+        className: 'mb-3',
+        onOpen,
+        render(body, action) {
+          const inner = el('div');
+          const close = button(
+            'Thu gọn',
+            () => action.setExpanded(false),
+            'btn player-section-close mt-3'
+          );
+          body.append(inner);
+          buildContent(inner);
+          body.append(close);
         }
-      );
-
-      return {
-        wrapper,
-        toggle,
-        body
-      };
+      });
+      return controller;
     }
+
     function createPlayerForm(root) {
       if (!canManagePlayers()) {
         return;
@@ -1884,7 +1792,7 @@ function collapsibleAdminSection(
         submit.className = deleteMode
           ? 'btn player-lifecycle-delete'
           : status === 'ACTIVE'
-            ? 'btn player-lifecycle-warning'
+            ? 'btn player-lifecycle-danger'
             : 'btn primary';
       }
 
@@ -3761,15 +3669,8 @@ function collapsibleAdminSection(
               container
             );
           },
-          'info'
-        );
-        promotion.toggle.addEventListener(
-          'click',
-          () => {
-            if (!promotion.body.hidden) {
-              void loadPromotion?.();
-            }
-          }
+          'info',
+          () => loadPromotion?.()
         );
       }
 
@@ -3807,15 +3708,8 @@ function collapsibleAdminSection(
               container
             );
           },
-          'neutral'
-        );
-        lifecycle.toggle.addEventListener(
-          'click',
-          () => {
-            if (!lifecycle.body.hidden) {
-              void loadLifecycle?.();
-            }
-          }
+          'neutral',
+          () => loadLifecycle?.()
         );
       }
 
@@ -3830,15 +3724,8 @@ function collapsibleAdminSection(
               true
             );
           },
-          'danger'
-        );
-        deletion.toggle.addEventListener(
-          'click',
-          () => {
-            if (!deletion.body.hidden) {
-              void loadDeletePreview?.();
-            }
-          }
+          'danger',
+          () => loadDeletePreview?.()
         );
       }
 
