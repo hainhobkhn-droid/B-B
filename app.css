@@ -6352,6 +6352,268 @@ tbody tr:hover{
 
 
 /* =========================================================
+   WP-C6 RESPONSIVE / MOBILE DENSITY
+   ========================================================= */
+
+@media (max-width:700px){
+  .overview-management-action,
+  .overview-hero .btn{
+    min-height:44px;
+  }
+
+  .overview-kpi-grid + .panel .table-wrap{
+    overflow-x:visible;
+  }
+
+  .overview-kpi-grid + .panel table{
+    width:100%;
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  .overview-kpi-grid + .panel th,
+  .overview-kpi-grid + .panel td{
+    padding:7px 5px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  .overview-kpi-grid + .panel th:first-child,
+  .overview-kpi-grid + .panel td:first-child{
+    width:36px;
+  }
+
+  .overview-kpi-grid + .panel th:nth-child(3),
+  .overview-kpi-grid + .panel td:nth-child(3),
+  .overview-kpi-grid + .panel th:nth-child(4),
+  .overview-kpi-grid + .panel td:nth-child(4){
+    width:64px;
+    text-align:right;
+  }
+
+  .matches-ui .match-record-card{
+    padding:10px;
+  }
+
+  .matches-ui .table-mobile-cards{
+    gap:8px;
+  }
+
+  .matches-ui .table-mobile-card{
+    padding:9px 10px;
+  }
+
+  .matches-ui .table-mobile-card-row{
+    grid-template-columns:76px minmax(0,1fr);
+    gap:6px;
+    padding:4px 0;
+  }
+
+  .matches-ui .match-record-card > :first-child{
+    gap:8px;
+  }
+
+  .matches-ui .match-record-teams{
+    grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr);
+    gap:6px;
+    margin-top:8px;
+    padding:8px;
+  }
+
+  .matches-ui .match-record-teams > [aria-label]{
+    min-width:0;
+    font-size:12px;
+    line-height:1.35;
+    overflow-wrap:anywhere;
+  }
+
+  .matches-ui .match-record-teams > [aria-label]::before{
+    margin-bottom:2px;
+    font-size:10px;
+  }
+
+  .matches-ui .match-record-teams > :nth-child(2){
+    font-size:18px;
+  }
+
+  .matches-ui .match-record-teams > :last-child{
+    text-align:right;
+  }
+
+  .matches-ui .match-record-card > .mt-3{
+    margin-top:8px;
+  }
+
+  .matches-ui .match-record-actions{
+    gap:6px;
+    margin-top:8px;
+    padding-top:0;
+  }
+
+  .matches-ui .match-card-action{
+    min-height:44px;
+    padding:7px 10px;
+  }
+
+  .players-ui .player-card-list{
+    gap:8px;
+  }
+
+  .players-ui .player-record-card{
+    padding:9px;
+  }
+
+  .players-ui .player-card-header{
+    grid-template-columns:minmax(0,1fr) 64px 88px;
+    grid-template-areas:'identity rating action';
+    gap:8px!important;
+    align-items:center!important;
+  }
+
+  .players-ui .player-card-name{
+    font-size:14px;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+
+  .players-ui .player-card-meta{
+    gap:3px;
+    margin-top:3px;
+  }
+
+  .players-ui .player-card-rating{
+    align-self:center;
+    align-items:flex-end;
+  }
+
+  .players-ui .player-rating-value{
+    font-size:18px;
+  }
+
+  .players-ui .player-card-toggle{
+    width:88px;
+    padding:6px;
+    font-size:11px;
+  }
+
+  .ranking-ui .ranking-list{
+    gap:7px;
+  }
+
+  .ranking-ui .ranking-card{
+    padding:8px;
+  }
+
+  .ranking-ui .ranking-header{
+    grid-template-columns:36px minmax(0,1fr) 58px 46px 64px;
+    grid-template-areas:'rank name rating matches action';
+    gap:6px;
+    align-items:center;
+  }
+
+  .ranking-ui .ranking-position{
+    min-height:44px;
+    align-self:center;
+  }
+
+  .ranking-ui .ranking-name{
+    font-size:13px;
+    line-height:1.25;
+    overflow-wrap:anywhere;
+  }
+
+  .ranking-ui .ranking-rating,
+  .ranking-ui .ranking-matches{
+    align-items:flex-end;
+  }
+
+  .ranking-ui .ranking-label{
+    font-size:9px;
+    line-height:1.2;
+  }
+
+  .ranking-ui .ranking-value{
+    font-size:17px;
+  }
+
+  .ranking-ui .ranking-match-count{
+    font-size:14px;
+  }
+
+  .ranking-ui .ranking-detail-toggle{
+    width:64px;
+    min-height:44px;
+    margin:0;
+    padding:5px;
+    font-size:10px;
+    line-height:1.2;
+  }
+
+  .contribution-fun-grid{
+    gap:8px;
+    margin-top:8px;
+  }
+
+  .contribution-card{
+    padding:10px;
+  }
+
+  .contribution-card-head,
+  .contribution-card-title-wrap{
+    gap:7px;
+  }
+
+  .contribution-card-icon{
+    width:32px;
+    height:32px;
+    flex-basis:32px;
+    font-size:17px;
+  }
+
+  .contribution-card-joke{
+    margin:6px 0 8px;
+    line-height:1.35;
+  }
+
+  .contribution-podium{
+    gap:4px;
+  }
+
+  .contribution-top-line{
+    grid-template-columns:26px minmax(0,1fr) auto;
+    gap:6px;
+    padding:6px 7px;
+  }
+
+  .contribution-top-name{
+    overflow:visible;
+    text-overflow:clip;
+    white-space:normal;
+    line-height:1.3;
+    overflow-wrap:anywhere;
+  }
+
+  .contribution-top-value{
+    grid-column:3;
+    text-align:right;
+    white-space:nowrap;
+  }
+
+  .contribution-top-detail{
+    grid-column:2 / 4;
+  }
+
+  .contribution-detail-toggle{
+    min-height:44px;
+    margin-top:8px;
+    padding:9px 10px;
+  }
+}
+
+/* /WP-C6 RESPONSIVE / MOBILE DENSITY */
+
+
+/* =========================================================
    WP-C4 SHARED ACTION ACCORDION
    PICK UI System V2 — substantial action workflows
    ========================================================= */
