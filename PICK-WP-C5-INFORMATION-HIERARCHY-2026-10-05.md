@@ -114,10 +114,51 @@ Ngoài scope WP-C5:
 - delegated/normal MEMBER live browser sessions;
 - `can_adjust_rating` và `can_view_audit` surface completeness.
 
-# 16. Deployment plan
+# 16. Deployment evidence
 
-WP-C5D nên review exact diff, stage chỉ WP-C5 files, rerun gates, commit/push theo approval riêng, chờ Pages publish, verify tag `wp-c5-information-hierarchy-20261005-1`, rồi smoke authenticated ADMIN Desktop/Mobile. Không deploy migration/Edge hoặc mutate business data.
+- Implementation commit: `6b1109e1afa4132aa2dec8bdea66111ed82fb6f0` (`refactor: prioritize actionable workflow sections`).
+- Push `main -> origin/main`: PASS; `HEAD == origin/main`.
+- GitHub Pages workflow `37273584873`: `completed / success` for the implementation SHA.
+- Served `index.html` contains exactly six references to cache tag `wp-c5-information-hierarchy-20261005-1`.
+- Production SHA-256 parity: PASS for `app.js`, `account.js`, `players.js`, `matches.js`, `fund.js` and `app.css`; no stale asset mix.
+- Production business/database mutation: **NO**. WP-C5D did not run SQL, deploy migrations/Edge Functions, submit forms or mutate application data.
 
-# 17. Final status
+# 17. Runtime verification
 
-`READY FOR PRODUCTION DEPLOY`
+The production origin had no authenticated session and remained at the login screen. No credential was created, copied or entered. Authenticated ADMIN smoke therefore ran on `http://localhost:8000/` using the same six frontend assets proven byte-identical to the served production files.
+
+Desktop 1280px:
+
+- Matches: no false `Cần xử lý` section when pending count is zero; `Thao tác` precedes `Dữ liệu trận đấu`.
+- Players: `Thao tác` precedes `Hồ sơ & thành tích VĐV`; no fake attention section.
+- Fund: current NET outstanding is 320,000 VND; DOM order is `Cần xử lý` -> `Công nợ` -> `Thao tác quỹ`.
+- Tournament: current ready-empty registration data renders `Thao tác` and the empty notice without a fake attention section.
+- Account: `Quản lý thành viên` precedes generic `Thao tác`.
+- All five surfaces: no horizontal overflow and no console error.
+
+Mobile 390px:
+
+- All five surfaces use the same business DOM order as Desktop.
+- `clientWidth == scrollWidth == 390` on every checked surface; no horizontal overflow.
+- Workflow headings are not duplicated by responsive CSS.
+- Shared Action Accordion buttons remain full-width and collapsed by default.
+
+Action Accordion regression:
+
+- native buttons, `aria-expanded`, `aria-controls`, controlled body visibility and unique IDs: PASS;
+- opening the Player promotion accordion closes the previously open create accordion: PASS;
+- Player hard delete retains `action-accordion-danger`: PASS;
+- normalized helper hash matches pre-WP-C5 `HEAD`: `16C228E28D7538348DFB6A991446F114E0C4B835EA9612EAB08186757C1C6CB8`.
+
+Role evidence:
+
+- ADMIN Desktop/Mobile: PASS on exact production-byte localhost assets.
+- Delegated MEMBER browser session: NOT RUN / residual runtime gap; capability branches covered by CJS fixtures.
+- Normal MEMBER browser session: NOT RUN / residual runtime gap; empty-wrapper and personal-workflow branches covered by CJS fixtures.
+- Production-origin authenticated ADMIN: NOT RUN because the existing production tab had no session; production publish and asset parity are verified independently.
+
+# 18. Final status
+
+`CLOSED / VERIFIED PRODUCTION`
+
+This status records successful Pages publication, production asset parity, full frontend regression and authenticated ADMIN Desktop/Mobile runtime on byte-identical assets. It does not claim that the three missing production-origin/delegated/normal authenticated browser sessions were run; they remain documented residual verification gaps rather than implementation blockers.
