@@ -89,6 +89,42 @@ Only changed app.js/app.css tags advance to wp-c7-notice-focus-20261005-1; four 
 
 PARTIALLY VERIFIED — local implementation, semantic/keyboard browser smoke and regressions PASS; actual assistive-technology and live delegated/normal sessions remain explicit verification gaps. No stage/commit/push/deploy.
 
+## 10. WP-C7D deployment / verification evidence
+
+This section supersedes the preparation-only deployment status above. User explicitly approved the whitespace-only repair, exact seven-file commit/push, Pages verification and a report-only documentation follow-up.
+
+- EOF blank line removed only; substantive preparation report and six other files unchanged before commit. Restaged only this report.
+- Exact implementation scope: app.js, app.css, index.html, supabase/tests/wp-c5-information-hierarchy-ui-test.cjs, supabase/tests/wp-c6-responsive-mobile-ui-test.cjs, supabase/tests/wp-c7-notice-focus-ui-test.cjs, this report.
+- Pre-commit gates: 17/17 frontend suites PASS; WP-C2/C3/C4/C5/C6/C7 regressions PASS; 22 JS/CJS syntax files, 18 Python AST files and seven staged files UTF-8/no BOM/no U+FFFD/trailing whitespace PASS. Both git diff --cached --check and git diff --check PASS after EOF fix.
+- Implementation commit: `9fdd3b7c8f7622ca3e06364c0275f4144f59d2e4` (`fix: improve notice accessibility and focus behavior`). Normal push main -> origin/main PASS; HEAD == origin/main at this SHA.
+- GitHub Pages [workflow 37289997219](https://github.com/hainhobkhn-droid/B-B/actions/runs/37289997219): completed / success for implementation SHA. Pages published.
+- Served app.js and app.css reviewed tag: `wp-c7-notice-focus-20261005-1`; four unchanged module tags remain WP-C5. PASS.
+- Exact served byte/hash parity against committed Git blobs: index.html and all six JS/CSS assets PASS. Initial working-tree index comparison differed only in CRLF (local 678 CRLF; served/commit zero); served index exactly equals commit. This was a comparison-reference mismatch, not source/deployment drift; no hotfix made.
+- SHA-256 app.js: `df8fcae1a0f5424197c27b53f62a7de93733e794c9a52e165b2937958a8cb77a`.
+- SHA-256 app.css: `c2cde489998136228a7a0aa2631072b17e818d6f5b089c0470c6c2e4a0154176`.
+- SHA-256 index.html: `93f7c228c901cdb1f5c1a1a680a10dcd19690de0ae164df16a80a7ee0a3b7af1`.
+
+### Runtime matrix
+
+Production origin remained at login; its DOM exposes the deployed status/alert nodes and reviewed app.js tag. No credentials entered or copied. Existing ADMIN localhost session used identical committed frontend source (index differs only in checkout EOL); no authenticated production-origin runtime claim.
+
+- ADMIN Desktop 1280px and Mobile 390px: eight surfaces navigation/layout PASS, no page overflow, no captured console errors. Each has exactly one notice-status and one notice-alert; initial navigation leaves polite announcer empty and global-message has no role=alert.
+- Player validation on Desktop/Mobile: whitespace reason is rejected before RPC; one visible error notice, local role absent/live off, polite region contains “Lý do là bắt buộc.”, critical region remains empty, focus on initial-rating-reason. No mutation.
+- Keyboard focus: native Enter opens accordion, Tab reaches select with focus-visible and solid 3px Navy outline. Collapse returns focus to toggle and aria-expanded=false. PASS.
+- Ranking safe detail content replacement retains focus at its descriptive toggle, aria-expanded=true, no unexpected body focus. PASS.
+- Fund sample: “Ghi nhận thu gộp” is native disabled=true, no aria-disabled-only substitute. No disabled action submitted.
+- Native disabled/busy/double-submit contract PASS in existing fixture suites; live in-flight writes intentionally NOT RUN. No write was started to manufacture busy state.
+- Focus restoration: PARTIAL overall runtime coverage; validation/collapse/read-detail PASS, async mutation success/error and critical boot failure remain fixture-tested only.
+- Shared success/info/critical delivery, clearing, repeat suppression and retry updates PASS in real-helper DOM fixtures. Do not claim live business success or induced production failure was executed.
+- Screen reader: NOT RUN — DOM semantics verified. This optional speech verification alone does not block deployment.
+- Delegated MEMBER / normal MEMBER live sessions: NOT RUN; no account created. Relevant permission fixtures PASS; gaps remain explicit.
+
+### Final WP-C7D gate
+
+**DEPLOYED / PARTIALLY VERIFIED.** Deployment, assets, ADMIN desktop/mobile, live-region structure, representative keyboard/focus and all regressions PASS. Missing live role sessions and async write/error runtime coverage remain material verification gaps. No claim of CLOSED or actual screen-reader PASS.
+
+Production business/database mutation = NO. No SQL/migration/Edge deploy, account creation, source hotfix, WP-C8 or WP-C9. Report-only follow-up commit is authorized. Unrelated untracked files remain excluded.
+
 ## Appendix — Exact source-location inventory
 
 Line numbers refer to the current WP-C7 working tree. Lexical locations include declarations/guards as labeled, not an AST-derived runtime call graph.
