@@ -4818,6 +4818,77 @@ const fieldLabels = {
             const tournamentCards =
               new Map();
 
+            const memberCanRegister =
+              upper(state.profile?.role) === 'MEMBER' &&
+              state.profile?.is_active === true;
+            const tournamentActionRoot =
+              canManageTournaments() || memberCanRegister
+                ? el('section', null, 'workflow-section workflow-actions tournament-actions')
+                : null;
+
+            if (tournamentActionRoot) {
+              tournamentActionRoot.append(
+                el('h2', 'Thao tác', 'workflow-section-heading')
+              );
+            }
+
+            let tournamentNeedsRoot = null;
+
+            if (canManageTournaments()) {
+              if (state.errors.tournament_registrations) {
+                tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                tournamentNeedsRoot.append(
+                  el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                  el('p', 'Chưa tải được đăng ký giải cần xử lý. Vui lòng tải lại.', 'notice error')
+                );
+              } else if (!ready('tournament_registrations')) {
+                tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                tournamentNeedsRoot.append(
+                  el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                  el('p', 'Đang tải đăng ký giải cần xử lý…', 'muted')
+                );
+              } else {
+                const pendingRegistrations = rows('tournament_registrations')
+                  .filter(registration => upper(registration.status) === 'DANG_KY');
+
+                if (pendingRegistrations.length) {
+                  tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                  tournamentNeedsRoot.append(
+                    el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                    el(
+                      'p',
+                      `Có ${number(pendingRegistrations.length)} đăng ký giải đang chờ xác nhận.`,
+                      'notice'
+                    )
+                  );
+
+                  const pendingList = el('div', null, 'workflow-attention-list');
+                  pendingRegistrations.slice(0, 5).forEach(registration => {
+                    const tournament = rows('tournaments').find(
+                      item => raw(item.id) === raw(registration.tournament_id)
+                    );
+                    const player = rows('players').find(
+                      item => raw(item.id) === raw(registration.player_id)
+                    );
+                    pendingList.append(
+                      button(
+                        `${raw(player?.full_name) || 'VĐV'} • ${raw(tournament?.name) || 'Giải đấu'}`,
+                        () => {
+                          const entry = tournamentCards.get(registration.tournament_id);
+                          if (entry?.body?.hidden) {
+                            entry.toggle?.click();
+                          }
+                          entry?.card?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                        },
+                        'btn'
+                      )
+                    );
+                  });
+                  tournamentNeedsRoot.append(pendingList);
+                }
+              }
+            }
+
             let closeTournamentCard =
               () => {};
 
@@ -7473,7 +7544,7 @@ const fieldLabels = {
                   );
                 };
 
-              root.append(
+              tournamentActionRoot.append(
                 createWrapper,
                 editWrapper,
                 lifecycleWrapper,
@@ -7482,10 +7553,7 @@ const fieldLabels = {
             }
 
             // MEMBER SELF TOURNAMENT REGISTRATION UI V1M
-        if (
-          upper(state.profile?.role) === 'MEMBER' &&
-          state.profile?.is_active === true
-        ) {
+        if (memberCanRegister) {
           const myRegistrationAction = actionAccordion({
             title: 'Đăng ký giải của tôi',
             semantic: 'create',
@@ -8075,9 +8143,18 @@ const fieldLabels = {
             myRegistrationForm
           );
 
-          root.append(
+          tournamentActionRoot.append(
             myRegistrationWrapper
           );
+        }
+        if (tournamentNeedsRoot) {
+          root.append(tournamentNeedsRoot);
+        }
+        if (
+          tournamentActionRoot &&
+          tournamentActionRoot.children.length > 1
+        ) {
+          root.append(tournamentActionRoot);
         }
         // TOURNAMENT DETAIL UI V1D
             const tournamentRows =

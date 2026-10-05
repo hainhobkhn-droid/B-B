@@ -3646,9 +3646,24 @@
         ]
       );
 
+      const hasManagementActions =
+        canManagePlayers() ||
+        isAdmin() ||
+        canManagePlayerLifecycle();
+      const actionRoot = hasManagementActions
+        ? el('section', null, 'workflow-section workflow-actions')
+        : null;
+
+      if (actionRoot) {
+        actionRoot.append(
+          el('h2', 'Thao tác', 'workflow-section-heading')
+        );
+        root.append(actionRoot);
+      }
+
       if (canManagePlayers()) {
         collapsibleAdminSection(
-          root,
+          actionRoot,
           'Tạo VĐV',
           container => {
             createPlayerForm(
@@ -3662,7 +3677,7 @@
       if (canManageMembers() && canManagePlayers()) {
         let loadPromotion;
         const promotion = collapsibleAdminSection(
-          root,
+          actionRoot,
           'Chuyển VĐV khách thành thành viên',
           container => {
             loadPromotion = promoteGuestForm(
@@ -3676,7 +3691,7 @@
 
       if (canManagePlayers()) {
         collapsibleAdminSection(
-          root,
+          actionRoot,
           'Sửa thông tin VĐV',
           container => {
             updatePlayerForm(
@@ -3689,7 +3704,7 @@
 
       if (isAdmin()) {
           collapsibleAdminSection(
-            root,
+            actionRoot,
             'Điều chỉnh Rating ban đầu',
             container => {
               initialRatingAdjustmentForm(container);
@@ -3701,7 +3716,7 @@
       if (canManagePlayerLifecycle()) {
         let loadLifecycle;
         const lifecycle = collapsibleAdminSection(
-          root,
+          actionRoot,
           'Vòng đời VĐV',
           container => {
             loadLifecycle = playerLifecycleManager(
@@ -3716,7 +3731,7 @@
       if (isAdmin()) {
         let loadDeletePreview;
         const deletion = collapsibleAdminSection(
-          root,
+          actionRoot,
           'Xóa vĩnh viễn VĐV',
           container => {
             loadDeletePreview = playerLifecycleManager(

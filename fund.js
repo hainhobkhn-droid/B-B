@@ -58,7 +58,8 @@
           (
             title,
             renderContent,
-            openByDefault = false
+            openByDefault = false,
+            mountRoot = root
           ) => {
             const wrapper =
               el(
@@ -110,9 +111,11 @@
               body
             );
 
-            root.append(
-              wrapper
-            );
+            if (mountRoot) {
+              mountRoot.append(
+                wrapper
+              );
+            }
 
             return wrapper;
           };
@@ -1064,9 +1067,12 @@
           );
         }
 
+        let fundActionWorkspace = null;
+        let fundDebtWorkspace = null;
+
         // FUND COLLECTION UI V1
     if (canManageFund() || canCollectFund()) {
-      fundCollapse(
+      fundActionWorkspace = fundCollapse(
         'Thao tác quỹ',
         sectionRoot => {
           // FUND ACTIONS TREE V1
@@ -2799,7 +2805,8 @@ collectionContent.append(
 
           fillContributions();
         },
-        true
+        true,
+        null
       );
     }
 
@@ -2808,7 +2815,7 @@ collectionContent.append(
         // MP01 FUND MANAGEMENT REPORTS V1
     if (canManageFund() || canCollectFund()) {
     // FUND UI V2 WP3: one workspace; report predicates remain unchanged.
-    fundCollapse('Công nợ', sectionRoot => {
+    fundDebtWorkspace = fundCollapse('Công nợ', sectionRoot => {
         if (!debtDataComplete) {
           notice(sectionRoot, 'Chưa đủ dữ liệu sổ quỹ để tính công nợ sau hoàn tiền. Vui lòng tải lại hoặc liên hệ ADMIN.', true);
           return;
@@ -3591,9 +3598,37 @@ collectionContent.append(
         onlyDebtInput.addEventListener('change', () => renderDebtWorkspace(true));
         sectionRoot.append(toolbar, reportControls, reportMessage, resultRoot);
         renderDebtWorkspace();
-      }
+      },
+      false,
+      null
     );
     }
+
+        if (fundDebtWorkspace || fundActionWorkspace) {
+          const debtNeedsAttention =
+            !!fundDebtWorkspace &&
+            (
+              !debtDataComplete ||
+              Number(totalOutstanding) > 0
+            );
+
+          if (debtNeedsAttention) {
+            root.append(
+              el('h2', 'Cần xử lý', 'workflow-section-heading'),
+              fundDebtWorkspace
+            );
+            if (fundActionWorkspace) {
+              root.append(fundActionWorkspace);
+            }
+          } else {
+            if (fundActionWorkspace) {
+              root.append(fundActionWorkspace);
+            }
+            if (fundDebtWorkspace) {
+              root.append(fundDebtWorkspace);
+            }
+          }
+        }
 
         // WP5: navigation only; payments and cash ledger remain separate datasets.
         const historyWorkspace = el('details', null, 'fund-action mt-4');

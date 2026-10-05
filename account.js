@@ -416,7 +416,6 @@
           : 'Chưa liên kết VĐV', 'account-link muted'));
         identity.append(el('p', state.session.user.email || 'Chưa có thông tin email', 'account-email muted'));
         p.append(identity);
-        accountAction(root, 'Đổi mật khẩu', accountPassword);
 
         if (!isAdmin()) {
           // IAM04-B MEMBER SELF PROFILE V1
@@ -425,7 +424,11 @@
           }
 
           memberPersonalSummary(p, linked);
-          accountAction(root, 'Đăng nhập & nickname', memberNickname);
+          const selfActions = el('section', null, 'workflow-section workflow-actions');
+          selfActions.append(el('h2', 'Thao tác', 'workflow-section-heading'));
+          root.append(selfActions);
+          accountAction(selfActions, 'Đổi mật khẩu', accountPassword);
+          accountAction(selfActions, 'Đăng nhập & nickname', memberNickname);
 
           const playerId = state.profile?.player_id;
           const player = rows('players').find(
@@ -534,12 +537,20 @@
           return;
         }
 
-        accountAction(root, 'Thành viên', adminMemberLifecycle, 'info');
-        accountAction(root, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
-        accountAction(root, 'Xác nhận email tài khoản', adminAccountVerification);
-        accountAction(root, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
-        accountAction(root, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
-        accountAction(root, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
+        const memberWorkspace = el('section', null, 'workflow-section account-member-workspace');
+        memberWorkspace.append(el('h2', 'Quản lý thành viên', 'workflow-section-heading'));
+        root.append(memberWorkspace);
+        accountAction(memberWorkspace, 'Thành viên', adminMemberLifecycle, 'info');
+
+        const adminActions = el('section', null, 'workflow-section workflow-actions');
+        adminActions.append(el('h2', 'Thao tác', 'workflow-section-heading'));
+        root.append(adminActions);
+        accountAction(adminActions, 'Đổi mật khẩu', accountPassword);
+        accountAction(adminActions, 'Tạo tài khoản thành viên', adminCreateMember, 'success');
+        accountAction(adminActions, 'Xác nhận email tài khoản', adminAccountVerification);
+        accountAction(adminActions, 'Cấu hình hệ thống', adminSystemConfig, 'neutral');
+        accountAction(adminActions, 'Sinh nhật thành viên', adminBirthdayReport, 'neutral');
+        accountAction(adminActions, 'Dữ liệu cấu hình tham khảo', referenceRoot => {
         sources(
           referenceRoot,
           [

@@ -6299,6 +6299,59 @@ tbody tr:hover{
 
 
 /* =========================================================
+   WP-C5 INFORMATION HIERARCHY
+   ========================================================= */
+
+.workflow-section{
+  min-width:0;
+  margin:var(--ui-card-section-gap,12px) 0;
+}
+
+.workflow-section-heading{
+  margin:0 0 9px;
+  color:var(--brand-2);
+  font-size:15px;
+  font-weight:800;
+  line-height:1.3;
+  letter-spacing:.01em;
+}
+
+.workflow-attention > .workflow-section-heading{
+  color:#855714;
+}
+
+.workflow-attention-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
+
+.workflow-attention-list > .btn{
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  text-align:left;
+}
+
+@media (max-width:700px){
+  .workflow-section{
+    margin:10px 0;
+  }
+
+  .workflow-section-heading{
+    margin-bottom:8px;
+    font-size:14px;
+  }
+
+  .workflow-attention-list > .btn{
+    width:100%;
+  }
+}
+/* /WP-C5 INFORMATION HIERARCHY */
+
+
+/* =========================================================
    WP-C4 SHARED ACTION ACCORDION
    PICK UI System V2 — substantial action workflows
    ========================================================= */

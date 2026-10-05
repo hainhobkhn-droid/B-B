@@ -6738,10 +6738,6 @@ function voidApprovedMatchForm(root) {
 
         root.append(center);
 
-        if (isAdmin()) {
-          createMatchForm(center);
-        }
-
         const actionArea =
           makeNode(
             'div',
@@ -7316,6 +7312,29 @@ function voidApprovedMatchForm(root) {
                   status
               );
 
+            if (
+              status === 'PENDING' &&
+              matches.length > 0
+            ) {
+              center.append(
+                makeNode(
+                  'h2',
+                  'workflow-section-heading',
+                  'Cần xử lý'
+                )
+              );
+            }
+
+            if (status === 'APPROVED') {
+              center.append(
+                makeNode(
+                  'h2',
+                  'workflow-section-heading',
+                  'Dữ liệu trận đấu'
+                )
+              );
+            }
+
             const group =
               makeNode(
                 'details',
@@ -7427,6 +7446,27 @@ function voidApprovedMatchForm(root) {
             center.append(
               group
             );
+
+            if (
+              status === 'PENDING' &&
+              isAdmin()
+            ) {
+              const actionRoot =
+                makeNode(
+                  'section',
+                  'workflow-section workflow-actions'
+                );
+
+              actionRoot.append(
+                makeNode(
+                  'h2',
+                  'workflow-section-heading',
+                  'Thao tác'
+                )
+              );
+              createMatchForm(actionRoot);
+              center.append(actionRoot);
+            }
           }
         );
       }
@@ -7447,13 +7487,16 @@ function voidApprovedMatchForm(root) {
           return;
         }
 
-        const section = actionAccordion({
+        const confirmationAction = actionAccordion({
           root,
-          title: '\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3',
+          title: 'Cần xử lý — Xác nhận & xử lý kết quả',
           semantic: 'warning',
           icon: '!',
           className: 'match-action-card match-action-approve match-confirm-section'
-        }).body;
+        });
+        const section = confirmationAction.body;
+        const heading = confirmationAction.toggle.children[1] || null;
+        confirmationAction.wrapper.hidden = true;
 
         const message = el(
           'div',
@@ -8643,7 +8686,7 @@ function voidApprovedMatchForm(root) {
             );
 
             if (error) {
-              section.hidden =
+              confirmationAction.wrapper.hidden =
                 false;
 
               notice(
@@ -8685,13 +8728,13 @@ function voidApprovedMatchForm(root) {
             if (
               actionable.length === 0
             ) {
-              section.hidden =
+              confirmationAction.wrapper.hidden =
                 true;
 
               return;
             }
 
-            section.hidden =
+            confirmationAction.wrapper.hidden =
               false;
 
             if (heading) {
@@ -8770,13 +8813,24 @@ function voidApprovedMatchForm(root) {
           ]
         );
         if (!isAdmin()) {
+          memberOpponentConfirmationPanel(root);
+
+          const actionRoot = el(
+            'section',
+            null,
+            'workflow-section workflow-actions'
+          );
+          actionRoot.append(
+            el('h2', 'Thao tác', 'workflow-section-heading')
+          );
           createMyPendingMatchForm(
-            root,
+            actionRoot,
             navigationIntent ===
               'member-create-match'
           );
-
-          memberOpponentConfirmationPanel(root);
+          if (actionRoot.children.length > 1) {
+            root.append(actionRoot);
+          }
         }
 
         if (canApproveMatches()) {
