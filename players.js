@@ -12,6 +12,7 @@
       canManagePlayerLifecycle,
       button,
       actionAccordion,
+      paginatedList,
       el,
       rows,
       raw,
@@ -2114,7 +2115,7 @@
         section.append(
           el(
             'p',
-            'Chưa có VĐV.',
+            state.errors?.players ? 'Chưa tải được danh sách VĐV. Hãy tải lại trang.' : 'Chưa có VĐV.',
             'muted'
           )
         );
@@ -2400,7 +2401,21 @@
           'grid gap-3 player-card-list ui-card-list'
         );
 
-      playerRows.forEach(
+      paginatedList({
+        root: section, key: 'players-directory', data: playerRows, content: grid,
+        searchText: player => playerName(player.id), searchLabel: 'Tìm tên VĐV',
+        filters: [
+          { key: 'status', label: 'Trạng thái VĐV',
+            options: [['', 'Tất cả trạng thái'], ['ACTIVE', 'Đang hoạt động'], ['INACTIVE', 'Ngừng hoạt động']],
+            matches: (player, value) => upper(player.status) === value },
+          { key: 'type', label: 'Loại VĐV',
+            options: [['', 'Tất cả loại'], ['CLUB', 'CLUB'], ['GUEST', 'GUEST']],
+            matches: (player, value) => upper(player.player_type) === value }
+        ],
+        emptyText: 'Chưa có VĐV.', unavailable: !!state.errors?.players,
+        renderRows(visibleRows) {
+          grid.replaceChildren();
+          visibleRows.forEach(
         player => {
           const results =
             playerResults(
@@ -3404,9 +3419,8 @@
         }
       );
 
-      section.append(
-        grid
-      );
+        }
+      });
     }
 
     // P0.4F: read-only preview; the RPC remains the final transactional guard.

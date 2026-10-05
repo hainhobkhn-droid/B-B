@@ -328,6 +328,7 @@ function mount({
     CURRENT_RATING_VERSION: 'v1'
   };
 
+  context.paginatedList = require('./wp-c8-list-fixture.cjs')(context);
   window.PickPlayers.create(context).playersPage();
   return {
     root: contentRoot,
@@ -440,7 +441,7 @@ function findById(fixture, id) {
   });
   assert(!findByText(member, 'button', 'Vòng đời VĐV'));
   assert(!findByText(member, 'button', 'Xóa vĩnh viễn VĐV'));
-  assert(member.text().includes('Ngừng hoạt động') === false);
+  assert(!findByText(member, 'button', 'Ngừng hoạt động'), 'read filter labels do not grant lifecycle actions');
 
   const blockedDelete = mount({
     previewOverrides: {

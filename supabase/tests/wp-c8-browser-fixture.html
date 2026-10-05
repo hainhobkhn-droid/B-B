@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WP-C8 offline list fixture</title>
+<link rel="stylesheet" href="../../app.css">
+<body>
+<main style="max-width:1100px;margin:auto;padding:12px">
+  <h1>WP-C8 — 100 VĐV giả lập</h1>
+  <p>Fixture local, không có Supabase client/session hoặc mutation.</p>
+  <button id="fixture-ranking" class="btn" type="button">Kiểm tra 100 hàng BXH giả lập</button>
+  <div id="content"></div>
+  <div id="fixture-status" class="sr-only" role="status"></div>
+</main>
+<script src="../../players.js"></script>
+<script>
+(async () => {
+  const data = Array.from({length:100}, (_, i) => ({id:`fixture-${i}`,
+    full_name:i % 5 === 0 ? `Nguyễn Đặng Tên VĐV giả lập rất dài kiểm tra xuống dòng trên mobile ${i}` : `VĐV thử ${i}`,
+    player_type:i % 3 ? 'CLUB' : 'GUEST', status:i % 2 ? 'ACTIVE' : 'INACTIVE',
+    current_rating:4, initial_rating:4}));
+  const state = {session:{user:{id:'offline-fixture'}},profile:{role:'MEMBER'},data:{players:data},errors:{}};
+  const el = (tag, text, cls) => { const n=document.createElement(tag); if(text!=null)n.textContent=text; if(cls)n.className=cls; return n; };
+  const context = {
+    $:id=>document.getElementById(id),state,client:null,
+    isAdmin:()=>false,canManageMembers:()=>false,canManagePlayers:()=>false,canManagePlayerLifecycle:()=>false,
+    button:(text,fn,cls='btn')=>{const n=el('button',text,cls);n.type='button';n.addEventListener('click',fn);return n;},
+    el,rows:table=>state.data[table]||[],raw:v=>String(v??''),upper:v=>String(v||'').toUpperCase(),number:v=>String(v??'—'),
+    sources:()=>{},panel:(title,parent)=>{const n=el('section',null,'panel');n.append(el('h2',title));parent.append(n);return n;},
+    notice:(_node,text)=>{document.getElementById('fixture-status').textContent=text;},
+    playerName:id=>data.find(p=>p.id===id)?.full_name||id,CURRENT_RATING_VERSION:'v1'
+  };
+  const app = await (await fetch('../../app.js')).text();
+  const helper=app.slice(app.indexOf('// WP-C8 SHARED LIST START'),app.indexOf('// WP-C8 SHARED LIST END'));
+  const fold=v=>String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
+  context.paginatedList=new Function('state','el','button','notice','fold',helper+';return paginatedList;')(state,el,context.button,context.notice,fold);
+  window.PickPlayers.create(context).playersPage();
+  document.getElementById('fixture-ranking').addEventListener('click', () => {
+    const root = document.getElementById('content'); root.replaceChildren();
+    const list = el('div', null, 'ranking-list ui-card-list');
+    root.className = 'ranking-ui';
+    context.paginatedList({root, key:'fixture-ranking', data:data.map((p,i)=>({...p,rank:i+1})), content:list,
+      searchLabel:'Tìm tên VĐV trong BXH', searchText:p=>p.full_name,
+      renderRows(rows) {
+        list.replaceChildren();
+        rows.forEach(p=>{
+          const card=el('div',null,'ranking-card ui-compact-card');
+          const header=el('div',null,'ranking-header');
+          header.append(el('div',`#${p.rank}`,'ranking-position'),el('h3',p.full_name,'ranking-name'));
+          for(const [cls,label,value] of [['ranking-rating','Rating','4'],['ranking-matches','Trận Rated','5']]) {
+            const field=el('div',null,cls);field.append(el('span',label,'ranking-label'),el('strong',value,'ranking-value'));header.append(field);
+          }
+          card.append(header);list.append(card);
+        });
+      }
+    });
+  });
+})().catch(error=>{document.getElementById('content').textContent=error.message;});
+</script>
+</body>
+</html>

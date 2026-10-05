@@ -304,11 +304,13 @@
       // Account presentation only; existing loaders and action handlers are unchanged.
       function accountAction(root, title, renderBody, variant = 'info') {
         const semantic = variant === 'success' ? 'create' : variant;
+        let onOpen;
         return actionAccordion({
           root,
           title,
           semantic,
-          render: renderBody
+          render(body, action) { onOpen = renderBody(body, action); },
+          onOpen() { if (typeof onOpen === 'function') void onOpen(); }
         }).wrapper;
       }
 
@@ -1127,7 +1129,15 @@
         for (const [value,label] of [['','Tất cả tài khoản'],['true','Đang hoạt động'],['false','Ngừng hoạt động']]) {
           const option=el('option',label); option.value=value; accountFilter.append(option);
         }
-        toolbar.append(search,membershipFilter,accountFilter);
+        const clearFilters = button('Xóa bộ lọc', () => {
+          search.value = ''; membershipFilter.value = ''; accountFilter.value = '';
+          renderDirectory();
+        });
+        toolbar.append(search,membershipFilter,accountFilter,clearFilters);
+        const resultCount = el('p', '', 'muted text-sm');
+        resultCount.setAttribute('role', 'status');
+        resultCount.hidden = true;
+        toolbar.append(resultCount);
         const renderDirectory = () => {
           directory.replaceChildren();
           const shown=accountMemberPageRows(members,search.value,membershipFilter.value,accountFilter.value);
@@ -1175,7 +1185,14 @@
             detail.remove();
           }
 
-          if (!shown.length) directory.append(el('p','Không có kết quả trong trang hiện tại.','muted'));
+          const countText = `${shown.length} / ${members.length} thành viên trong trang hiện tại`;
+          resultCount.hidden = !loaded;
+          if (resultCount.textContent !== countText) resultCount.textContent = countText;
+          clearFilters.disabled = !search.value && !membershipFilter.value && !accountFilter.value;
+          if (!shown.length) directory.append(el('p', members.length
+            ? 'Không tìm thấy kết quả trong trang hiện tại. Hãy xóa bộ lọc hoặc chuyển trang.'
+            : loaded ? 'Chưa có thành viên trong trang hiện tại.'
+              : 'Danh sách chưa sẵn sàng. Hãy tải lại.', 'muted'));
           sync();
         };
         search.addEventListener('input',renderDirectory);
@@ -1224,6 +1241,8 @@
             !current();
 
           toolbar.querySelectorAll('input, select').forEach(c => { c.disabled = blocked || deletionRecoveryPending || state.writeBusy; });
+          clearFilters.disabled = blocked || deletionRecoveryPending || state.writeBusy ||
+            (!search.value && !membershipFilter.value && !accountFilter.value);
           queue.querySelectorAll('button').forEach(c => { c.disabled = blocked || deletionRecoveryPending || state.writeBusy; });
           reload.disabled = blocked || deletionRecoveryPending || state.writeBusy;
           previous.disabled =
@@ -1993,6 +2012,7 @@ preview.append(
           const revision = membershipRevision;
           reading = true;
           loaded = false;
+          resultCount.hidden = true;
 
           detail.replaceChildren();
           directory.replaceChildren();
@@ -2090,7 +2110,7 @@ preview.append(
 
             if (current()) {
               sync();
-              if (revision !== membershipRevision && root.parentElement.open && !saving) void loadPage(offset);
+              if (revision !== membershipRevision && !root.hidden && !saving) void loadPage(offset);
             }
           }
         }
@@ -2103,23 +2123,13 @@ preview.append(
           if (current()) {
             detail.replaceChildren();
             directory.replaceChildren();
-            if (!reading && !saving && root.parentElement.open) void loadPage(offset);
+            if (!reading && !saving && !root.hidden) void loadPage(offset);
           }
         });
 
-        root.parentElement.addEventListener(
-          'toggle',
-          () => {
-            if (
-              root.parentElement.open &&
-              !loaded &&
-              !reading &&
-              !saving
-            ) {
-              loadPage(offset);
-            }
-          }
-        );
+        return () => {
+          if (!loaded && !reading && !saving) return loadPage(offset);
+        };
       }
 
       function adminCreateMember(root) {

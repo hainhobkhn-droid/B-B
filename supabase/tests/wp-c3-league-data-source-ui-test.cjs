@@ -199,6 +199,7 @@ function mount({ leagues, leagueError } = {}) {
     matchCode: () => 'M-1'
   };
 
+  context.paginatedList = require('./wp-c8-list-fixture.cjs')(context);
   window.PickMatches.create(context).matchesPage();
   return { nodes: walk(content), sourceRequests };
 }

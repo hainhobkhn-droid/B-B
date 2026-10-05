@@ -14,6 +14,7 @@
       canApproveMatches,
   button,
       actionAccordion,
+      paginatedList,
       panel,
       el,
       rows,
@@ -7429,13 +7430,19 @@ function voidApprovedMatchForm(root) {
                 )
               );
             } else {
-              matches.forEach(
-                match => {
-                  body.append(
-                    renderCard(match)
-                  );
+              const list = el('div', null, 'space-y-3');
+              paginatedList({
+                root: body, key: `match-center-${status}`, data: matches, content: list,
+                searchLabel: 'Tìm mã trận hoặc VĐV',
+                searchText: match => {
+                  const names = matchPlayerNames(match);
+                  return `${matchCode(match)} ${[...names.teamA, ...names.teamB].join(' ')}`;
+                },
+                renderRows(visibleRows) {
+                  list.replaceChildren();
+                  visibleRows.forEach(match => list.append(renderCard(match)));
                 }
-              );
+              });
             }
 
             group.append(

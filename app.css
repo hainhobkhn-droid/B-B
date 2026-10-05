@@ -6806,3 +6806,19 @@ tbody tr:hover{
   }
 }
 /* /WP-C4 SHARED ACTION ACCORDION */
+
+/* WP-C8 SHARED LIST CONTROLS */
+.list-toolbar { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin:12px 0 8px; }
+.list-control { display:flex; flex:1 1 170px; min-width:0; flex-direction:column; gap:4px; }
+.list-control-label { font-size:12px; font-weight:600; }
+.list-control .field { width:100%; min-width:0; }
+.list-result-count { margin:8px 0; }
+.list-pager { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.list-pager .btn, .list-toolbar > .btn { min-height:44px; }
+@media (max-width:700px) {
+  .list-toolbar { gap:8px; }
+  .list-control { flex-basis:calc(50% - 8px); }
+  .list-control:first-child { flex-basis:100%; }
+  .list-pager { gap:6px; }
+  .list-pager .btn { padding-left:10px; padding-right:10px; }
+}

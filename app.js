@@ -545,6 +545,84 @@
         parent.append(n);
       }
 
+      // WP-C8 SHARED LIST START
+      const listContexts = new Map();
+      let listControlId = 0;
+      function paginatedList({ root, key, data, content, renderRows,
+        searchText, searchLabel = 'Tìm theo tên', filters = [],
+        emptyText = 'Chưa có dữ liệu.', pageSize = 20, unavailable = false }) {
+        const contextKey = `${state.session?.user?.id || 'anonymous'}:${key}`;
+        const saved = listContexts.get(contextKey) || { query: '', filters: {}, page: 1 };
+        listContexts.set(contextKey, saved);
+        const toolbar = el('div', null, 'list-toolbar');
+        const labelControl = (label, control) => {
+          control.id = `list-control-${++listControlId}`;
+          const field = el('div', null, 'list-control');
+          const labelNode = el('label', label, 'list-control-label');
+          labelNode.htmlFor = control.id;
+          field.append(labelNode, control);
+          toolbar.append(field);
+        };
+        const search = el('input', null, 'field');
+        search.type = 'search'; search.value = saved.query;
+        labelControl(searchLabel, search);
+        const selects = filters.map(filter => {
+          const select = el('select', null, 'field');
+          filter.options.forEach(([value, label]) => {
+            const option = el('option', label); option.value = value; select.append(option);
+          });
+          select.value = saved.filters[filter.key] || '';
+          labelControl(filter.label, select);
+          return { filter, select };
+        });
+        const clear = button('Xóa bộ lọc', () => {
+          search.value = ''; selects.forEach(({ select }) => { select.value = ''; });
+          changed();
+        });
+        toolbar.append(clear);
+        const summary = el('p', '', 'list-result-count muted text-sm');
+        const message = el('p', '', 'muted text-sm');
+        const announcement = el('div'); announcement.hidden = true;
+        const announcementHost = el('div', null, 'sr-only');
+        announcementHost.append(announcement);
+        const pager = el('div', null, 'list-pager');
+        const previous = button('Trang trước', () => { saved.page--; draw(true); });
+        const next = button('Trang sau', () => { saved.page++; draw(true); });
+        const pageLabel = el('span', '', 'muted text-sm');
+        pager.append(previous, pageLabel, next);
+        root.append(toolbar, summary, message, content, pager, announcementHost);
+        function draw(announce = false) {
+          const query = fold(search.value.trim());
+          const found = data.filter(row => (!query || fold(searchText(row)).includes(query)) &&
+            selects.every(({ filter, select }) => !select.value || filter.matches(row, select.value)));
+          const pages = Math.max(1, Math.ceil(found.length / pageSize));
+          saved.page = Math.max(1, Math.min(saved.page, pages));
+          const start = (saved.page - 1) * pageSize;
+          const end = Math.min(start + pageSize, found.length);
+          summary.textContent = unavailable ? 'Chưa tải được số liệu. Hãy tải lại trang.' :
+            `${found.length ? start + 1 : 0}–${end} / ${found.length} kết quả`;
+          message.hidden = found.length > 0 && !unavailable;
+          message.textContent = unavailable ? 'Nguồn dữ liệu chưa sẵn sàng.' :
+            data.length ? 'Không tìm thấy kết quả phù hợp. Hãy xóa bộ lọc.' : emptyText;
+          previous.disabled = unavailable || saved.page === 1;
+          next.disabled = unavailable || saved.page === pages;
+          pageLabel.textContent = `Trang ${saved.page}/${pages}`;
+          clear.disabled = !search.value && selects.every(({ select }) => !select.value);
+          renderRows(unavailable ? [] : found.slice(start, end));
+          if (announce) notice(announcement, summary.textContent);
+        }
+        function changed() {
+          saved.query = search.value;
+          selects.forEach(({ filter, select }) => { saved.filters[filter.key] = select.value; });
+          saved.page = 1; draw(true);
+        }
+        search.addEventListener('input', changed);
+        selects.forEach(({ select }) => select.addEventListener('change', changed));
+        draw();
+        return Object.freeze({ refresh: () => draw() });
+      }
+      // WP-C8 SHARED LIST END
+
       function table(
         parent,
         title,
@@ -2229,6 +2307,7 @@
         canManageMembers,
         canManagePlayers,
         canManagePlayerLifecycle,
+        paginatedList,
         canAdjustRating,
         button,
         actionAccordion,
@@ -2281,6 +2360,7 @@
             client,
             isAdmin,
             canApproveMatches,
+            paginatedList,
             button,
             actionAccordion,
             panel,
@@ -3039,6 +3119,7 @@ const fieldLabels = {
           return card;
         };
 
+        let contributionListId = 0;
         const createDetailTable = (
           data,
           columns
@@ -3090,7 +3171,14 @@ const fieldLabels = {
               'tbody'
             );
 
-          data.forEach(
+          const container = el('div');
+          paginatedList({
+            root: container, key: `contribution-${++contributionListId}`, data, content: wrap,
+            searchLabel: 'Tìm trong bảng Cống hiến',
+            searchText: row => columns.map(column => column[1](row)).join(' '),
+            renderRows(visibleRows) {
+              tbody.replaceChildren();
+              visibleRows.forEach(
             row => {
               const tr =
                 document.createElement(
@@ -3123,16 +3211,11 @@ const fieldLabels = {
             }
           );
 
-          tableEl.append(
-            thead,
-            tbody
-          );
-
-          wrap.append(
-            tableEl
-          );
-
-          return wrap;
+            }
+          });
+          tableEl.append(thead, tbody);
+          wrap.append(tableEl);
+          return container;
         };
 
         const cards =
@@ -3918,7 +4001,9 @@ const fieldLabels = {
           rankingSection.append(
             el(
               'p',
-              'Chưa có VĐV đủ điều kiện vào BXH chính thức.',
+              state.errors.players || state.errors.rating_events
+                ? 'Chưa tải được số liệu BXH. Hãy tải lại trang.'
+                : 'Chưa có VĐV đủ điều kiện vào BXH chính thức.',
               'muted'
             )
           );
@@ -3930,11 +4015,11 @@ const fieldLabels = {
               'ranking-list ui-card-list'
             );
 
-          renderRankingList = () => {
+          const drawRankingList = visibleRows => {
               rankingList.innerHTML =
                 '';
 
-              rankingRows.forEach(
+              visibleRows.forEach(
                 player => {
                   const isRankingOpen =
                     openedRankingPlayerId ===
@@ -4454,11 +4539,14 @@ const fieldLabels = {
               );
             };
 
-          renderRankingList();
-
-          rankingSection.append(
-            rankingList
-          );
+          rankingSection.append(el('p', 'Hạng hiển thị là hạng toàn BXH, không thay đổi theo tìm kiếm.', 'muted text-sm'));
+          const rankingControls = paginatedList({
+            root: rankingSection, key: 'ranking-directory', data: rankingRows, content: rankingList,
+            searchText: player => playerName(player.id), searchLabel: 'Tìm tên VĐV trong BXH',
+            unavailable: !!(state.errors.players || state.errors.rating_events),
+            renderRows: drawRankingList
+          });
+          renderRankingList = () => rankingControls.refresh();
         }
     // BXH EXCLUSIVE ACCORDION V1
     // MEMBER RATING HISTORY V1

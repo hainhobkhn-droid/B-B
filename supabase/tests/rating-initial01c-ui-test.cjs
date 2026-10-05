@@ -258,6 +258,7 @@ function mount({
     CURRENT_RATING_VERSION: 'V1.1'
   };
 
+  context.paginatedList = require('./wp-c8-list-fixture.cjs')(context);
   window.PickPlayers.create(context).playersPage();
   return {
     root: contentRoot,
