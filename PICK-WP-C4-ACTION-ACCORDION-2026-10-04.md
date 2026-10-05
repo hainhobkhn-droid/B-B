@@ -174,19 +174,36 @@ Delegated MEMBER và normal MEMBER browser session: `NOT RUN / NEEDS RUNTIME` v�
 - Delegated MEMBER và normal MEMBER chưa có live browser identity; fixture permission matrix đã PASS.
 - Full-page information order và non-action accordions thuộc package UI sau, không xử lý ở WP-C4.
 
-# 16. Deployment plan
+# 16. WP-C4D deployment evidence
 
-WP-C4 chỉ chuẩn bị local. WP-C4D nên:
+- Implementation commit: `8c0230518c894724f66a650b53df725434012d9f` (`refactor: standardize action accordions`).
+- Push `main -> origin/main`: PASS; `HEAD == origin/main` sau push.
+- GitHub Pages workflow `pages build and deployment`: PASS, run `37252451099`, kết thúc `success` ngày 2026-10-05.
+- Production URL: `https://hainhobkhn-droid.github.io/B-B/`.
+- Served `index.html` chứa đúng 6 lần cache tag `wp-c4-action-accordion-20261004-1`.
+- `app.js`, `account.js`, `players.js`, `matches.js`, `fund.js`, `app.css` trên Pages khớp SHA-256 byte-for-byte với implementation commit.
+- Production served source có `actionAccordion(options)`, shared semantic CSS, Player lifecycle danger CSS và không còn legacy `.match-action-collapsible`.
+- Không có stale asset mix.
 
-1. review exact diff và bảo toàn các unrelated working-tree files;
-2. stage đúng 14 file WP-C4;
-3. commit/push theo approval riêng;
-4. chờ GitHub Pages publish;
-5. verify cache tag `wp-c4-action-accordion-20261004-1` cho sáu JS/CSS asset đã đổi;
-6. chạy ADMIN production smoke và, nếu có sẵn session, delegated/normal MEMBER smoke.
+ADMIN runtime bằng chính asset byte-identical với production:
 
-Production mutation trong WP-C4: **NO**. Commit/push/deploy: **NO**.
+- Desktop effective viewport 1285px: Players, Account, Matches, Fund, Tournament PASS; header 54px, icon 30px, exclusive-open PASS, console application errors = 0.
+- Mobile effective viewport 390px: năm module PASS; header 50px, icon 28px, long Vietnamese title không overflow, document width 390/390, expanded forms usable, console application errors = 0.
+- Runtime DOM samples ở Players, Account, Fund và Tournament: native `<button type="button">`, unique panel IDs, `aria-controls` link đúng panel, `aria-expanded` đồng bộ với `hidden`.
+- Repeated navigation/render không tạo duplicate DOM IDs.
+- Player deactivate runtime dùng `btn player-lifecycle-danger`, red foreground/background/border semantic PASS.
+
+Production authenticated browser status:
+
+- Production tab hiện ở màn đăng nhập và không có credential/session lưu sẵn.
+- Không tạo account, không chuyển session token và không mutate dữ liệu chỉ để đạt checkbox.
+- Vì vậy ADMIN authenticated smoke trực tiếp trên production origin là `NOT RUN / NEEDS RUNTIME`.
+- Delegated MEMBER và normal MEMBER production browser vẫn `NOT RUN / NEEDS RUNTIME`; static authorization fixtures PASS.
+
+Production database/business-data mutation: **NO**. Không SQL, migration hoặc Edge deploy.
 
 # 17. Final status
 
-`READY FOR PRODUCTION DEPLOY`
+`DEPLOYED / PARTIALLY VERIFIED`
+
+Pages deployment và source parity đã PASS. Shared Action Accordion runtime đã PASS trên asset byte-identical với production ở Desktop/Mobile. Work package chưa ghi `CLOSED / VERIFIED PRODUCTION` vì thiếu authenticated ADMIN runtime trên production origin; đây là residual verification gap, không phải source/deployment failure.
