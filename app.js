@@ -309,6 +309,9 @@
               });
             }
             const wasOpen = toggle.getAttribute('aria-expanded') === 'true';
+            if (!open && typeof body.contains === 'function' && body.contains(document.activeElement)) {
+              toggle.focus({ preventScroll: true });
+            }
             toggle.setAttribute('aria-expanded', String(open));
             body.hidden = !open;
             wrapper.classList.toggle('is-expanded', open);
@@ -338,23 +341,65 @@
       }
       // WP-C4 SHARED ACTION ACCORDION END
 
+      // WP-C7 SHARED NOTICE START
+      const noticeDeliveries = new WeakMap();
       function notice(target, text, isError = false, isSuccess = false) {
-        target.replaceChildren();
-        target.hidden = !text;
-
-        target.className =
-          'notice' +
-          (isError ? ' error' : '') +
-          (isSuccess ? ' success' : '');
-
-        if (text) {
-          target.textContent = text;
+        const options = isError && typeof isError === 'object'
+          ? isError
+          : { tone: isError ? 'error' : isSuccess ? 'success' : 'info' };
+        const value = text ? String(text) : '';
+        const previous = noticeDeliveries.get(target);
+        const unchanged = previous?.text === value &&
+          previous.critical === (options.critical === true) && !target.hidden;
+        target.hidden = !value;
+        target.className = 'notice' +
+          (options.tone === 'error' ? ' error' : '') +
+          (options.tone === 'success' ? ' success' : '');
+        // One persistent announcer owns delivery, even inside a live preview.
+        target.removeAttribute('role');
+        target.setAttribute('aria-live', 'off');
+        if (target.textContent !== value || target.childElementCount > 0) target.textContent = value;
+        if (!value) noticeDeliveries.delete(target);
+        if (!value || unchanged || options.announce === false || !target.isConnected) return;
+        const announcer = $(options.critical === true ? 'notice-alert' : 'notice-status');
+        if (announcer) {
+          announcer.textContent = value;
+          noticeDeliveries.set(target, { text: value, critical: options.critical === true });
         }
       }
+      // WP-C7 SHARED NOTICE END
+
+      // WP-C7 CONTENT FOCUS START
+      let pendingContentFocus = null;
+      function preserveContentFocus(root) {
+        const active = document.activeElement;
+        if (root.contains(active)) {
+          pendingContentFocus = { id: active.id || null, page: state.page };
+        }
+        const pending = pendingContentFocus;
+        if (!pending) return;
+        queueMicrotask(() => {
+          if (state.busy) return;
+          if (pendingContentFocus !== pending) return;
+          pendingContentFocus = null;
+          if (state.page !== pending.page || !root.isConnected) return;
+          // Never steal focus from a user who has moved to another control.
+          const current = document.activeElement;
+          if (current && current !== document.body && current !== active) return;
+          const replacement = pending.id ? $(pending.id) : null;
+          const target = replacement && root.contains(replacement) &&
+            !replacement.disabled && !replacement.closest('[hidden]')
+            ? replacement : $('page-title');
+          target?.focus({ preventScroll: true });
+        });
+      }
+      // WP-C7 CONTENT FOCUS END
 
       function panel(title, parent = $('content')) {
         const n = el('section', null, 'panel');
-        n.append(el('h2', title));
+        const heading = el('h2', title);
+        heading.tabIndex = -1;
+        n.append(heading);
         parent.append(n);
         return n;
       }
@@ -3722,6 +3767,7 @@ const fieldLabels = {
         const root =
           $('content');
 
+        preserveContentFocus(root);
         root.replaceChildren();
 
         root.setAttribute(
@@ -12296,7 +12342,7 @@ const fieldLabels = {
             $('login-message'),
             e.message ||
               'Không khởi động được ứng dụng.',
-            true
+            { tone: 'error', critical: true }
           );
         }
       }

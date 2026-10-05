@@ -23,11 +23,13 @@
 
   <link
     rel="stylesheet"
-    href="./app.css?v=wp-c6-responsive-mobile-20261005-1"
+    href="./app.css?v=wp-c7-notice-focus-20261005-1"
   >
 </head>
 
 <body>
+  <div id="notice-status" class="sr-only" role="status" aria-atomic="true"></div>
+  <div id="notice-alert" class="sr-only" role="alert" aria-atomic="true"></div>
   <noscript>
     <div class="noscript-box">
       Vui lòng bật JavaScript để sử dụng ứng dụng PICK.
@@ -588,6 +590,7 @@
 
           <h1
             id="page-title"
+            tabindex="-1"
             class="page-title"
           >
             Tổng quan
@@ -635,7 +638,6 @@
 
       <div
         id="global-message"
-        role="alert"
         hidden
       ></div>
 
@@ -646,7 +648,6 @@
           id="sync-status"
           class="muted sync-status"
           role="status"
-          aria-live="polite"
         ></p>
       </div>
 
@@ -672,6 +673,6 @@
   <script src="./players.js?v=wp-c5-information-hierarchy-20261005-1"></script>
   <script src="./fund.js?v=wp-c5-information-hierarchy-20261005-1"></script>
   <script src="./account.js?v=wp-c5-information-hierarchy-20261005-1"></script>
-  <script src="./app.js?v=wp-c5-information-hierarchy-20261005-1"></script>
+  <script src="./app.js?v=wp-c7-notice-focus-20261005-1"></script>
 </body>
 </html>

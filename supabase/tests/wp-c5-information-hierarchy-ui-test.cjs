@@ -111,10 +111,11 @@ const wpC5Css = css.slice(css.indexOf('WP-C5 INFORMATION HIERARCHY'), css.indexO
 assert(wpC5Css.includes('.workflow-section-heading'));
 assert(!/\border\s*:/.test(wpC5Css), 'WP-C5 must not fake business order with CSS order');
 
-// Shared Action Accordion stays in place. WP-C6 changes CSS only, so the five
-// JavaScript modules retain the WP-C5 tag while app.css advances independently.
+// Shared Action Accordion stays in place. WP-C7 advances app.js and app.css;
+// the four unchanged module assets retain their WP-C5 tags.
 assert(app.includes('function actionAccordion(options = {})'));
-assert.equal((index.match(/wp-c5-information-hierarchy-20261005-1/g) || []).length, 5);
-assert.equal((index.match(/wp-c6-responsive-mobile-20261005-1/g) || []).length, 1);
+assert.equal((index.match(/wp-c5-information-hierarchy-20261005-1/g) || []).length, 4);
+assert.match(index, /app\.js\?v=wp-c7-notice-focus-20261005-1/);
+assert.match(index, /app\.css\?v=wp-c7-notice-focus-20261005-1/);
 
 console.log('PASS WP-C5 decision-first DOM/source order, role-aware empty states, loading/error hierarchy and mobile order contract');

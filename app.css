@@ -4853,6 +4853,15 @@ summary:focus-visible,
   outline-color:rgba(201,238,74,.72);
 }
 
+/* WP-C7: override the more specific .field:focus outline reset. */
+.field:focus-visible,
+input.border:focus-visible,
+select.border:focus-visible,
+textarea.border:focus-visible{
+  outline:3px solid var(--text);
+  outline-offset:2px;
+}
+
 
 /* =========================================================
    PANELS
