@@ -94,7 +94,7 @@ Final quality gates: explicit four-file UTF-8/no BOM/no U+FFFD/trailing whitespa
 
 Unrelated existing untracked entries preserved: PICK-FRONTEND-AUTH-SURFACE-AUDIT-2026-10-04.md, PICK-NEXT-CHAT-HANDOFF-2026-10-04.md, PICK-UI-V2-RECONCILIATION-2026-10-04.md, PICK-WP-C1-RATING-SCOPE01-2026-10-04.md, audit-output.txt, supabase/.temp/, supabase/migrations/202610040001_rating_scope01_member_rating_events_own_player.sql, supabase/tests/rating-scope01-local-test.py. No stage/commit/push/deploy. Production business mutation=NO.
 
-## 10. WP-C9A current preparation gate — 2026-10-07
+## 10. WP-C9A preparation gate — superseded by deployment evidence below
 
 **READY FOR PRODUCTION DEPLOY — preparation only.** Sections 8–9 describe the superseded initial blocked package, not the current implementation. Neither migration has been applied to production. No staging, commit, push, Pages deployment, Edge deployment or business-data mutation occurred.
 
@@ -165,7 +165,7 @@ Proposed order, NOT executed: (1) revalidate live catalog hashes/ACL/schema; (2)
 
 Eight unrelated untracked entries listed in section 9 preserved. New test bytecode artifacts are removed before final status. Backup in local mirror wp-c9a-backup-20261007; CSS original recovered from clean HEAD after the small append, not falsely claimed as a prior copy. No production mutation. No stage/commit/push/deploy. Final reconciliation not performed.
 
-## 11. WP-C9D pre-deploy recheck — 2026-10-07
+## 11. WP-C9D historical pre-deploy recheck — 2026-10-07
 
 Production catalog recheck PASS at Supabase SQL Editor query ee2a87f2-510b-4d08-afe7-fd37d0bbc537 (B&B PICK / main PRODUCTION). All ten captured Rating/business/Initial/Player/lifecycle definition hashes and owner/ACL/security-definer/search_path match section 10. Audit exact columns, RLS, owner and zero policies unchanged; authenticated SELECT/INSERT/UPDATE/DELETE all false; get_audit_events still absent. No catalog drift.
 
@@ -196,3 +196,28 @@ Backend gate PASS for available production identities/catalog/integrity; delegat
 Pre-commit scope recheck: exact19 files (9 tracked modified +10 new) verified; no unrelated path. Post-cache-bust browser fixture matrix ADMIN/rating-only/audit-only/BOTH/normal PASS at1280 and390; expanded workflows and no page overflow verified, no real session implied.
 
 WP-C9D pre-commit gates repeated PASS:20/20 frontend; WP-C9 Rating/Audit; Rating Initial integrity/advisory concurrency; Player Permission; WP-C2 promotion; ACC07B. Syntax/AST/encoding/whitespace/cached diff check PASS. Production browser currently shows login only; no authenticated smoke/session available, no credential/account created.
+
+## 13. WP-C9D final deployment status — 2026-10-07
+
+**DEPLOYED / PARTIALLY VERIFIED.** Both reviewed backend migrations and frontend published; no observed implementation/production contract failure. Do not force CLOSED while authenticated runtime evidence is missing. Final Reconciliation NOT performed.
+
+Implementation commit 1a3513ffe35fa78681ce01b151b1894909ae7cb6 (feat: enable delegated rating and audit capabilities), exactly19 reviewed files, +1159/-21. Push main -> origin/main PASS; HEAD/local origin/main/live refs/heads/main matched implementation SHA at verification. No unrelated file staged. Pages run37623208917 completed SUCCESS, matching implementation SHA: https://github.com/hainhobkhn-droid/B-B/actions/runs/37623208917 .
+
+Production https://hainhobkhn-droid.github.io/B-B/ verified after publish. HTTP200 and exact byte/SHA256 parity against implementation Git blobs (not CRLF working-tree bytes) for index.html, app.js, account.js, players.js, app.css, matches.js and fund.js. Four changed assets use wp-c9-capability-surfaces-20261007-1; unchanged matches/fund tags preserved. Browser DOM confirms all four tags after reload; production shows login, no captured console error. No authenticated ADMIN/delegated/normal session exists in this browser context; runtime smoke NOT RUN, no credential/account created.
+
+Asset SHA256:
+- index.html: 47e68d6ef8db9f29cb8f2a1ff3ec15acb5c6f5378cf427121160ec95944a6972
+- app.js: bfe6526820c7ac8739be67042c4384366a7a8a8c77d1bfbb6e50f7c83246027d
+- account.js: 725e58e93c9a5091dc80b1a124a5e90ba844377ac279b0d831e240c35f598a35
+- players.js: 8b91dd83f5871c85f46474e607b43ca8c7b8f0baf2d21fd778734aa2cf16c872
+- app.css: 5d6cafe7b483bc09dea1874dda0f9a2cd04de4e1e045f8717cbcf07d732e6c83
+- matches.js: 48ce887b92eebdb213cfc32873562e606f75533d50dbf0b06ab19f7fbfda3bab
+- fund.js: b4479b26ba8d29e9f3449b3c94a7679c8ec65eda4eb20dd071009d0683e3fd05
+
+Security evidence split: production SQL authenticated-role/transaction-local JWT authorization checks PASS ADMIN and normal/no-cap denial; this is not verified browser token/session behavior. Delegated Rating/Audit production identity absent, NOT RUN; exact-capability local backend/frontend matrices and browser fixtures PASS. Initial Rating exact ADMIN source unchanged and no-cap direct-call denial PASS; delegated Initial denial covered locally, not claimed live. No raw Audit grant expansion. Schema cache/API signature visibility PASS via named-function anonymous denial, authenticated positive REST runtime NOT RUN.
+
+Audit bounded small-data read smoke PASS (540 catalog rows; cap50 and two disjoint pages); large-data performance NOT VERIFIED. No aggressive production benchmark. Rating projection mismatch remains0 and all pre/post Rating aggregate hashes/counts identical. Both schema migrations were executed through SQL Editor; no extra migration-history registration SQL was applied and automated migration bookkeeping parity was not verified.
+
+Residual verification: authenticated ADMIN Rating/Audit browser read/render, delegated exact-capability browser/real JWT positive calls when a suitable approved identity exists, normal MEMBER live browser, authenticated positive PostgREST readiness, large-data Audit query plans/performance, migration bookkeeping convention verification. Do not create accounts/capabilities or perform business writes just to fill these gaps. Other previously recorded workstream issues are unchanged; no Final Reconciliation conducted.
+
+Production business-data mutation=NO. Production schema/function mutation=exactly the two reviewed migrations. No ad-hoc grants/RLS/Edge mutation. All20 frontend suites, Rating/Audit backend/security, Rating Initial integrity/concurrency, Player permission, WP-C2 promotion, ACC07B and applicable WP-C2–C8 frontend regressions PASS. Syntax/AST/UTF8/noBOM/no U+FFFD/whitespace/cached diff checks PASS. Local test database stopped. Eight unrelated untracked entries preserved. This deployment-evidence update is eligible only for a separate report-only documentation commit.
