@@ -10,6 +10,7 @@
       canManageMembers,
       canManagePlayers,
       canManagePlayerLifecycle,
+      canAdjustRating = () => false,
       button,
       actionAccordion,
       paginatedList,
@@ -3646,6 +3647,85 @@
     }
 
 
+    // WP-C9A manual delta: shared ADMIN/delegated workflow, backend authoritative.
+    function manualRatingAdjustmentForm(root) {
+      if (!canAdjustRating()) return;
+      const actor = state.session?.user?.id;
+      const generation = state.generation;
+      const current = () => root.isConnected && state.session?.user?.id === actor &&
+        state.generation === generation && canAdjustRating();
+      const section = panel('Điều chỉnh Rating', root);
+      section.append(el('p', 'Ghi một mức tăng/giảm Rating có lý do qua hệ thống Rating. Không sửa Rating ban đầu; lịch sử trận vẫn được replay theo Rating V1.1.', 'muted'));
+      const form = el('form');
+      const grid = el('div', null, 'form-grid');
+      const field = (id, label, tag = 'input', type = 'text') => {
+        const group = el('div', null, 'form-group');
+        const caption = el('label', label);
+        const input = el(tag, null, 'field');
+        input.id = id; caption.htmlFor = id;
+        if (tag === 'input') input.type = type;
+        input.required = true; group.append(caption, input); grid.append(group);
+        return input;
+      };
+      const player = field('manual-rating-player', 'VĐV', 'select');
+      const placeholder = el('option', '— Chọn VĐV —'); placeholder.value = '';
+      player.append(placeholder);
+      rows('players').slice().sort((a, b) => raw(a.full_name).localeCompare(raw(b.full_name), 'vi'))
+        .forEach(item => { const option = el('option', raw(item.full_name) + ' • Rating ' + number(item.current_rating)); option.value = item.id; player.append(option); });
+      const amount = field('manual-rating-amount', 'Mức tăng/giảm (ví dụ: +0,25 hoặc -0,25)', 'input', 'number');
+      amount.step = '0.00001';
+      const effective = field('manual-rating-effective', 'Thời điểm hiệu lực', 'input', 'datetime-local');
+      effective.value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      const reason = field('manual-rating-reason', 'Lý do', 'textarea');
+      const message = el('div'); message.hidden = true;
+      const submit = el('button', 'Ghi điều chỉnh Rating', 'btn primary'); submit.type = 'submit';
+      const actions = el('div', null, 'form-actions'); actions.append(submit);
+      form.append(grid, actions, message); section.append(form);
+      let busy = false, request = null;
+      const controls = [player, amount, effective, reason, submit];
+      const sync = () => controls.forEach(control => { control.disabled = busy || !!state.busy || !!state.writeBusy || !canAdjustRating(); });
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!current() || busy || state.busy || state.writeBusy) return;
+        const delta = Number(amount.value);
+        const when = new Date(effective.value);
+        if (!player.value || !amount.value.trim() || !Number.isFinite(delta) || delta === 0 ||
+            !reason.value.trim() || !Number.isFinite(when.getTime())) {
+          notice(message, 'Chọn VĐV, mức tăng/giảm khác 0, thời điểm hợp lệ và lý do.', true);
+          return;
+        }
+        const payload = {p_player_id: player.value, p_amount: delta,
+          p_reason: reason.value.trim(), p_effective_at: when.toISOString()};
+        const key = JSON.stringify(payload);
+        if (!request || request.key !== key) request = {key, id: crypto.randomUUID()};
+        busy = true; state.writeBusy = true; sync();
+        form.setAttribute('aria-busy', 'true');
+        try {
+          const {data, error} = await client.rpc('record_rating_adjustment_active',
+            {...payload, p_request_id: request.id});
+          if (error) throw error;
+          if (data?.success !== true || data?.player_id !== payload.p_player_id || !data?.adjustment_id)
+            throw new Error('RATING_ADJUSTMENT_UNCONFIRMED');
+          if (!current()) return;
+          request = null; state.writeBusy = false;
+          await load();
+          if (state.session?.user?.id !== actor || state.page !== 'players') return;
+          render();
+          notice($('global-message'), 'Đã ghi điều chỉnh Rating. Hệ thống đã cập nhật lại điểm và lịch sử.', false, true);
+        } catch (error) {
+          if (current()) notice(message,
+            error?.code === 'PGRST202'
+              ? 'Backend điều chỉnh Rating chưa sẵn sàng trên môi trường này. Vui lòng liên hệ ADMIN.'
+              : explain(error), true);
+        } finally {
+          busy = false;
+          if (state.session?.user?.id === actor) state.writeBusy = false;
+          if (root.isConnected) { form.removeAttribute('aria-busy'); sync(); }
+        }
+      });
+      sync();
+    }
+
     function playersPage() {
       const root = el('div', null, 'players-ui');
       $('content').append(root);
@@ -3663,7 +3743,7 @@
       const hasManagementActions =
         canManagePlayers() ||
         isAdmin() ||
-        canManagePlayerLifecycle();
+        canManagePlayerLifecycle() || canAdjustRating();
       const actionRoot = hasManagementActions
         ? el('section', null, 'workflow-section workflow-actions')
         : null;
@@ -3714,6 +3794,10 @@
           },
           'info'
         );
+      }
+
+      if (canAdjustRating()) {
+        collapsibleAdminSection(actionRoot, 'Điều chỉnh Rating', manualRatingAdjustmentForm, 'info');
       }
 
       if (isAdmin()) {

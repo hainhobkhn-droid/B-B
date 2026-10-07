@@ -39,8 +39,8 @@ assert(!app.includes('wp-c6-mobile-only'));
 assert(!matches.includes('wp-c6-mobile-only'));
 assert(!players.includes('wp-c6-mobile-only'));
 
-assert.match(index, /app\.css\?v=wp-c8-long-list-20261005-1/);
+assert.match(index, /app\.css\?v=wp-c9-capability-surfaces-20261007-1/);
 assert.equal((index.match(/wp-c5-information-hierarchy-20261005-1/g) || []).length, 1);
-assert.match(index, /app\.js\?v=wp-c8-long-list-20261005-1/);
+assert.match(index, /app\.js\?v=wp-c9-capability-surfaces-20261007-1/);
 
 console.log('PASS WP-C6 responsive density, comparison rows, touch targets, wrapping and cache scope');

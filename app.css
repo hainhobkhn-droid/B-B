@@ -6822,3 +6822,8 @@ tbody tr:hover{
   .list-pager { gap:6px; }
   .list-pager .btn { padding-left:10px; padding-right:10px; }
 }
+
+/* WP-C9A audit metadata stays within the card on mobile. */
+.account-ui .audit-records { display:grid;gap:var(--ui-card-gap);overflow-wrap:anywhere; }
+.account-ui .audit-records > article { min-width:0;padding:var(--ui-card-padding);border:1px solid var(--border);border-radius:var(--ui-card-radius);background:var(--surface); }
+.account-ui .audit-records p { margin:var(--ui-card-stack) 0; }

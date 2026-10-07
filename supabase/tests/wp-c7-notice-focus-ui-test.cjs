@@ -124,7 +124,7 @@ assert.match(html, /id="notice-alert"[^>]*role="alert"[^>]*aria-atomic="true"/);
 assert(!/id="global-message"\s+role="alert"/.test(html));
 assert.match(html, /id="page-title"\s+tabindex="-1"/);
 assert.match(app, /const heading = el\('h2', title\);\s+heading\.tabIndex = -1/);
-assert.match(html, /app\.js\?v=wp-c8-long-list-20261005-1/);
+assert.match(html, /app\.js\?v=wp-c9-capability-surfaces-20261007-1/);
 assert(css.includes('button:focus-visible') && css.includes('.sr-only'));
 assert.match(css, /\.field:focus-visible,[\s\S]*?outline:3px solid var\(--text\)/);
 assert.match(app, /body\.contains\(document\.activeElement\)[\s\S]*?toggle\.focus\(\{ preventScroll: true \}\)/);

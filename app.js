@@ -1538,8 +1538,7 @@
 
         if (
           canManagePlayers() ||
-          canManagePlayerLifecycle() ||
-          canAdjustRating()
+          canManagePlayerLifecycle() || canAdjustRating()
         ) {
           const activePlayers =
             ready('players')
@@ -1552,15 +1551,14 @@
           cards.push({
             variant: 'info',
             icon: '♧',
-            title: 'VĐV & Rating',
+            title: 'Quản lý VĐV',
             value:
               activePlayers === null
                 ? '—'
                 : number(activePlayers),
-            hint:
-              canAdjustRating()
-                ? 'Quản lý VĐV và các nghiệp vụ Rating được ủy quyền.'
-                : 'Quản lý danh sách VĐV trong phạm vi được ủy quyền.',
+            hint: canManagePlayers() || canManagePlayerLifecycle()
+              ? 'Quản lý danh sách VĐV trong phạm vi được ủy quyền.'
+              : 'Điều chỉnh Rating trong phạm vi được ủy quyền.',
             action: 'Mở VĐV',
             page: 'players'
           });
@@ -1619,9 +1617,11 @@
                 ? '—'
                 : number(tournamentCount),
             hint:
-              canCollectTournamentFee()
-                ? 'Quản lý giải và nghiệp vụ thu phí được ủy quyền.'
-                : 'Quản lý giải đấu trong phạm vi được ủy quyền.',
+              canManageTournaments() && canCollectTournamentFee()
+                ? 'Quản lý giải và thu phí trong phạm vi được ủy quyền.'
+                : canCollectTournamentFee()
+                  ? 'Thu phí giải đấu trong phạm vi được ủy quyền.'
+                  : 'Quản lý giải đấu trong phạm vi được ủy quyền.',
             action: 'Mở Giải đấu',
             page: 'tournaments'
           });
@@ -3504,6 +3504,7 @@ const fieldLabels = {
             state,
             client,
             isAdmin,
+            canViewAudit,
             button,
             actionAccordion,
             panel,

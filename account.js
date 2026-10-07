@@ -11,6 +11,7 @@
         state,
         client,
         isAdmin,
+        canViewAudit = () => false,
         button,
         actionAccordion,
         panel,
@@ -339,6 +340,17 @@
         for (const [,label] of permissions) details.append(el('p',label));
         if (!permissions.length) details.append(el('p','Bạn đang dùng quyền thành viên thông thường.','muted'));
         root.append(grid, details);
+        // WP-C9: a stored capability is not an available backend workflow.
+        if (state.profile.can_adjust_rating === true) {
+          details.append(el('p',
+            'Điều chỉnh Rating: mở VĐV → Điều chỉnh Rating. Sửa Rating ban đầu vẫn chỉ dành cho ADMIN.',
+            'notice'));
+        }
+        if (state.profile.can_view_audit === true) {
+          details.append(el('p',
+            'Xem Audit: mở Lịch sử thao tác để xem metadata nghiệp vụ đã được lọc an toàn.',
+            'notice'));
+        }
       }
 
       function memberNickname(root) {
@@ -397,6 +409,103 @@
         });
       }
 
+      // WP-C9A: one read-only Audit component for ADMIN/exact delegated capability.
+      function auditWorkspace(root) {
+        if (!canViewAudit()) return;
+        const actor = state.session?.user?.id, generation = state.generation;
+        const current = () => root.isConnected && state.session?.user?.id === actor &&
+          state.generation === generation && canViewAudit();
+        let offset = 0, busy = false, revision = 0, opened = false;
+        let readPage = () => {};
+        const filters = {}, controls = [];
+        actionAccordion({root, title: 'Lịch sử thao tác', semantic: 'info',
+          onOpen: () => { if (!opened) { opened = true; readPage(); } },
+          render(body) {
+            body.append(el('p', 'Xem lịch sử thao tác theo ngày, người thực hiện và nhóm dữ liệu.', 'muted'));
+            const form = el('form');
+            const grid = el('div', null, 'form-grid');
+            const field = (key, label, type, values = null) => {
+              const group = el('div', null, 'form-group'), caption = el('label', label);
+              const input = el(values ? 'select' : 'input', null, 'field');
+              input.id = 'audit-' + key; caption.htmlFor = input.id;
+              if (!values) input.type = type;
+              else { const all = el('option', 'Tất cả'); all.value = ''; input.append(all);
+                values.forEach(value => { const option = el('option', value); option.value = value; input.append(option); }); }
+              group.append(caption, input); grid.append(group); filters[key] = input; controls.push(input);
+            };
+            field('from', 'Từ ngày', 'date'); field('to', 'Đến ngày', 'date');
+            field('actor', 'Actor ID (không bắt buộc)', 'text');
+            field('action', 'Loại thao tác', null, ['RECORD_RATING_ADJUSTMENT', 'CORRECT_RATING_ADJUSTMENT',
+              'REBUILD_RATINGS', 'PLAYER_STATUS_CHANGED', 'PLAYER_HARD_DELETED',
+              'RECORD_FUND_PAYMENT', 'REFUND_FUND_PAYMENT', 'RECORD_MEMBER_FUND_PAYMENT', 'OTHER']);
+            field('table', 'Nhóm dữ liệu', null, ['players','matches','rating_events','rating_adjustments',
+              'fund_payments','fund_transactions','fund_contributions','tournaments',
+              'tournament_registrations','tournament_payments','profiles','OTHER']);
+            const apply = el('button', 'Lọc lịch sử', 'btn primary'); apply.type = 'submit'; controls.push(apply);
+            const clear = button('Xóa bộ lọc', () => { Object.values(filters).forEach(input => { input.value = ''; }); offset = 0; readPage(); });
+            const retry = button('Tải lại', () => readPage()); controls.push(clear, retry);
+            const actions = el('div', null, 'form-actions'); actions.append(apply, clear, retry);
+            form.append(grid, actions); body.append(form);
+            const message = el('div'); message.hidden = true; body.append(message);
+            const records = el('div', null, 'structured-list audit-records'); body.append(records);
+            const pager = el('div', null, 'form-actions');
+            const previous = button('← Trước', () => { offset = Math.max(0, offset - 30); readPage(); });
+            const next = button('Sau →', () => { offset += 30; readPage(); });
+            const page = el('span', 'Chưa tải lịch sử', 'muted'); pager.append(previous, page, next); body.append(pager);
+            previous.disabled = next.disabled = true;
+            form.addEventListener('submit', event => { event.preventDefault(); offset = 0; readPage(); });
+            async function readPageImpl() {
+              if (!current() || busy) return;
+              const actorFilter = filters.actor.value.trim();
+              if (actorFilter && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actorFilter)) {
+                notice(message, 'Actor ID cần là UUID hợp lệ.', true); return;
+              }
+              const from = filters.from.value ? new Date(filters.from.value + 'T00:00:00+07:00') : null;
+              const to = filters.to.value ? new Date(new Date(filters.to.value + 'T00:00:00+07:00').getTime() + 86400000) : null;
+              if ((from && !Number.isFinite(from.getTime())) || (to && !Number.isFinite(to.getTime())) || (from && to && from >= to)) {
+                notice(message, 'Khoảng ngày không hợp lệ.', true); return;
+              }
+              busy = true; const request = ++revision;
+              controls.forEach(control => { control.disabled = true; }); previous.disabled = next.disabled = true;
+              body.setAttribute('aria-busy', 'true'); notice(message, 'Đang tải lịch sử…');
+              try {
+                const {data, error} = await client.rpc('get_audit_events', {p_limit: 30, p_offset: offset,
+                  p_from: from?.toISOString() || null, p_to: to?.toISOString() || null,
+                  p_actor_id: actorFilter || null, p_action: filters.action.value || null,
+                  p_table_name: filters.table.value || null});
+                if (error) throw error;
+                if (!current() || request !== revision) return;
+                const fields = ['id','created_at','actor_id','action','entity_type','target_id','summary'];
+                if (!data || !Array.isArray(data.events) || data.events.length > 30 || data.page_size !== 30 ||
+                    data.offset !== offset || typeof data.has_more !== 'boolean' || data.events.some(item =>
+                      !item || typeof item !== 'object' || Object.keys(item).some(key => !fields.includes(key)) ||
+                      typeof item.id !== 'string' || typeof item.summary !== 'string'))
+                  throw new Error('AUDIT_READ_MODEL_INVALID');
+                records.replaceChildren();
+                data.events.forEach(item => {
+                  const card = el('article', null, 'record-card');
+                  card.append(el('strong', item.summary), el('p', date(item.created_at) + ' • ' + item.entity_type, 'muted'));
+                  const detail = el('details'), caption = el('summary', 'Metadata'); detail.append(caption);
+                  ['id','actor_id','target_id','action'].forEach(key => detail.append(el('p', key + ': ' + (item[key] || '—'), 'muted')));
+                  card.append(detail); records.append(card);
+                });
+                if (!data.events.length) records.append(el('p', 'Không có thao tác trong bộ lọc này.', 'muted'));
+                page.textContent = 'Trang ' + (Math.floor(offset / 30) + 1);
+                previous.disabled = offset === 0; next.disabled = !data.has_more || offset + 30 > 10000;
+                notice(message, 'Đã tải ' + data.events.length + ' thao tác.');
+              } catch (error) {
+                if (current() && request === revision) notice(message,
+                  error?.code === 'PGRST202' ? 'Backend lịch sử thao tác chưa sẵn sàng trên môi trường này. Vui lòng liên hệ ADMIN.' : explain(error), true);
+              } finally {
+                busy = false;
+                if (current()) { controls.forEach(control => { control.disabled = false; }); body.removeAttribute('aria-busy'); }
+              }
+            }
+            readPage = readPageImpl;
+          }
+        });
+      }
+
       function admin() {
         const root = el('div', null, 'account-ui');
         $('content').append(root);
@@ -418,6 +527,7 @@
           : 'Chưa liên kết VĐV', 'account-link muted'));
         identity.append(el('p', state.session.user.email || 'Chưa có thông tin email', 'account-email muted'));
         p.append(identity);
+        if (canViewAudit()) auditWorkspace(root);
 
         if (!isAdmin()) {
           // IAM04-B MEMBER SELF PROFILE V1
@@ -601,6 +711,9 @@
         ];
         const section = panel('Quản lý quyền thành viên', root);
         section.classList.add('member-permissions');
+        section.append(el('p',
+          'Điều chỉnh Rating mở workflow tăng/giảm điểm tại VĐV; Xem Audit mở lịch sử metadata an toàn tại Tài khoản. Sửa Rating ban đầu vẫn chỉ dành cho ADMIN.',
+          'notice'));
         const message = el('div');
         message.hidden = true;
         message.setAttribute('role', 'status');

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WP-C9A offline capability workflow</title>
+<link rel="stylesheet" href="../../app.css">
+<body>
+<main class="account-ui" style="max-width:1100px;margin:auto;padding:12px">
+<h1>WP-C9A — fixture local</h1>
+<p>Source hiện tại; ADMIN/delegated/normal giả lập. Không có Supabase client/session thật.</p>
+<label for="fixture-role">Vai trò kiểm thử</label>
+<select id="fixture-role" class="field">
+  <option value="ADMIN">ADMIN</option>
+  <option value="rating">MEMBER chỉ can_adjust_rating</option>
+  <option value="audit">MEMBER chỉ can_view_audit</option>
+  <option value="both">MEMBER có cả hai capability</option>
+  <option value="normal">MEMBER thường</option>
+</select>
+<div id="global-message"></div><div id="content"></div>
+<div id="notice-status" class="sr-only" role="status"></div>
+<div id="notice-alert" class="sr-only" role="alert"></div>
+<p id="fixture-result" role="status">Đang tải current source…</p>
+</main>
+<script>
+(async () => {
+  const [app,players,account] = await Promise.all(['app.js','players.js','account.js'].map(file =>
+    fetch('../../'+file, {cache:'no-store'}).then(result=>result.text())));
+  const state={generation:1,page:'players',session:{user:{id:'offline-fixture'}},profile:{role:'ADMIN'}};
+  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
+  const $=id=>document.getElementById(id);
+  const button=(label,fn,cls='btn')=>{const n=el('button',label,cls);n.type='button';n.addEventListener('click',fn);return n;};
+  const panel=(title,parent)=>{const n=el('section',null,'panel');n.append(el('h2',title));parent.append(n);return n;};
+  const between=(source,a,b)=>source.slice(source.indexOf(a),source.indexOf(b,source.indexOf(a)));
+  const accordion=new Function('el','state','document',between(app,'// WP-C4 SHARED ACTION ACCORDION START','// WP-C4 SHARED ACTION ACCORDION END')+';return actionAccordion;')(el,state,document);
+  const notice=new Function('$',between(app,'// WP-C7 SHARED NOTICE START','// WP-C7 SHARED NOTICE END')+';return notice;')($);
+  let role='ADMIN';
+  const ratingAllowed=()=>role==='ADMIN'||role==='rating'||role==='both';
+  const auditAllowed=()=>role==='ADMIN'||role==='audit'||role==='both';
+  const client={rpc:async (name,p)=>{
+    $('fixture-result').textContent='Fixture RPC: '+name+' (production mutation = NO)';
+    if(name==='record_rating_adjustment_active')return {data:{success:true,player_id:p.p_player_id,adjustment_id:'offline-confirmed'}};
+    if(name==='get_audit_events')return {data:{page_size:30,offset:p.p_offset,has_more:p.p_offset===0,
+      events:Array.from({length:3},(_,i)=>({id:'00000000-0000-0000-0000-'+String(i+p.p_offset).padStart(12,'0'),
+        created_at:'2026-10-07T08:00:00Z',actor_id:'00000000-0000-0000-0000-000000000001',
+        action:'RECORD_RATING_ADJUSTMENT',entity_type:'rating_adjustments',target_id:'00000000-0000-0000-0000-000000000010',summary:'Ghi điều chỉnh Rating'}))}};
+    throw new Error('Unexpected fixture RPC');
+  }};
+  const context={state,el,$,panel,button,actionAccordion:accordion,notice,client,
+    canAdjustRating:ratingAllowed,canViewAudit:auditAllowed,
+    rows:()=>[{id:'00000000-0000-0000-0000-000000000010',full_name:'Nguyễn Đặng Tên VĐV fixture rất dài kiểm tra mobile',current_rating:4}],
+    raw:String,number:String,date:value=>new Date(value).toLocaleString('vi-VN'),explain:e=>e.message||e.code,
+    load:async()=>{},render:()=>{$('fixture-result').textContent='Fixture Rating success — production mutation = NO';}};
+  const manual=new Function(...Object.keys(context),between(players,'    function manualRatingAdjustmentForm(','    function playersPage()')+';return manualRatingAdjustmentForm;')(...Object.values(context));
+  const audit=new Function(...Object.keys(context),between(account,'      function auditWorkspace(','      function admin()')+';return auditWorkspace;')(...Object.values(context));
+  function mount(){
+    state.generation++;state.writeBusy=false;$('content').replaceChildren();
+    if(ratingAllowed())accordion({root:$('content'),title:'Điều chỉnh Rating',semantic:'info',render:body=>manual(body)});
+    if(auditAllowed())audit($('content'));
+    if(!ratingAllowed()&&!auditAllowed())$('content').append(el('p','Không có thao tác quản trị theo capability này.','muted'));
+    $('fixture-result').textContent='Role fixture: '+role+' • current source loaded';
+  }
+  $('fixture-role').addEventListener('change',event=>{role=event.target.value;mount();});mount();
+})().catch(error=>{document.getElementById('fixture-result').textContent='Fixture failed: '+error.message;});
+</script>
+</html>

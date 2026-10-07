@@ -108,5 +108,5 @@ assert.match(read('matches.js'), /names.teamA, ...names.teamB/);
 assert.match(read('players.js'), /canManageMembers\(\) && canManagePlayers\(\)/);
 assert.match(read('players.js'), /if \(canManagePlayerLifecycle\(\)\)/);
 assert.match(read('app.css'), /@media \(max-width:700px\)[\s\S]*list-control:first-child/);
-assert.equal((read('index.html').match(/wp-c8-long-list-20261005-1/g) || []).length, 5);
+assert.equal((read('index.html').match(/wp-c9-capability-surfaces-20261007-1/g) || []).length, 4);
 console.log('PASS WP-C8 real-helper 25/100-row search/filter/page/reset/clamp, global/tied rank, empty/error, context isolation, native controls and Account contract');
