@@ -150,10 +150,25 @@ Exact WP-C8 files (16):
 - supabase/tests/wp-c8-browser-fixture.html
 - PICK-WP-C8-LONG-LIST-2026-10-05.md
 
-Only five changed assets use `wp-c8-long-list-20261005-1`: app.js, account.js, players.js, matches.js, app.css. Unchanged fund.js retains WP-C5 cache tag. Nothing deployed or staged. Preserve all unrelated entries; later deployment requires separate approval and production asset/runtime verification.
+Only five changed assets use `wp-c8-long-list-20261005-1`: app.js, account.js, players.js, matches.js, app.css. Unchanged fund.js retains WP-C5 cache tag. Implementation committed and published; see section 21 for verified deployment evidence. Preserve all unrelated entries.
 
 # 20. Final status
 
 **PARTIALLY VERIFIED.** Implementation, all local gates and ADMIN Desktop/390px/320px representative smoke PASS. Residual authenticated delegated/normal MEMBER browser evidence, actual screen-reader speech and populated backend Account page-boundary/runtime coverage are explicitly not claimed PASS. No known implementation blocker remains from observed WP-C8 regression; the primary Account lazy-load regression was repaired and verified.
 
-Production mutation = NO. Stage/commit/push/deploy = NO. WP-C9 not started.
+Production business mutation = NO. Implementation commit and Pages publish are verified below. WP-C9 not started.
+# 21. WP-C8D deployment verification — 2026-10-07
+
+**DEPLOYED / PARTIALLY VERIFIED.** No new implementation blocker observed.
+
+- Implementation commit: `17feae3e96afe3a5176efe7d90719a7d8fa22fb7` (`feat: improve long-list search and pagination`), exactly 16 reviewed files. The prior agent push attempt was rejected before execution; this verification independently observed the commit already present on the live remote. No repeat push performed.
+- `HEAD`, local `origin/main`, and live `refs/heads/main` all equal the implementation commit.
+- GitHub Pages run `37427426296`: completed / success, head SHA matches. Evidence: https://github.com/hainhobkhn-droid/B-B/actions/runs/37427426296
+- Production HTTP 200 for index.html, app.js, players.js, matches.js, account.js, app.css. All six match committed source text after line-ending/EOF normalization; this check is text parity, not a byte-hash claim.
+- Served index has `wp-c8-long-list-20261005-1` for all five changed assets.
+- Re-run: 18/18 frontend suites PASS; 24 JS/CJS plus inline-script syntax PASS; 18 Python AST PASS; UTF-8/no BOM/no U+FFFD/whitespace gates PASS; git diff --check PASS; staging empty.
+- Production origin has login screen only. Authenticated production smoke NOT RUN; no credential/account created. Existing ADMIN localhost session recovered after restarting read-only preview using the published implementation source.
+- ADMIN localhost recheck: Players page 21–25/25, search `pham` 2 results/page reset; Ranking search `pham quang` preserves global #5; Account lazy-open loads 16, no-result 0/16 and clear restores 16; approved Match next page 21–40/60; expanded Contribution search `pham` returns 2. No business submission or mutation.
+- Responsive recheck: Players/Ranking 390px and 320px have document scrollWidth equal viewport. Account/Matches/expanded Contribution 390px likewise have no page overflow. Desktop list interactions PASS. No captured browser console errors. Prior section 14 records fuller preparation smoke/100-row fixture coverage; it is not newly claimed as authenticated production coverage.
+- Residual gaps: delegated MEMBER and normal MEMBER authenticated browser sessions NOT RUN; populated Account server page-boundary NOT RUN (16 rows below limit 25); actual screen-reader speech NOT RUN. Existing automated permission/keyboard/live-region fixtures PASS. No forced closure of these gaps.
+- Production DB/business mutation = NO; SQL/migration/Edge deploy = NO; WP-C9 not started. Only this report changed during this verification; no documentation commit/push yet.
