@@ -1,0 +1,56 @@
+{
+  "fixture_contract": {
+    "description": "SYNTHETIC aggregate-contract test; never production evidence",
+    "counters": {
+      "new_matches": 160,
+      "new_dates": 20,
+      "players": 25,
+      "cumulative_ge5": 24,
+      "cumulative_ge10": 18,
+      "cumulative_ge20": 8,
+      "prospective_ge5": 8,
+      "prospective_ge10": 8,
+      "prospective_ge20": 8,
+      "newcomer_first": 8,
+      "newcomer_ge5": 8,
+      "newcomer_ge10": 8,
+      "newcomer_ge15": 8,
+      "newcomer_ge25": 8,
+      "matched_mean": 8,
+      "tail_2plus": 4,
+      "gaps": {
+        "0-0.25": 112,
+        "0.25-0.5": 16,
+        "0.5-1": 16,
+        "1-6.01": 16
+      },
+      "doubles": {
+        "balanced-balanced": 16,
+        "mixed-balanced": 16,
+        "mixed-mixed": 16,
+        "intermediate": 112
+      },
+      "bands": {
+        "0.5-0.55": 112,
+        "0.55-0.6": 12,
+        "0.6-0.7": 12,
+        "0.7-0.8": 12,
+        "0.8-1.00001": 12
+      },
+      "dependence": {
+        "max_player_appearance_share": 0,
+        "max_partner_repeat_share_per_player": 0,
+        "max_date_share": 0
+      },
+      "diversity_gaps": {
+        "0-0.25": 16,
+        "0.25-0.5": 16,
+        "0.5-1": 16,
+        "1-6.01": 16
+      }
+    },
+    "sealed_protocol": true,
+    "decision_review": true,
+    "quality_errors": []
+  }
+}

@@ -1,0 +1,364 @@
+{
+  "offline_synthetic": true,
+  "frozen": {
+    "status": "RESEARCH ONLY - NOT PRODUCTION RECOMMENDATION",
+    "frozen_at": "2026-10-08T07:36:51.561032+00:00",
+    "calibration_a_commit": "99eb2837deb1834a4b307ca75243f6a47b21f97a",
+    "formula_function": "public._rebuild_ratings_internal(text,uuid)",
+    "production_definition_md5": "b3b434e407c1828bbb6dbf2907148104",
+    "reference_sha256": "19635025c8500d40e857347df1c9736569cdded34b3886df201f06de65dfbad0",
+    "baseline_dataset_sha256": "e695f4ca2919429df058b467686d8c2345d4ccc09ab2d60663800785082fad07",
+    "baseline_match_ids": [],
+    "common_parameters": {
+      "initial_rating": 4,
+      "min_rating": 2,
+      "max_rating": 8,
+      "k_factor": 0.55,
+      "provisional_matches": 5,
+      "stable_matches": 10,
+      "recency_half_life_days": 60,
+      "recency_floor": 0.35,
+      "rating_delta_cap": 0.35,
+      "provisional_factor": 1.25,
+      "transition_factor": 1.1,
+      "established_factor": 1.0,
+      "match_weights": {
+        "CLUB_RATED": 0.9,
+        "FRIENDLY_RATED": 0.6,
+        "LEAGUE": 0.95,
+        "SELF_REPORTED": 0.4,
+        "TOURNAMENT": 1,
+        "TRAINING": 0
+      },
+      "rating_scale": 3,
+      "event_share_delta_scale": 5
+    },
+    "candidates": {
+      "A": {
+        "expected_sensitivity": 0.9
+      },
+      "D_S1.2": {
+        "expected_sensitivity": 1.2
+      }
+    },
+    "no_retuning": "No adaptive grid or parameter updates on prospective validation stream; any change starts a new manifest and new unseen validation window.",
+    "primary_population": "APPROVED CLUB_RATED POINTS; other types reported separately",
+    "prediction_rule": "Model-specific prefix-only rebuild from immutable as-of seeds; forecast recorded before score/result known; identical prior source availability for A and D.",
+    "exemptions": "Retrospective/batched reconstruction with unknown seed or result availability is exploratory only, never counted as primary prospective evidence."
+  },
+  "baseline": {
+    "players": [
+      {
+        "id": "p0",
+        "initial_rating": 3.0,
+        "current_rating": 3.0
+      },
+      {
+        "id": "p1",
+        "initial_rating": 3.5,
+        "current_rating": 3.5
+      },
+      {
+        "id": "p2",
+        "initial_rating": 4.0,
+        "current_rating": 4.0
+      },
+      {
+        "id": "p3",
+        "initial_rating": 4.5,
+        "current_rating": 4.5
+      }
+    ],
+    "matches": [],
+    "lineups": []
+  },
+  "data": {
+    "captured_at": "2026-10-10T12:00:00+00:00",
+    "function_hashes": {
+      "_rebuild_ratings_internal": "b3b434e407c1828bbb6dbf2907148104"
+    },
+    "settings": [
+      {
+        "algorithm_version": "V1.1",
+        "created_at": "2026-09-07T15:01:28.30988+00:00",
+        "expected_sensitivity": 0.9,
+        "id": 3,
+        "initial_rating": 4,
+        "is_active": true,
+        "k_factor": 0.55,
+        "max_rating": 8,
+        "min_rating": 2,
+        "provisional_matches": 5,
+        "rating_delta_cap": 0.35,
+        "recency_floor": 0.35,
+        "recency_half_life_days": 60,
+        "stable_matches": 10
+      }
+    ],
+    "weights": [
+      {
+        "match_type": "CLUB_RATED",
+        "weight": 0.9
+      },
+      {
+        "match_type": "FRIENDLY_RATED",
+        "weight": 0.6
+      },
+      {
+        "match_type": "LEAGUE",
+        "weight": 0.95
+      },
+      {
+        "match_type": "SELF_REPORTED",
+        "weight": 0.4
+      },
+      {
+        "match_type": "TOURNAMENT",
+        "weight": 1
+      },
+      {
+        "match_type": "TRAINING",
+        "weight": 0
+      }
+    ],
+    "players": [
+      {
+        "id": "p0",
+        "initial_rating": 3.0,
+        "current_rating": 3.843
+      },
+      {
+        "id": "p1",
+        "initial_rating": 3.5,
+        "current_rating": 3.843
+      },
+      {
+        "id": "p2",
+        "initial_rating": 4.0,
+        "current_rating": 3.657
+      },
+      {
+        "id": "p3",
+        "initial_rating": 4.5,
+        "current_rating": 4.157
+      }
+    ],
+    "matches": [
+      {
+        "id": "m0",
+        "played_at": "2026-10-08T09:00:00+00:00",
+        "played_date": "2026-10-08",
+        "match_number": 0,
+        "match_type": "CLUB_RATED",
+        "score_mode": "POINTS",
+        "team_a_score": 11,
+        "team_b_score": 7
+      },
+      {
+        "id": "m1",
+        "played_at": "2026-10-09T09:00:00+00:00",
+        "played_date": "2026-10-09",
+        "match_number": 1,
+        "match_type": "CLUB_RATED",
+        "score_mode": "POINTS",
+        "team_a_score": 11,
+        "team_b_score": 7
+      }
+    ],
+    "lineups": [
+      {
+        "match_id": "m0",
+        "player_id": "p0",
+        "team": "A"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p1",
+        "team": "A"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p2",
+        "team": "B"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p3",
+        "team": "B"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p0",
+        "team": "A"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p1",
+        "team": "A"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p2",
+        "team": "B"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p3",
+        "team": "B"
+      }
+    ],
+    "events": [
+      {
+        "match_id": "m0",
+        "player_id": "p0",
+        "rating_before": 3.0,
+        "team_rating": 3.25,
+        "opponent_team_rating": 4.25,
+        "expected_share": 0.24766,
+        "actual_share": 0.61111,
+        "performance_gap": 0.36345,
+        "match_weight": 0.9,
+        "recency_weight": 0.989,
+        "provisional_factor": 1.25,
+        "rating_delta": 0.2223,
+        "rating_after": 3.222,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p1",
+        "rating_before": 3.5,
+        "team_rating": 3.25,
+        "opponent_team_rating": 4.25,
+        "expected_share": 0.24766,
+        "actual_share": 0.61111,
+        "performance_gap": 0.36345,
+        "match_weight": 0.9,
+        "recency_weight": 0.989,
+        "provisional_factor": 1.25,
+        "rating_delta": 0.2223,
+        "rating_after": 3.722,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p2",
+        "rating_before": 4.0,
+        "team_rating": 4.25,
+        "opponent_team_rating": 3.25,
+        "expected_share": 0.75234,
+        "actual_share": 0.38889,
+        "performance_gap": -0.36345,
+        "match_weight": 0.9,
+        "recency_weight": 0.989,
+        "provisional_factor": 1.25,
+        "rating_delta": -0.2223,
+        "rating_after": 3.778,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m0",
+        "player_id": "p3",
+        "rating_before": 4.5,
+        "team_rating": 4.25,
+        "opponent_team_rating": 3.25,
+        "expected_share": 0.75234,
+        "actual_share": 0.38889,
+        "performance_gap": -0.36345,
+        "match_weight": 0.9,
+        "recency_weight": 0.989,
+        "provisional_factor": 1.25,
+        "rating_delta": -0.2223,
+        "rating_after": 4.278,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p0",
+        "rating_before": 3.722,
+        "team_rating": 3.722,
+        "opponent_team_rating": 4.028,
+        "expected_share": 0.41581,
+        "actual_share": 0.61111,
+        "performance_gap": 0.1953,
+        "match_weight": 0.9,
+        "recency_weight": 1.0,
+        "provisional_factor": 1.25,
+        "rating_delta": 0.12084,
+        "rating_after": 3.843,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p1",
+        "rating_before": 3.722,
+        "team_rating": 3.722,
+        "opponent_team_rating": 4.028,
+        "expected_share": 0.41581,
+        "actual_share": 0.61111,
+        "performance_gap": 0.1953,
+        "match_weight": 0.9,
+        "recency_weight": 1.0,
+        "provisional_factor": 1.25,
+        "rating_delta": 0.12084,
+        "rating_after": 3.843,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p2",
+        "rating_before": 3.778,
+        "team_rating": 4.028,
+        "opponent_team_rating": 3.722,
+        "expected_share": 0.58419,
+        "actual_share": 0.38889,
+        "performance_gap": -0.1953,
+        "match_weight": 0.9,
+        "recency_weight": 1.0,
+        "provisional_factor": 1.25,
+        "rating_delta": -0.12084,
+        "rating_after": 3.657,
+        "algorithm_version": "V1.1"
+      },
+      {
+        "match_id": "m1",
+        "player_id": "p3",
+        "rating_before": 4.278,
+        "team_rating": 4.028,
+        "opponent_team_rating": 3.722,
+        "expected_share": 0.58419,
+        "actual_share": 0.38889,
+        "performance_gap": -0.1953,
+        "match_weight": 0.9,
+        "recency_weight": 1.0,
+        "provisional_factor": 1.25,
+        "rating_delta": -0.12084,
+        "rating_after": 4.157,
+        "algorithm_version": "V1.1"
+      }
+    ],
+    "adjustments": [
+      {
+        "id": "a1",
+        "player_id": "p0",
+        "amount": "NaN",
+        "effective_at": "2026-10-08T10:00:00+00:00",
+        "created_at": "2026-10-08T10:00:00+00:00",
+        "replay_order": 1,
+        "correction_of_adjustment_id": null,
+        "request_algorithm_version": "V1.1"
+      }
+    ],
+    "adjustment_events": [
+      {
+        "adjustment_id": "a1",
+        "player_id": "p0",
+        "rating_before": 3.222,
+        "requested_amount": 0.5,
+        "applied_delta": 0.5,
+        "rating_after": 3.722,
+        "algorithm_version": "V1.1"
+      }
+    ]
+  }
+}

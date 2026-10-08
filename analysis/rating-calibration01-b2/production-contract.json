@@ -1,0 +1,165 @@
+{
+  "captured_at": "2026-10-08T08:35:07.146617+00:00",
+  "columns": [
+    {
+      "column": "id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "uuid"
+    },
+    {
+      "column": "adjustment_id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "uuid"
+    },
+    {
+      "column": "player_id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "uuid"
+    },
+    {
+      "column": "algorithm_version",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "text"
+    },
+    {
+      "column": "rating_before",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "numeric"
+    },
+    {
+      "column": "requested_amount",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "numeric"
+    },
+    {
+      "column": "applied_delta",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "numeric"
+    },
+    {
+      "column": "rating_after",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "numeric"
+    },
+    {
+      "column": "created_at",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustment_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "uuid"
+    },
+    {
+      "column": "player_id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "uuid"
+    },
+    {
+      "column": "amount",
+      "precision": 8,
+      "scale": 5,
+      "table": "rating_adjustments",
+      "type": "numeric"
+    },
+    {
+      "column": "reason",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "text"
+    },
+    {
+      "column": "created_by",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "effective_at",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "replay_order",
+      "precision": 64,
+      "scale": 0,
+      "table": "rating_adjustments",
+      "type": "bigint"
+    },
+    {
+      "column": "correction_of_adjustment_id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "uuid"
+    },
+    {
+      "column": "request_id",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "uuid"
+    },
+    {
+      "column": "request_algorithm_version",
+      "precision": null,
+      "scale": null,
+      "table": "rating_adjustments",
+      "type": "text"
+    }
+  ],
+  "functions": {
+    "_rebuild_ratings_internal": {
+      "md5": "b3b434e407c1828bbb6dbf2907148104",
+      "exact_source_reference": "analysis/rating-calibration01-a/_rebuild_ratings_internal.sql"
+    },
+    "correct_rating_adjustment": {
+      "md5": "8c738f269f2a8b7a9f8411b8043a606d",
+      "exact_source_reference": "analysis/rating-calibration01-a/correct_rating_adjustment.sql"
+    },
+    "record_rating_adjustment": {
+      "md5": "8e46d18334aab4af27f8cc1264178460",
+      "exact_source_reference": "analysis/rating-calibration01-a/record_rating_adjustment.sql"
+    },
+    "set_player_initial_rating_before_history": {
+      "md5": "4f8a480037ef04a8e0b223739bce5652",
+      "exact_source_reference": "analysis/rating-calibration01-a/set_player_initial_rating_before_history.sql"
+    }
+  },
+  "timezone": "UTC",
+  "ordering": "effective_at/played_at ASC, MATCH before ADJUSTMENT, match_number NULLS LAST, replay_order NULLS LAST, UUID ASC"
+}

@@ -1,0 +1,14 @@
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SELECT jsonb_build_object(
+'captured_at',now(),'timezone',current_setting('TimeZone'),
+'players',(SELECT jsonb_agg(jsonb_build_object('id',id,'initial_rating',initial_rating,'current_rating',current_rating,'status',status,'player_type',player_type) ORDER BY id) FROM public.players),
+'matches',(SELECT jsonb_agg(jsonb_build_object('id',m.id,'played_at',played_at,'played_date',played_at::date,'match_number',match_number,'match_type',m.match_type,'score_mode',score_mode,'team_a_score',team_a_score,'team_b_score',team_b_score) ORDER BY played_at,match_number,m.id) FROM public.matches m JOIN public.rating_match_weights w ON w.match_type=m.match_type WHERE m.status='APPROVED' AND w.weight>0),
+'lineups',(SELECT jsonb_agg(jsonb_build_object('match_id',mp.match_id,'player_id',mp.player_id,'team',mp.team) ORDER BY mp.match_id,mp.team,mp.player_id) FROM public.match_players mp JOIN public.matches m ON m.id=mp.match_id JOIN public.rating_match_weights w ON w.match_type=m.match_type WHERE m.status='APPROVED' AND w.weight>0),
+'events',(SELECT jsonb_agg(to_jsonb(e)-'created_at' ORDER BY match_id,player_id) FROM public.rating_events e),
+'adjustments',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'player_id',player_id,'amount',amount,'effective_at',effective_at,'created_at',created_at,'replay_order',replay_order,'correction_of_adjustment_id',correction_of_adjustment_id,'request_algorithm_version',request_algorithm_version) ORDER BY effective_at,replay_order,id) FROM public.rating_adjustments),'[]'::jsonb), 'adjustment_events',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'adjustment_id',adjustment_id,'player_id',player_id,'algorithm_version',algorithm_version,'rating_before',rating_before,'requested_amount',requested_amount,'applied_delta',applied_delta,'rating_after',rating_after) ORDER BY adjustment_id,algorithm_version) FROM public.rating_adjustment_events),'[]'::jsonb),
+'settings',(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM public.rating_settings s),
+'weights',(SELECT jsonb_agg(to_jsonb(w) ORDER BY match_type) FROM public.rating_match_weights w),
+'column_types',(SELECT jsonb_agg(jsonb_build_object('table',c.relname,'column',a.attname,'type',format_type(a.atttypid,a.atttypmod)) ORDER BY c.relname,a.attnum) FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('players','rating_events') AND a.attnum>0 AND NOT a.attisdropped AND (a.attname LIKE '%rating%' OR c.relname='rating_events')),
+'function_hashes',(SELECT jsonb_object_agg(p.proname,md5(pg_get_functiondef(p.oid))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('_rebuild_ratings_internal','_approve_match_internal','_get_active_rating_version'))
+) AS dataset;
+ROLLBACK;

@@ -1,0 +1,14 @@
+{
+  "protocol": "P3",
+  "status": "PREPARATION ONLY",
+  "frozen_cutoff": "2026-10-08T07:36:51.561032Z",
+  "control_sensitivity": 0.9,
+  "candidate_sensitivity": 1.2,
+  "intervention": "identical source requested amount and authoritative effective order; each model clamps its own state",
+  "primary": "conditional match prediction; requires sealed intervention-aware as-of evidence",
+  "sensitivity": "exclude direct participant prior post-cutoff intervention; retain full replay history",
+  "natural_convergence": "censor from first manual intervention; no intervened future proxy",
+  "selection": "not based on A/D outcome advantage",
+  "new_thresholds": null,
+  "automatic_c_eligibility": false
+}

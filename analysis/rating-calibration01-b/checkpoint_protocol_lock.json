@@ -1,0 +1,8 @@
+{
+  "baseline_commit": "5e4e23b1c4bd2ecf143ef46c6687bf795e73c370",
+  "files": {
+    "checkpoint_config.json": "4683e2656f52982c8f4916a905c72255ec4c5ebb6183e596c6cfdc4f5c65b9b5",
+    "frozen_candidates.json": "348d713d0e6d9a88bac960f009a683ae19aa1c7679f34a76fc28394ef8896ebf",
+    "validation_metrics.py": "6cf2d9baa0edf95ac25c271942cff0d0d2d7a3e6d9c512bee4bf2581f546a3aa"
+  }
+}
