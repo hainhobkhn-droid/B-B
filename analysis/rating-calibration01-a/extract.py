@@ -1,0 +1,23 @@
+from pathlib import Path
+import json, subprocess
+root=Path('rating-calibration01a'); root.mkdir(exist_ok=True)
+sql="""BEGIN TRANSACTION READ ONLY;
+SELECT jsonb_build_object(
+'captured_at',now(),'timezone',current_setting('TimeZone'),
+'players',(SELECT jsonb_agg(jsonb_build_object('id',id,'initial_rating',initial_rating,'current_rating',current_rating,'status',status,'player_type',player_type) ORDER BY id) FROM public.players),
+'matches',(SELECT jsonb_agg(jsonb_build_object('id',m.id,'played_at',played_at,'played_date',played_at::date,'match_number',match_number,'match_type',m.match_type,'score_mode',score_mode,'team_a_score',team_a_score,'team_b_score',team_b_score) ORDER BY played_at,match_number,m.id) FROM public.matches m JOIN public.rating_match_weights w ON w.match_type=m.match_type WHERE m.status='APPROVED' AND w.weight>0),
+'lineups',(SELECT jsonb_agg(jsonb_build_object('match_id',mp.match_id,'player_id',mp.player_id,'team',mp.team) ORDER BY mp.match_id,mp.team,mp.player_id) FROM public.match_players mp JOIN public.matches m ON m.id=mp.match_id JOIN public.rating_match_weights w ON w.match_type=m.match_type WHERE m.status='APPROVED' AND w.weight>0),
+'events',(SELECT jsonb_agg(to_jsonb(e)-'created_at' ORDER BY match_id,player_id) FROM public.rating_events e),
+'adjustments',(SELECT count(*) FROM public.rating_adjustments),
+'settings',(SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM public.rating_settings s),
+'weights',(SELECT jsonb_agg(to_jsonb(w) ORDER BY match_type) FROM public.rating_match_weights w),
+'column_types',(SELECT jsonb_agg(jsonb_build_object('table',c.relname,'column',a.attname,'type',format_type(a.atttypid,a.atttypmod)) ORDER BY c.relname,a.attnum) FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('players','rating_events') AND a.attnum>0 AND NOT a.attisdropped AND (a.attname LIKE '%rating%' OR c.relname='rating_events')),
+'function_hashes',(SELECT jsonb_object_agg(p.proname,md5(pg_get_functiondef(p.oid))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('_rebuild_ratings_internal','_approve_match_internal','_get_active_rating_version'))
+) AS dataset;
+ROLLBACK;"""
+p=root/'extract-readonly.sql';p.write_text(sql,encoding='utf8')
+x=subprocess.run([r'C:\Users\hainh\bin\supabase.exe','db','query','--project-ref','bflwaqlvnesuqoyikxar','--linked','--output','json','--file',str(p.resolve())],capture_output=True,text=True,encoding='utf8')
+if x.returncode: print(x.stderr);raise SystemExit(x.returncode)
+d=json.loads(x.stdout)['rows'][0]['dataset'];d=json.loads(d) if isinstance(d,str) else d
+(root/'dataset.json').write_text(json.dumps(d,indent=2)+'\n',encoding='utf8')
+print(json.dumps({'counts':{k:len(d[k]) for k in ['players','matches','events','lineups']},'hashes':d['function_hashes'],'types':d['column_types'],'timezone':d['timezone']},indent=2))

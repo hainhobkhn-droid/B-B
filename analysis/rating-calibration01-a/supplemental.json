@@ -1,0 +1,15 @@
+{
+  "future_margin_pairs": 217,
+  "future_residual_correlation": 0.20713160816058784,
+  "large_partner_gap_ge1": 34,
+  "max_partner_gap": 4.277,
+  "repeat_partner_groups": 32,
+  "max_partner_repeats": 8,
+  "initial_sum": 98.017,
+  "max_player_matches": 19,
+  "inactive_players": 2,
+  "unplayed_players": 2,
+  "largest_abs_event": 0.35,
+  "recent_abs_delta": 0.0796,
+  "new_abs_delta": 0.09927777777777778
+}

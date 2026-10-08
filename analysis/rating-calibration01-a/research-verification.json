@@ -1,0 +1,17 @@
+{
+  "artifact_review": "PASS",
+  "clean_reproduction": "PASS",
+  "control_values_exact": 2665,
+  "control_mismatch": 0,
+  "projection_mismatch": 0,
+  "negative_tests": [
+    "event drift",
+    "seed drift",
+    "engine source drift",
+    "unsupported adjustments"
+  ],
+  "sensitive_data_scan": "PASS",
+  "no_lookahead_regression": "prefix replay unchanged; historical seed/same-time caveats retained",
+  "conclusion": "MORE DATA REQUIRED",
+  "production_mutation": false
+}
