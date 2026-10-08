@@ -1,0 +1,12 @@
+BEGIN TRANSACTION READ ONLY;
+SELECT jsonb_build_object(
+ 'captured_at',now(),'project_ref','bflwaqlvnesuqoyikxar',
+ 'ledger',to_regclass('supabase_migrations.schema_migrations')::text,
+ 'functions',(SELECT jsonb_agg(jsonb_build_object('signature',p.oid::regprocedure::text,'name',p.proname,'definition',pg_get_functiondef(p.oid),'md5',md5(pg_get_functiondef(p.oid)),'owner',pg_get_userbyid(p.proowner),'security_definer',p.prosecdef,'config',p.proconfig,'acl',p.proacl::text,'authenticated_execute',has_function_privilege('authenticated',p.oid,'EXECUTE'),'anon_execute',has_function_privilege('anon',p.oid,'EXECUTE'),'service_execute',has_function_privilege('service_role',p.oid,'EXECUTE')) ORDER BY p.proname,p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='f' AND NOT EXISTS(SELECT 1 FROM pg_depend d WHERE d.objid=p.oid AND d.deptype='e')),
+ 'policies',(SELECT jsonb_agg(to_jsonb(v) ORDER BY tablename,policyname) FROM pg_policies v WHERE schemaname='public'),
+ 'columns',(SELECT jsonb_agg(to_jsonb(v) ORDER BY table_name,ordinal_position) FROM (SELECT table_name,column_name,data_type,udt_name,ordinal_position,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public') v),
+ 'triggers',(SELECT jsonb_agg(jsonb_build_object('table',c.oid::regclass::text,'name',t.tgname,'definition',pg_get_triggerdef(t.oid)) ORDER BY c.relname,t.tgname) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE NOT t.tgisinternal AND n.nspname IN ('public','auth')),
+ 'constraints',(SELECT jsonb_agg(jsonb_build_object('table',c.conrelid::regclass::text,'name',c.conname,'definition',pg_get_constraintdef(c.oid)) ORDER BY c.conrelid::regclass::text,c.conname) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='public'),
+ 'table_privileges',(SELECT jsonb_agg(jsonb_build_object('table',c.relname,'rls',c.relrowsecurity,'select',has_table_privilege('authenticated',c.oid,'SELECT'),'insert',has_table_privilege('authenticated',c.oid,'INSERT'),'update',has_table_privilege('authenticated',c.oid,'UPDATE'),'delete',has_table_privilege('authenticated',c.oid,'DELETE')) ORDER BY c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r')
+) AS catalog;
+ROLLBACK;

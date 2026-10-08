@@ -1,0 +1,85 @@
+{
+  "active_players": 23,
+  "active_version": "V1.1",
+  "adjustment_events": 0,
+  "adjustment_integrity_mismatch": 0,
+  "adjustments": 0,
+  "adjustments_hash": "d41d8cd98f00b204e9800998ecf8427e",
+  "approved_matches": 60,
+  "captured_at": "2026-10-08T01:48:07.558423+00:00",
+  "events_hash": "9c4c8fd471f19c35721ea6c1b0d40fcc",
+  "historical_lineups_readable": 256,
+  "historical_matches_readable": 64,
+  "orphan_rating_events": 0,
+  "players": 25,
+  "projection_hash": "14ccd4ca817758c3de810cee37436e9a",
+  "projection_mismatch": 0,
+  "rated_matches": 60,
+  "rating_events": 240,
+  "rating_settings": [
+    {
+      "algorithm_version": "V1.0",
+      "created_at": "2026-09-07T13:31:47.355437+00:00",
+      "expected_sensitivity": 0.9,
+      "id": 1,
+      "initial_rating": 4,
+      "is_active": false,
+      "k_factor": 0.55,
+      "max_rating": 8,
+      "min_rating": 2,
+      "provisional_matches": 5,
+      "rating_delta_cap": 0.35,
+      "recency_floor": 0.35,
+      "recency_half_life_days": 60,
+      "stable_matches": 10
+    },
+    {
+      "algorithm_version": "V1.1",
+      "created_at": "2026-09-07T15:01:28.30988+00:00",
+      "expected_sensitivity": 0.9,
+      "id": 3,
+      "initial_rating": 4,
+      "is_active": true,
+      "k_factor": 0.55,
+      "max_rating": 8,
+      "min_rating": 2,
+      "provisional_matches": 5,
+      "rating_delta_cap": 0.35,
+      "recency_floor": 0.35,
+      "recency_half_life_days": 60,
+      "stable_matches": 10
+    }
+  ],
+  "weights": [
+    {
+      "description": "Trận tính Rating CLB",
+      "match_type": "CLUB_RATED",
+      "weight": 0.9
+    },
+    {
+      "description": "Giao hữu có tính Rating",
+      "match_type": "FRIENDLY_RATED",
+      "weight": 0.6
+    },
+    {
+      "description": "Giải nội bộ",
+      "match_type": "LEAGUE",
+      "weight": 0.95
+    },
+    {
+      "description": "Tự khai báo",
+      "match_type": "SELF_REPORTED",
+      "weight": 0.4
+    },
+    {
+      "description": "Giải đấu",
+      "match_type": "TOURNAMENT",
+      "weight": 1
+    },
+    {
+      "description": "Tập luyện - không tính Rating",
+      "match_type": "TRAINING",
+      "weight": 0
+    }
+  ]
+}

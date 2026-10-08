@@ -1,0 +1,1371 @@
+{
+  "captured_at": "2026-10-08T01:45:58.464571+00:00",
+  "rating_captured_at": "2026-10-08T01:48:07.558423+00:00",
+  "project_ref": "bflwaqlvnesuqoyikxar",
+  "repo_head": "9c7c1f7f367c2c55ba7726663a73cb28c1b02d39",
+  "production_mutation": false,
+  "capture_method": "Supabase CLI db query Management API; BEGIN TRANSACTION READ ONLY / SELECT / ROLLBACK. Edge functions download --use-api; no deploy. CLI authentication initialization is tooling, not a submitted migration.",
+  "ledger": null,
+  "functions": [
+    {
+      "signature": "_approve_match_internal(uuid,text,uuid,uuid)",
+      "md5": "f453af5f5da1bbf3618be571a8b25ffb",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "_generate_match_fund_internal(uuid,uuid)",
+      "md5": "d74c7f4676980f28eeba014ed414c500",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "_get_active_rating_version()",
+      "md5": "d2f0aeada41cdf2ec0746324ba266957",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "_rebuild_ratings_internal(text,uuid)",
+      "md5": "b3b434e407c1828bbb6dbf2907148104",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610030005_rating_initial01b_pre_history_edit.sql",
+        "202610070001_wp_c9_rating_capability.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "_record_fund_payment_internal(uuid,numeric,timestamp with time zone,text,uuid)",
+      "md5": "928b9d68987577e00fba95eb057fbb65",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250001_fund03_payment_engine_v2.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202609290001_fund03_payment_net_paid.sql",
+        "202609290003_fund04_member_batch_collection.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "_review_member_signup(uuid,text,text)",
+      "md5": "8c56de511e2bae4c40e6710971f5553b",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030007_player_permission01b_account_capability_reset.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_approve_member_signup(uuid)",
+      "md5": "7667a5c4659ac8740084eeff5c28c227",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_create_fund_rule_version(text,numeric,numeric,numeric,date)",
+      "md5": "212c3cf422382143c00d177cca7b650d",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_create_rating_settings_version(text,numeric,numeric,numeric,numeric,numeric,integer,integer,integer,numeric,numeric)",
+      "md5": "8d496aaa788bc561ef0f249c65dfec89",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_hard_delete_member_public(uuid,uuid,text)",
+      "md5": "95058b6ccc7a2032bad98d7cfcba55a4",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280006_iam05e_safe_member_hard_delete.sql",
+        "202610010001_acc05_hard_delete_integrity_recovery.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_reject_member_signup(uuid,text)",
+      "md5": "5e3742b9eaa6760b76df253c696af1c8",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_set_member_account_active(uuid,boolean,text)",
+      "md5": "e23ee1bc0901d5e3570225527428015c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280002_iam05a_member_account_lifecycle.sql",
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030007_player_permission01b_account_capability_reset.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_set_member_nickname(uuid,text)",
+      "md5": "728a62e86821a0aa93152dad07dc657c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280001_iam06_legacy_login_name.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_update_member_permissions(uuid,jsonb,text)",
+      "md5": "af4f00a2a01c1abab59f52ccd7d0e8cd",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250009_perm01c_admin_permission_management.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030006_player_permission01a_capability_schema.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "admin_update_rating_match_weight(text,numeric,text)",
+      "md5": "0d4e189749113e53de50e13c8e46dc65",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "approve_match(uuid,text)",
+      "md5": "1b82cfdae7076aa6812b971fab3527da",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "approve_match_active(uuid)",
+      "md5": "ce955e39a2d955c5210e6057b2ed7f23",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "cancel_fund_obligation_campaign(uuid,text)",
+      "md5": "6e41dec9b2680d1aad65737b12c0ff49",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250003_fund03_cancel_campaign.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "change_tournament_registration_status(uuid,text,text)",
+      "md5": "0ccbd5968740d52be1b50e1373787288",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "change_tournament_status(uuid,text,text)",
+      "md5": "f455e748853fcdc4d531bf95d0bb7fc1",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "claim_my_nickname(text)",
+      "md5": "5a1644e6301072ee417489320ac89f25",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280001_iam06_legacy_login_name.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "complete_forced_password_change_internal(uuid)",
+      "md5": "6864ebfd9879d3b04fa6b460847d9695",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020001_acc06b_forced_password_completion.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "complete_member_hard_delete_auth(uuid,uuid)",
+      "md5": "29fde510226878423e0460eb9af4c393",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610010001_acc05_hard_delete_integrity_recovery.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "complete_my_password_change()",
+      "md5": "b07598a00d5b521a615088d04cde3701",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609220001_sec01_harden_sensitive_rpc_exposure.sql",
+        "202610020002_acc06d_forced_password_cutover.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "confirm_match_by_opponent(uuid)",
+      "md5": "d626801e276882c505716cbdc16dc721",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "correct_rating_adjustment(uuid,text,text)",
+      "md5": "8c738f269f2a8b7a9f8411b8043a606d",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610070001_wp_c9_rating_capability.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "correct_rating_adjustment_active(uuid,text)",
+      "md5": "6121a66c5b4b9933f6e7e7e498d5bf82",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610070001_wp_c9_rating_capability.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_fund_obligation_campaign(text,text,numeric,date,date,text)",
+      "md5": "8c662527e2ac1a26706aca652de1e187",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609240001_fund03_obligation_campaigns.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_my_pending_match(timestamp with time zone,text,text,integer,integer,uuid,uuid,uuid,uuid,text)",
+      "md5": "fce82b6b06638e94c404d9c396e2de0c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_my_tournament_registration(uuid,text,uuid)",
+      "md5": "8f618179e382fe9100a1ab711e0b271c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210003_tournament_registration_event_normalization.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_pending_match(timestamp with time zone,integer,text,text,integer,integer,uuid,uuid,text)",
+      "md5": "c113662b26a24893a0ecfe7439921c90",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_player(text,text,text,text,numeric,date,date,text)",
+      "md5": "ff778303c014e14b936a4e490b191552",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_replacement_match(uuid)",
+      "md5": "ecdd85b9916439f9cc5d9c6c131969a9",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_tournament(text,text,date,date,text,text,text,numeric,text)",
+      "md5": "d306f734960b5db2b026aad7a5f62719",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_tournament_expense(uuid,numeric,text,text,date)",
+      "md5": "8945da38a85a66ca9d6cc1b188847c92",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_tournament_payment(uuid,numeric,timestamp with time zone,text)",
+      "md5": "cc4f21e336095847687e0ffabe3eff87",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "create_tournament_registration(uuid,uuid,text,uuid,numeric)",
+      "md5": "412989b8331232c066e96b647a653e4c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210003_tournament_registration_event_normalization.sql",
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "current_user_business_access_active()",
+      "md5": "d5a196e9bfb9522d559e3422c6669c01",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030001_player_lifecycle01a_reference_inventory.sql",
+        "202610030002_player_lifecycle01b_status_transition.sql",
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+        "202610030004_player_lifecycle01d_inventory_convergence.sql",
+        "202610030005_rating_initial01b_pre_history_edit.sql",
+        "202610030006_player_permission01a_capability_schema.sql",
+        "202610030007_player_permission01b_account_capability_reset.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql",
+        "202610030009_player_permission01d_player_management_directory.sql",
+        "202610040001_rating_scope01_member_rating_events_own_player.sql",
+        "202610040002_player_permission01_promotion_read_model.sql",
+        "202610070001_wp_c9_rating_capability.sql",
+        "202610070002_wp_c9_audit_read_model.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "current_user_is_admin()",
+      "md5": "41f535721fb75ebe5cd6545a27b0a811",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "current_user_membership_active()",
+      "md5": "48dd3dcbd4c25b221cd5ebcfd108467c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280004_iam05d1_signup_membership.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "current_user_player_id()",
+      "md5": "28f796e7c5161148c7055d34c060ffd6",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610040001_rating_scope01_member_rating_events_own_player.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "delete_player_if_unreferenced(uuid,text)",
+      "md5": "8ae96dd2ab678361f952f613ce3b6f08",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "generate_match_fund(uuid)",
+      "md5": "69fcd4a294552ee61d7254979b5e153e",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_member_deletion_preview(uuid)",
+      "md5": "a62dfb122b755e4006765fb28f702316",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280003_iam05b_member_deletion_preview.sql",
+        "202609280006_iam05e_safe_member_hard_delete.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_member_lifecycle(integer,integer)",
+      "md5": "8fd56dae6f373715e199a802c546516f",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280002_iam05a_member_account_lifecycle.sql",
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030007_player_permission01b_account_capability_reset.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_member_permissions(integer,integer)",
+      "md5": "f9bc7141bfeeb2b96d4de40490a34735",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250009_perm01c_admin_permission_management.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030006_player_permission01a_capability_schema.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_member_promotion_candidates()",
+      "md5": "5934464fd6aec9946cc14a2e17d9a850",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_member_promotion_preview(uuid,uuid)",
+      "md5": "5a29e1abaa36bb4a567bbc3fbed7c4e9",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030004_player_lifecycle01d_inventory_convergence.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql",
+        "202610040002_player_permission01_promotion_read_model.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_admin_pending_member_signups(integer,integer)",
+      "md5": "d78cbf38eefc35ac3aaec970c773758f",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280005_iam05d2_member_approval.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_audit_events(integer,integer,timestamp with time zone,timestamp with time zone,uuid,text,text)",
+      "md5": "9dd6c825591f6c018fa94ee94796a86c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610070002_wp_c9_audit_read_model.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_club_fund_summary()",
+      "md5": "14597410fbbeec2f4235ed6930f170d4",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210001_mp01_member_fund_readonly.sql",
+        "202609250001_fund03_payment_engine_v2.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_forced_password_change_readiness_internal(uuid)",
+      "md5": "997a480b25d9bb225b346b49988a5a10",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020001_acc06b_forced_password_completion.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_fund_collection_balances()",
+      "md5": "3ba2703698ce1518a6529cfaa769b9a0",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609290002_fund03_collection_balances.sql",
+        "202609290003_fund04_member_batch_collection.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_fund_management_contributions()",
+      "md5": "1297c00e6567b91c00dae62efed24622",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_fund_management_payments()",
+      "md5": "60c36e0dae114409b4c03f08b941783a",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_fund_management_transactions()",
+      "md5": "e6cd91322012a5c02f9274ee305f0480",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_guest_member_promotion_candidates()",
+      "md5": "39500c85c2aa0a25c5949f8f2e9aa1f2",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610040002_player_permission01_promotion_read_model.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_match_management_matches()",
+      "md5": "5235bbb1e106c676a004ea18815d84dd",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_match_management_players()",
+      "md5": "e04dfd8c51ac947eb4bceab8605debf4",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_fund_overview()",
+      "md5": "321da8bc02c641766a9d859b11895dbb",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_fund_transactions()",
+      "md5": "a754cbb8de43356c6ce6d5e2d2383d64",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210002_mp01_harden_legacy_fund_rpc.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_hard_delete_snapshot(uuid)",
+      "md5": "4c1e72f70849ce17b6e1c3ab087bee72",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280006_iam05e_safe_member_hard_delete.sql",
+        "202610010001_acc05_hard_delete_integrity_recovery.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_management_players()",
+      "md5": "e1522854262e69e03f7da5bb2edf9b6b",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030009_player_permission01d_player_management_directory.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_match_players()",
+      "md5": "b16b1df96bc2ea2a33b4684d690d318e",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_matches()",
+      "md5": "ad12a9fda28a276bfbe8566961f6cfdc",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_member_rating_events()",
+      "md5": "f972e7f7e1117466237d80b6c64abacd",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610040001_rating_scope01_member_rating_events_own_player.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_my_fund_contributions()",
+      "md5": "c3111d0aee5f253753ee583c3b27db90",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_my_fund_obligations()",
+      "md5": "18acff61c07cceed17574caeaf4f3923",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210001_mp01_member_fund_readonly.sql",
+        "202609240001_fund03_obligation_campaigns.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_my_fund_payment_history()",
+      "md5": "8dbe274305c3a9b72e2472c3110e3716",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210001_mp01_member_fund_readonly.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_my_fund_payments()",
+      "md5": "350a018ac4c284a9a12f24bb6a4c2e98",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_my_pending_match_confirmations()",
+      "md5": "26ba9e9dc74f7fdb14a37288ba748940",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_player_directory()",
+      "md5": "25c4d53b8b5567bf274794bdee3b6bce",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280004_iam05d1_signup_membership.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_player_lifecycle_preview(uuid)",
+      "md5": "312f938305fb2cd7ca4a05f0f4f023a4",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030001_player_lifecycle01a_reference_inventory.sql",
+        "202610030002_player_lifecycle01b_status_transition.sql",
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_signup_rating_config()",
+      "md5": "3d06e52e4d4fc7dea2978c91ba9b3f8e",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_tournament_finance_summary(uuid)",
+      "md5": "dd2f39771774fc042e45039d38014944",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_tournament_management_payments()",
+      "md5": "36bc1aabe16d9744e44001f3edd3a705",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "get_tournament_management_registrations()",
+      "md5": "c01297add26247cec2f1cf02e506ac36",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "guard_forced_password_completion()",
+      "md5": "103fe83ac78849db6a7ff87b2a302865",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020002_acc06d_forced_password_cutover.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "guard_match_mutation()",
+      "md5": "b4694754f08ba49a3a3bb9e333dfc546",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "guard_match_player_mutation()",
+      "md5": "488f7ca34f136b4e5dca51c6d59c264d",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "guard_tournament_registration_players()",
+      "md5": "f197669d555a0b3dba0af1c1be42f247",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210003_tournament_registration_event_normalization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "handle_new_member_signup()",
+      "md5": "ec23869986bb9764eb764a0941185dab",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609280004_iam05d1_signup_membership.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "player_has_approved_rated_history(uuid)",
+      "md5": "ba2533f4dc7d8787bf3c19d2bcde89e1",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030005_rating_initial01b_pre_history_edit.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "player_reference_snapshot(uuid)",
+      "md5": "cf5e742ea3036181725aeecf0cda702b",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030001_player_lifecycle01a_reference_inventory.sql",
+        "202610030002_player_lifecycle01b_status_transition.sql",
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+        "202610030004_player_lifecycle01d_inventory_convergence.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "prevent_rating_adjustment_mutation()",
+      "md5": "95bca49977bb5010e8897cb6c4fdcfea",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "promote_guest_player_to_member(uuid,uuid)",
+      "md5": "b6f24a4c4504e87c4c7af82ebe26c6bd",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609220001_sec01_harden_sensitive_rpc_exposure.sql",
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030004_player_lifecycle01d_inventory_convergence.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql",
+        "202610040002_player_permission01_promotion_read_model.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "rebuild_ratings(text)",
+      "md5": "e60edb61d580178a09035f76e0542214",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "rebuild_ratings_active()",
+      "md5": "2bffd38448262aa35456e582a55e0bc1",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "record_fund_expense(numeric,text,timestamp with time zone)",
+      "md5": "3a63de3f5f4f420ddc1afbd50cc6103d",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210001_mp01_member_fund_readonly.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "record_fund_payment(uuid,numeric,timestamp with time zone,text)",
+      "md5": "666844f3e02db6c8deb1d2ccdef3da22",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250001_fund03_payment_engine_v2.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202609290003_fund04_member_batch_collection.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "record_member_fund_payment(uuid,numeric,timestamp with time zone,text)",
+      "md5": "e3c59989caea341767c9889db1facb43",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609290003_fund04_member_batch_collection.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "record_rating_adjustment(uuid,uuid,numeric,text,timestamp with time zone,text)",
+      "md5": "8e46d18334aab4af27f8cc1264178460",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610070001_wp_c9_rating_capability.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "record_rating_adjustment_active(uuid,uuid,numeric,text,timestamp with time zone)",
+      "md5": "511cead28025ae378827a9e18c4ce5c5",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610070001_wp_c9_rating_capability.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "refund_fund_payment(uuid,numeric,text,timestamp with time zone)",
+      "md5": "34cff84f5de80b1995d92a3881eb31e8",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250002_fund03_refund_payment.sql",
+        "202609250007_perm01b3_fund_permissions.sql",
+        "202609290001_fund03_payment_net_paid.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "refund_tournament_payment(uuid,numeric,text,timestamp with time zone)",
+      "md5": "7f18034fefe49f87131a8ccff6c28e1e",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "reject_match_by_opponent(uuid,text)",
+      "md5": "6ecfe7ee3c854606a6a7aaf5212a045a",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "reject_pending_match(uuid,text)",
+      "md5": "0849faa648c823290acd807dfe846ba9",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250005_perm01b1_match_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "resubmit_my_rejected_match(uuid)",
+      "md5": "e1b9d948c3e3b210cc29581ceced063a",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "reverse_tournament_expense(uuid,text,timestamp with time zone)",
+      "md5": "75f18da5005a9165b73438581d9a90c6",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "set_pending_match_players(uuid,uuid,uuid,uuid,uuid)",
+      "md5": "f6700019bd675f2cd5da69a4ee0c78a9",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "set_player_initial_rating_before_history(uuid,numeric,text)",
+      "md5": "4f8a480037ef04a8e0b223739bce5652",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030005_rating_initial01b_pre_history_edit.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "set_player_lifecycle_status(uuid,text,text)",
+      "md5": "3d4c99cee77a9fea190f8392e0efafcb",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610030002_player_lifecycle01b_status_transition.sql",
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "set_profile_player_link(uuid,uuid)",
+      "md5": "0bfe4d6b8760c6d624589629ed569fa8",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "settle_tournament(uuid,text)",
+      "md5": "b65c68ffee131490f92d44d5dce11abf",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "update_my_member_profile(text,text,date)",
+      "md5": "40114a63e53ef121edea8b04e8b092ff",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "update_my_rejected_pending_match(uuid,timestamp with time zone,text,text,integer,integer,uuid,uuid,uuid,uuid,text)",
+      "md5": "0287d725e000161602ca29ec629370a7",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "update_pending_match(uuid,timestamp with time zone,integer,text,text,integer,integer,uuid,uuid,text)",
+      "md5": "5bd556435a163b8fedf65a386ecfe70f",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609220001_sec01_harden_sensitive_rpc_exposure.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "update_player(uuid,text,text,text,text,text,date,date,text)",
+      "md5": "c4ef35bdfb01923dde0f9bb4a849a84c",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250008_perm01b4_member_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql",
+        "202610030002_player_lifecycle01b_status_transition.sql",
+        "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+        "202610030008_player_permission01c_player_rpc_authorization.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "update_tournament(uuid,text,text,date,date,text,text,text,numeric,text)",
+      "md5": "cf50640f75e0180682025993c38b4294",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609250006_perm01b2_tournament_permissions.sql",
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "void_match(uuid,text,text)",
+      "md5": "420db6c9edb1859056eb618292734f0e",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202609210001_mp01_member_fund_readonly.sql",
+        "202609250005_perm01b1_match_permissions.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    },
+    {
+      "signature": "void_match_active(uuid,text)",
+      "md5": "9e12c1d60c6749c8b40d62a8c460bef3",
+      "exact_source_archive": "supabase/source-snapshots/2026-10-08/production-catalog.json",
+      "migration_mentions": [
+        "202610020003_acc07b_business_access_gate.sql"
+      ],
+      "reconstruction_from_migration_chain": "NOT VERIFIED; mentions are not proof of full definition parity"
+    }
+  ],
+  "edges": [
+    {
+      "slug": "admin-confirm-user",
+      "sha256": "554cb1f2474e0951daf681b48ac1fd1e74e5b981a4fa0afc8f5eed7f58d9737e",
+      "repo_exists_before": false,
+      "normalized_parity_before": false,
+      "snapshot": "supabase/source-snapshots/2026-10-08/edge/admin-confirm-user/index.ts"
+    },
+    {
+      "slug": "admin-create-member",
+      "sha256": "b309b8ecf0ac8ad04a90bba3a06a520f26ec474cc5547680db4d9f3f1f5abfd4",
+      "repo_exists_before": true,
+      "normalized_parity_before": true,
+      "snapshot": "supabase/source-snapshots/2026-10-08/edge/admin-create-member/index.ts"
+    },
+    {
+      "slug": "admin-hard-delete-member",
+      "sha256": "ef7cf8afaf853d462722ddf6bc5f78ffde54e3695a15b0a748d4bbb60e469a93",
+      "repo_exists_before": true,
+      "normalized_parity_before": false,
+      "snapshot": "supabase/source-snapshots/2026-10-08/edge/admin-hard-delete-member/index.ts"
+    },
+    {
+      "slug": "change-my-password",
+      "sha256": "f463287c5e227c4b75c63d69ad6050da2e99bd378fd83da7c4bbe970af82f131",
+      "repo_exists_before": true,
+      "normalized_parity_before": true,
+      "snapshot": "supabase/source-snapshots/2026-10-08/edge/change-my-password/index.ts"
+    },
+    {
+      "slug": "login-by-nickname",
+      "sha256": "c4ad99c786e953fc7bd7efbfec13484b5ab04320a12fa374e63ba3cce2d6dde5",
+      "repo_exists_before": true,
+      "normalized_parity_before": true,
+      "snapshot": "supabase/source-snapshots/2026-10-08/edge/login-by-nickname/index.ts"
+    }
+  ],
+  "local_migrations": [
+    {
+      "file": "202609210001_mp01_member_fund_readonly.sql",
+      "version": "202609210001",
+      "sha256": "5031a492bc9eee5b6f36be95ed8568ec72b77b8836b11f9248d341f7bf92cb59"
+    },
+    {
+      "file": "202609210002_mp01_harden_legacy_fund_rpc.sql",
+      "version": "202609210002",
+      "sha256": "f79c14ed63d048c3aa42b72322d5edcc2aaae710da544e92f77f07daca51cf27"
+    },
+    {
+      "file": "202609210003_tournament_registration_event_normalization.sql",
+      "version": "202609210003",
+      "sha256": "828121356a317a3c0268d7585534d6674268a3ef7ca1e19b767acd3cd53f5214"
+    },
+    {
+      "file": "202609220001_sec01_harden_sensitive_rpc_exposure.sql",
+      "version": "202609220001",
+      "sha256": "fb19e16602d60efcf818d527a5697ce33936d2a3d6b30538d0b361fa284bb324"
+    },
+    {
+      "file": "202609220002_sec01b_harden_leagues_privileges.sql",
+      "version": "202609220002",
+      "sha256": "7f547907633471446347371308c07cb931896fcef311f1bf6b76944a181750fc"
+    },
+    {
+      "file": "202609240001_fund03_obligation_campaigns.sql",
+      "version": "202609240001",
+      "sha256": "7058371f0173f93f8c51af632710da98c48641bdd8ea3648e889f27adf4c2acb"
+    },
+    {
+      "file": "202609250001_fund03_payment_engine_v2.sql",
+      "version": "202609250001",
+      "sha256": "b4f69ad248b6ead20000120890eb9b445ae5fed7d509fe71bd59b8271ae45af4"
+    },
+    {
+      "file": "202609250002_fund03_refund_payment.sql",
+      "version": "202609250002",
+      "sha256": "c60f880799beffdecfe666711457dfa9f98d57b922cf63be2998554659c675c3"
+    },
+    {
+      "file": "202609250003_fund03_cancel_campaign.sql",
+      "version": "202609250003",
+      "sha256": "dc94eb64634af4a9cf325402355faf901dfa6742fdceb222ec01b6aa6d614003"
+    },
+    {
+      "file": "202609250004_perm01a_member_permission_schema.sql",
+      "version": "202609250004",
+      "sha256": "6e64922713ea40beee5024e9489fba61c909fbef112d8e8e30a95b442f0553f4"
+    },
+    {
+      "file": "202609250005_perm01b1_match_permissions.sql",
+      "version": "202609250005",
+      "sha256": "4e9a395b769dfabb4a7a197296189ae97076110620040f3d9ff8477db41b5b79"
+    },
+    {
+      "file": "202609250006_perm01b2_tournament_permissions.sql",
+      "version": "202609250006",
+      "sha256": "ad63e83c0433a59e442e4f7e1bec4b78f34f423a939f403a4fc591fec9fceccf"
+    },
+    {
+      "file": "202609250007_perm01b3_fund_permissions.sql",
+      "version": "202609250007",
+      "sha256": "c91579ecd9833553e99e391794ce236dce2563af3e832ef262c179d85fac1915"
+    },
+    {
+      "file": "202609250008_perm01b4_member_permissions.sql",
+      "version": "202609250008",
+      "sha256": "bfda2a24a9722f8b512afb243133ce96d8bddfd7e65d9b787307666fdeb07fc2"
+    },
+    {
+      "file": "202609250009_perm01c_admin_permission_management.sql",
+      "version": "202609250009",
+      "sha256": "8d12c89ddd64a0af90b07b14103b9b314445bb2c2e84dedee298cf7793f8cb74"
+    },
+    {
+      "file": "202609280001_iam06_legacy_login_name.sql",
+      "version": "202609280001",
+      "sha256": "acdf99c6e1180d153bb13e4dea1fd57e5bb293af30d6ff787879ac14410621be"
+    },
+    {
+      "file": "202609280001_perm01d_remove_legacy_single_treasurer_index.sql",
+      "version": "202609280001",
+      "sha256": "4eaecdfcdfdca7bb423bcc2a7ef930e04ce227afbea4ced700327778d565907d"
+    },
+    {
+      "file": "202609280002_iam05a_member_account_lifecycle.sql",
+      "version": "202609280002",
+      "sha256": "89f61e9feba375a92e33e09dde3839dc1de245f54c0d91a4832230b04f1780ea"
+    },
+    {
+      "file": "202609280003_iam05b_member_deletion_preview.sql",
+      "version": "202609280003",
+      "sha256": "dea41c3a21f731b6ec869de7c5da5960b1a9557f87c4afe6154876fe278f734c"
+    },
+    {
+      "file": "202609280004_iam05d1_signup_membership.sql",
+      "version": "202609280004",
+      "sha256": "f23661d933b06ec0c5ebbd0849dc986059ef2e9a71dae40968cf21213dcf240e"
+    },
+    {
+      "file": "202609280005_iam05d2_member_approval.sql",
+      "version": "202609280005",
+      "sha256": "a5be73a68cdd5db687707d98fcdbe9ecc41812c583c997fd812cd750d04846e9"
+    },
+    {
+      "file": "202609280006_iam05e_safe_member_hard_delete.sql",
+      "version": "202609280006",
+      "sha256": "f697b1729410af8371168978cd72c4f7088ca1c012fa830911585c737e46dc85"
+    },
+    {
+      "file": "202609290001_fund03_payment_net_paid.sql",
+      "version": "202609290001",
+      "sha256": "7baaba6bb6b2c81a930537100df2239784f1090a78f5b3ed8e9a563c8c01ad94"
+    },
+    {
+      "file": "202609290002_fund03_collection_balances.sql",
+      "version": "202609290002",
+      "sha256": "bfcc857c9610da08e0d573cb9c12a66d452d2f955832ffaddf7dd36acc84d6c8"
+    },
+    {
+      "file": "202609290003_fund04_member_batch_collection.sql",
+      "version": "202609290003",
+      "sha256": "e9675b0b0c287e6ce1dfdb8a77bc55057f8570f6775d3ff5a600dfe5c0a34971"
+    },
+    {
+      "file": "202610010001_acc05_hard_delete_integrity_recovery.sql",
+      "version": "202610010001",
+      "sha256": "8eeac385d754581260b82e9880c3de89208058d9c1aa8d099cd72dcf36ac3b4b"
+    },
+    {
+      "file": "202610020001_acc06b_forced_password_completion.sql",
+      "version": "202610020001",
+      "sha256": "b2e5b02cdb25361d87af379b08956576a5d967ddedfb64bba8ab2095d4074ab4"
+    },
+    {
+      "file": "202610020002_acc06d_forced_password_cutover.sql",
+      "version": "202610020002",
+      "sha256": "1173a897737bdad7ac182f4e433c23a4e0dd21f00e3ff89bb907e5617f9e6017"
+    },
+    {
+      "file": "202610020003_acc07b_business_access_gate.sql",
+      "version": "202610020003",
+      "sha256": "5e5456eb026a0d236f21ad1a68d0fbe990a7b022a02bbd3129dcce10fae4ac63"
+    },
+    {
+      "file": "202610030001_player_lifecycle01a_reference_inventory.sql",
+      "version": "202610030001",
+      "sha256": "c4fa0ff2f5e956129757692d243874687e663c4fb706ff10e807b3b364a80c75"
+    },
+    {
+      "file": "202610030002_player_lifecycle01b_status_transition.sql",
+      "version": "202610030002",
+      "sha256": "5d7bfb85bc7a4d79d08fe20d345637e9962c2e88c3cd56591feecb1a3baab533"
+    },
+    {
+      "file": "202610030003_player_lifecycle01c_conditional_hard_delete.sql",
+      "version": "202610030003",
+      "sha256": "e3a307f41bba641dc54b88e1aa29db704e786875b7ee2d953407f01d303f1899"
+    },
+    {
+      "file": "202610030004_player_lifecycle01d_inventory_convergence.sql",
+      "version": "202610030004",
+      "sha256": "01e413bc9b60fee98cc730d53d99cd05563dac867c28a9ce03d207211d9297ec"
+    },
+    {
+      "file": "202610030005_rating_initial01b_pre_history_edit.sql",
+      "version": "202610030005",
+      "sha256": "f0b0a31acc8b6855947f63a11bc14fa78d4e4ae168351122d7c7bbad7b0a2c0a"
+    },
+    {
+      "file": "202610030006_player_permission01a_capability_schema.sql",
+      "version": "202610030006",
+      "sha256": "f0b99bd86df0564bc3d8195103efd74008dfcd9653a8d18be11bf32b7a8609b6"
+    },
+    {
+      "file": "202610030007_player_permission01b_account_capability_reset.sql",
+      "version": "202610030007",
+      "sha256": "4949196f31b10c8e7ed024389e1c126ac8865c53a50eac7c500a8577689d4e13"
+    },
+    {
+      "file": "202610030008_player_permission01c_player_rpc_authorization.sql",
+      "version": "202610030008",
+      "sha256": "7ce7375323fc5c49ea376169f0d37a3b3b6ede4d8c37039c2f136d752ff87fa3"
+    },
+    {
+      "file": "202610030009_player_permission01d_player_management_directory.sql",
+      "version": "202610030009",
+      "sha256": "9af6ac4cadc5b84ce2eefbc571c7e1c52474da6840da1946aae6c58a9af960d2"
+    },
+    {
+      "file": "202610040001_rating_scope01_member_rating_events_own_player.sql",
+      "version": "202610040001",
+      "sha256": "7da984aebfadc4d0fbeec2f1c3143050e42d57856011118d4e30b22d1d6e3dea"
+    },
+    {
+      "file": "202610040002_player_permission01_promotion_read_model.sql",
+      "version": "202610040002",
+      "sha256": "f633f95a14ad8d175e0ca92fd3f2e54ea3690cad636525b211d4921f68c5dc88"
+    },
+    {
+      "file": "202610070001_wp_c9_rating_capability.sql",
+      "version": "202610070001",
+      "sha256": "85944e745d364b5cb5bec02320ff02c2edc4876aa8112daf378c82dcb0107edf"
+    },
+    {
+      "file": "202610070002_wp_c9_audit_read_model.sql",
+      "version": "202610070002",
+      "sha256": "28e47651b4e85040188cced5be53095e2a930917d0b056a4f35518c18550375a"
+    }
+  ]
+}
