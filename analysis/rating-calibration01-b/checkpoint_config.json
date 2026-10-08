@@ -1,0 +1,123 @@
+{
+  "primary_metric": "paired point-share squared-error advantage A minus D_S1.2",
+  "checkpoints": [
+    {
+      "name": "minimum",
+      "new_matches": 160,
+      "total_matches": 220,
+      "per_gap_bucket": 16,
+      "new_dates": 20,
+      "players": 25,
+      "players_ge5": 24,
+      "players_ge10": 18,
+      "players_ge20": 8,
+      "newcomer_cohorts": 8
+    },
+    {
+      "name": "preferred",
+      "new_matches": 240,
+      "total_matches": 300,
+      "per_gap_bucket": 25,
+      "new_dates": 30,
+      "players": 30,
+      "players_ge5": 28,
+      "players_ge10": 24,
+      "players_ge20": 16,
+      "newcomer_cohorts": 12
+    },
+    {
+      "name": "strong",
+      "new_matches": 400,
+      "total_matches": 460,
+      "per_gap_bucket": 45,
+      "new_dates": 50,
+      "players": 35,
+      "players_ge5": 32,
+      "players_ge10": 28,
+      "players_ge20": 24,
+      "newcomer_cohorts": 16
+    }
+  ],
+  "gap_edges": [
+    0,
+    0.25,
+    0.5,
+    1,
+    6.01
+  ],
+  "composition": {
+    "balanced_teammate_gap_max": 0.5,
+    "mixed_teammate_gap_min": 1,
+    "matched_team_mean_gap_max": 0.25,
+    "per_core_composition": [
+      16,
+      25,
+      45
+    ]
+  },
+  "expected_share_bands": [
+    0.5,
+    0.55,
+    0.6,
+    0.7,
+    0.8,
+    1.00001
+  ],
+  "diversity_subset": {
+    "max_identical_matchup_per_window": 2,
+    "max_same_quartet_per_window": 2,
+    "max_date_matches": 8,
+    "selection": "chronological then match UUID; deterministic; analysis only"
+  },
+  "coverage_limits": {
+    "max_player_appearance_share": 0.1,
+    "max_partner_repeat_share_per_player": 0.4,
+    "max_date_share": 0.1
+  },
+  "thresholds": {
+    "relative_primary_mse_gain_min": 0.1,
+    "strong_date_cluster_ci_lower_min": 0,
+    "late_half_relative_gain_min": 0.05,
+    "diversity_subset_relative_gain_min": 0.05,
+    "max_established_mean_abs_delta_ratio": 1.1,
+    "max_established_delta_sd_ratio": 1.1,
+    "max_candidate_player_swing_ratio": 1.25,
+    "max_extra_pool_drift_per_player": 0.02,
+    "max_absolute_pool_drift_per_player": 0.05,
+    "max_newcomer_proxy_mae_ratio": 1.1,
+    "max_core_composition_relative_mse_harm": 0.1,
+    "max_core_composition_absolute_mse_harm": 0.005
+  },
+  "bootstrap": {
+    "seed": 20261008,
+    "replicates": 4000,
+    "primary_resampling_unit": "UTC played date",
+    "primary_final_interval": 0.95,
+    "warning": "few-date bootstrap is descriptive; not a multiway dependence correction"
+  },
+  "stop_go": [
+    "CONTINUE COLLECTING",
+    "CANDIDATE STRENGTHENED",
+    "READY FOR CALIBRATION-C",
+    "REJECT CANDIDATE"
+  ],
+  "production_mutation": false,
+  "expected_share_band_minimums": [
+    12,
+    20,
+    30
+  ],
+  "independent_date_evidence": "minimum20 / preferred30 / strong50 NEW UTC dates",
+  "newcomer_definition": "first-ever rated match after freeze; prior_count 0-4; track through 5/10/15 then >=25 for later proxy",
+  "established_definition": "at least 20 prior rated matches before the evaluated match",
+  "tail_2plus_diagnostic_minimums": [
+    4,
+    6,
+    10
+  ],
+  "matched_mean_mixed_balanced_minimums": [
+    8,
+    12,
+    20
+  ]
+}

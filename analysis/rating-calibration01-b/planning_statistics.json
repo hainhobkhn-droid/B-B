@@ -1,0 +1,121 @@
+{
+  "matched_mean_mixed_balanced_prequential": 3,
+  "matches": 60,
+  "players": 25,
+  "participating_players": 23,
+  "events": 240,
+  "matches_per_participant": {
+    "min": 2,
+    "max": 19,
+    "mean": 10.434782608695652,
+    "median": 10,
+    "ge5": 20,
+    "ge10": 12,
+    "ge20": 0
+  },
+  "dependence": {
+    "teammates": {
+      "distinct": 71,
+      "repeated_groups": 32,
+      "max_repeats": 8,
+      "observations": 120,
+      "repeat_fraction": 0.4083333333333333,
+      "kish_cluster_equivalents": 48.97959183673469
+    },
+    "opponents": {
+      "distinct": 139,
+      "repeated_groups": 62,
+      "max_repeats": 6,
+      "observations": 240,
+      "repeat_fraction": 0.4208333333333333,
+      "kish_cluster_equivalents": 104.72727272727273
+    },
+    "quartets": {
+      "distinct": 58,
+      "repeated_groups": 2,
+      "max_repeats": 2,
+      "observations": 60,
+      "repeat_fraction": 0.033333333333333326,
+      "kish_cluster_equivalents": 56.25
+    },
+    "matchups": {
+      "distinct": 58,
+      "repeated_groups": 2,
+      "max_repeats": 2,
+      "observations": 60,
+      "repeat_fraction": 0.033333333333333326,
+      "kish_cluster_equivalents": 56.25
+    },
+    "dates": {
+      "distinct": 9,
+      "repeated_groups": 6,
+      "max_repeats": 16,
+      "observations": 60,
+      "repeat_fraction": 0.85,
+      "kish_cluster_equivalents": 4.918032786885246
+    }
+  },
+  "gap_counts": {
+    ".5-1": 12,
+    ".25-.5": 19,
+    "0-.25": 16,
+    "2+": 3,
+    "1-2": 10
+  },
+  "expected_bands": {
+    "70-80": 9,
+    "55-60": 16,
+    "50-55": 11,
+    "80+": 9,
+    "60-70": 15
+  },
+  "upsets": {
+    "2+": 3,
+    ".25-.5": 10,
+    "0-.25": 9,
+    "1-2": 2,
+    ".5-1": 1
+  },
+  "composition_retrospective": {
+    "mixed-mixed": 9,
+    "balanced-balanced": 13,
+    "other": 25,
+    "mixed-balanced": 13
+  },
+  "holdout": {
+    "n": 19,
+    "dates": 5,
+    "paired_mean": 0.005390585486488822,
+    "paired_median": 0.005041112287452045,
+    "paired_sd": 0.0057116094236654685,
+    "match_bootstrap95": [
+      0.002974161112496679,
+      0.007919913442414694
+    ],
+    "date_bootstrap95": [
+      0.0036955663019122014,
+      0.007679719615436731
+    ],
+    "date_kish": 2.016759776536313
+  },
+  "planning": {
+    "optimistic_independent_n": 9,
+    "independent_n_for10percent_gain": 26,
+    "design_effect_range": [
+      1.7,
+      2.4
+    ],
+    "bucket_n_from_precision": [
+      16,
+      25,
+      43
+    ],
+    "coverage_targets": [
+      160,
+      240,
+      400
+    ],
+    "target_derivation": "4 core gap bins have minimum frequency12/60; expected bands minimum9/60; matched-mean mixed-balanced3/60 dominates: quotas8/12/20 divided by .05",
+    "warning": "Planning approximations; post-selection optimism, unknown ICC, overlapping player clusters; not a power guarantee"
+  }
+}

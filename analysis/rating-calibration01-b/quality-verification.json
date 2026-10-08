@@ -1,0 +1,13 @@
+{
+  "calibration_a_reproduction": "PASS",
+  "a_control_exact_comparisons": 2665,
+  "projection_mismatch_frozen_baseline": 0,
+  "b_unit_tests": 10,
+  "b_deterministic_statistics": "PASS",
+  "python_ast": "PASS",
+  "utf8_no_bom": "PASS",
+  "u_fffd": 0,
+  "no_grid_retuning": true,
+  "production_mutation": false,
+  "stage_commit_push_deploy": false
+}
