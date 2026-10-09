@@ -1330,3 +1330,14 @@ Khi một pattern đã được định nghĩa trong V2:
 Nguyên tắc:
 
 **Design system trước, implementation theo sau.**
+
+
+### Cross-browser Native Form Controls
+
+- Native `input[type="date"]` phải giữ native picker; không đổi thành text input để che lỗi layout.
+- Safari/iOS date controls phải được normalize tại shared CSS, cùng visual height và touch target với Search/Select/Page-size.
+- Shared controls dùng `box-sizing: border-box`, `width: 100%`, `max-width: 100%` và `min-width: 0`; grid/flex children không được ép container rộng hơn viewport.
+- Native date value/editor không được làm control giãn cao; calendar affordance phải còn usable, không bị crop hoặc overlap text.
+- Không tạo browser-specific module CSS nếu shared rule giải quyết được cùng use case.
+- Mọi filter/list surface mới có date input phải test Chromium, Safari/iOS và narrow mobile viewport; kiểm tra cả empty/selected date, picker và bottom safe area nếu có fixed navigation.
+- Chromium/browser fixture PASS không thay thế real Safari verification khi native controls có platform rendering riêng. Nếu không có Safari/iOS runtime, ghi NOT RUN / PENDING REAL DEVICE, không claim Safari PASS.

@@ -39,7 +39,7 @@ assert(!app.includes('wp-c6-mobile-only'));
 assert(!matches.includes('wp-c6-mobile-only'));
 assert(!players.includes('wp-c6-mobile-only'));
 
-assert.match(index, /app\.css\?v=member-match01-20261009-1/);
+assert.match(index, /app\.css\?v=match-safari-date-20261009-2/);
 assert.equal((index.match(/wp-c5-information-hierarchy-20261005-1/g) || []).length, 1);
 assert.match(index, /app\.js\?v=member-match01-20261009-1/);
 

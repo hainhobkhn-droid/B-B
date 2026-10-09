@@ -116,6 +116,6 @@ assert(!/\border\s*:/.test(wpC5Css), 'WP-C5 must not fake business order with CS
 assert(app.includes('function actionAccordion(options = {})'));
 assert.equal((index.match(/wp-c5-information-hierarchy-20261005-1/g) || []).length, 1);
 assert.match(index, /app\.js\?v=member-match01-20261009-1/);
-assert.match(index, /app\.css\?v=member-match01-20261009-1/);
+assert.match(index, /app\.css\?v=match-safari-date-20261009-2/);
 
 console.log('PASS WP-C5 decision-first DOM/source order, role-aware empty states, loading/error hierarchy and mobile order contract');

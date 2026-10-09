@@ -385,3 +385,42 @@ Production login runtime loads successfully; no authenticated browser session ex
 Pre-commit staged gates: frontend 21/21, isolated backend 11/11, V2 regression, desktop/mobile fixtures, syntax/AST/UTF-8 and cached diff check PASS. V2 diff only appends Shared Data List Filter Pattern; WP-C4 diff only changes count 3 to 5. No production SQL/migration or business-data mutation during MATCH-D. Previously deployed migration was committed for source parity only, not reapplied.
 
 Final status: **DEPLOYED / PARTIALLY VERIFIED**. Residual gap: live authenticated Match UI sessions. Calibration artifacts remain unchanged and outside all Match commits. Documentation-only evidence update follows the implementation commit; no frontend source change.
+
+
+## 31. Safari/iOS native date follow-up — local preparation
+
+Status: **PARTIALLY VERIFIED**. This follow-up is not deployed. Prior MATCH-D deployment evidence above remains historical evidence for the committed build, not evidence for this new CSS.
+
+### Source cause and minimal shared correction
+
+The legacy iOS normalization selector `.matches-ui .tools input[type="date"].field` does not match the new `.match-lookup-filter-toolbar` on either My Matches or History. Both native controls therefore lost that date-specific normalization after the shared-filter move. Generic `.field` vertical padding remained, while only a height was constrained in the new filter. Selector drift is verified from source; the precise iOS internal rendering mechanism and the user-reported giant block were not reproduced in the available Chromium engine. No image attachment was available in this turn for independent inspection.
+
+The correction uses one shared date selector for both surfaces. The existing 46px control height is a shared custom property; date height/min-height/max-height use the same value. Date-only appearance, block sizing, border-box, zero vertical padding, normal line-height and min-width/max-width bounds constrain the wrapper. Scoped WebKit inner-value/editor rules remove extra padding and retain a nonzero empty-value line box. The calendar indicator is not hidden or disabled. No JS, native type, validation, filtering, RPC, capability or business workflow changed.
+
+Native `type=date` is preserved (DOM/static PASS). Actual iOS tap-to-open picker, icon clipping and Safari rendering: **NOT RUN / PENDING REAL DEVICE**. Native picker UI differs by platform ([MDN input/date](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/date)); WebKit documents platform-specific empty date inner-box sizing behavior ([WebKit issue 198959](https://bugs.webkit.org/show_bug.cgi?id=198959)). These support a scoped normalization approach, not a claim that this exact Safari failure has been reproduced or fixed on-device.
+
+### Verification
+
+- Frontend suites: 21/21 PASS after correcting new static assertions to match existing CSS formatting. Existing search/status/date-range/pagination tests remain PASS.
+- Shared date source assertions: PASS; one lookup normalization rule, common native inputs on both surfaces, 46px height token, width/min-width/max-width/box-sizing, scoped WebKit rules, retained indicator and existing safe-area padding.
+- Chromium disconnected browser fixture: both My Matches and History expanded together; empty and populated date controls 46px; all five fields equal height; desktop 1280px PASS, mobile 390px PASS, 375px PASS, narrow 320px PASS. Mobile uses one column on both surfaces. Document overflow false at each size; fixture runtime error empty.
+- Fixed bottom-nav fixture reuses production shell/main/sidebar classes via optional `--with-nav`. After paging to the final page, pager bottom stays above navigation top: 390px 679.42 < 777.20; 375px 639.37 < 745.20; 320px 520.47 < 618. Existing safe-area CSS is unchanged. Real iOS safe-area and keyboard/picker interaction remain PENDING REAL DEVICE.
+- Safari engine automated verification: **NOT AVAILABLE**. Real iPhone Safari verification: **NOT RUN**. My Matches Safari structure and History Safari structure: **PENDING REAL DEVICE**. Chromium emulation is not Safari evidence.
+- JS/CJS syntax, Python AST, UTF-8/no BOM/U+FFFD=0, trailing whitespace, Calibration hashes and `git diff --check`: PASS.
+
+### Scope and release safety
+
+Changed only `app.css`, `docs/PICK-UI-SYSTEM-V2.md`, `supabase/tests/member-match-confirmation-ui-test.cjs`, `supabase/tests/member-match-browser-fixture.py` and this report. All five are inside approved UI scope. Backups are outside the repo in the local task workspace `match-safari-backup/`.
+
+No backend SQL/migration, production mutation, Rating/Calibration change, stage, commit, push or deploy. No cache-bust was changed for this local preparation; a release asset bump remains necessary before any later approved publication. Before closure, test both expanded filter surfaces on real iPhone Safari (empty/selected dates, picker, icon, scrolling and bottom safe area), then record evidence rather than infer it from Chromium.
+
+
+## 32. Safari follow-up release gate
+
+User supplied direct real-device evidence on 2026-10-09: **"iPhone Safari PASS"**. This is user-reported validation of the local date-control fix, not agent-run Safari automation. The earlier NOT RUN entries in section 31 describe evidence before this confirmation. No screenshot, exact iOS version or per-interaction trace was supplied; none is invented. Safari automated engine remains NOT AVAILABLE.
+
+The user conditionally authorized release after this Safari PASS and rerunning all required gates. CSS cache-bust is now `match-safari-date-20261009-2`; unchanged app.js/matches.js retain their existing tags. WP-C5, WP-C6 and WP-C8 regressions change only their expected CSS asset tag. No application JS or backend definition changed.
+
+Final release scope: app.css; index.html; docs/PICK-UI-SYSTEM-V2.md; supabase/tests/member-match-confirmation-ui-test.cjs; supabase/tests/member-match-browser-fixture.py; supabase/tests/wp-c5-information-hierarchy-ui-test.cjs; supabase/tests/wp-c6-responsive-mobile-ui-test.cjs; supabase/tests/wp-c8-long-list-ui-test.cjs; this report. All nine files are within the final approved Match/UI scope. Calibration files, audit-output.txt and supabase/.temp are excluded. Deployment evidence will be recorded after Pages verification.
+
+Pre-commit re-run: frontend 21/21 PASS; isolated local PostgreSQL backend 11/11 PASS; both filter surfaces browser fixture 1280/390/375/320 PASS (46px controls, common grid, no horizontal overflow/runtime errors). PostgreSQL fixture was initially stopped; after starting localhost port 55439, all 11 tests executed successfully. No production SQL was executed. User-reported real iPhone Safari PASS satisfies the conditional release gate; agent Safari automation is still unavailable. Syntax/AST/UTF-8/trailing-whitespace/Calibration-integrity checks run before staging.

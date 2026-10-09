@@ -142,6 +142,22 @@ async function mount({ data = { player_id: 'p1', matches: records }, error = nul
   assert.match(css, /match-lookup-filter-toolbar[\s\S]*grid-template-columns:minmax\(0,2fr\)/);
   assert.match(css, /@media \(max-width:700px\)\s*\{\s*\.matches-ui \.match-lookup-filter-toolbar \{ grid-template-columns:minmax\(0,1fr\)/);
 
+  // CSS contract regression only: Chromium/fake DOM cannot prove iOS native rendering.
+  const nativeDate = css.match(/\.matches-ui \.match-lookup-filter-toolbar input\[type="date"\]\.field \{([^}]+)\}/);
+  assert(nativeDate, 'both lookup surfaces share one native date normalization');
+  assert.equal(css.match(/match-lookup-filter-toolbar input\[type="date"\]\.field \{/g).length, 1, 'one shared lookup normalization rule');
+  for (const rule of ['display:block', 'width:100%', 'min-width:0', 'max-width:100%', 'box-sizing:border-box',
+    'height:var(--match-lookup-control-height)', 'min-height:var(--match-lookup-control-height)',
+    'max-height:var(--match-lookup-control-height)', 'padding:0 12px', 'line-height:normal', '-webkit-appearance:none']) assert(nativeDate[1].includes(rule), rule);
+  assert.match(css, /--match-lookup-control-height:46px/);
+  assert.match(css, /match-lookup-filter-toolbar input\[type="date"\]::-webkit-date-and-time-value \{\s*min-height:1\.25em/);
+  const indicator = css.match(/match-lookup-filter-toolbar input\[type="date"\]::-webkit-calendar-picker-indicator \{([^}]+)\}/)[1];
+  assert(!/display:\s*none|visibility:\s*hidden|pointer-events:\s*none/.test(indicator));
+  assert(historyDates.every(n => n.type === 'date' && n.className === 'field'));
+  assert.match(css, /padding-bottom:\s*calc\(\s*88px\s*\+\s*env\(safe-area-inset-bottom\)\s*\)/);
+  const v2 = fs.readFileSync(path.join(root, 'docs/PICK-UI-SYSTEM-V2.md'), 'utf8');
+  assert(v2.includes('Cross-browser Native Form Controls') && v2.includes('PENDING REAL DEVICE'));
+
   const confirmation = source.slice(source.indexOf('function memberOpponentConfirmationPanel'), source.indexOf('// MEMBER-MATCH01:'));
   assert.match(confirmation, /item\.can_confirm ===\s*true/);
   for (const rpc of ['confirm_match_by_opponent', 'reject_match_by_opponent', 'update_my_rejected_pending_match', 'resubmit_my_rejected_match']) assert(confirmation.includes(rpc));

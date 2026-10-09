@@ -108,6 +108,6 @@ assert.match(read('matches.js'), /names.teamA, ...names.teamB/);
 assert.match(read('players.js'), /canManageMembers\(\) && canManagePlayers\(\)/);
 assert.match(read('players.js'), /if \(canManagePlayerLifecycle\(\)\)/);
 assert.match(read('app.css'), /@media \(max-width:700px\)[\s\S]*list-control:first-child/);
-for (const asset of ['app.js', 'app.css']) assert(read('index.html').includes(`${asset}?v=member-match01-20261009-1`));
+for (const [asset, version] of [['app.js', 'member-match01-20261009-1'], ['app.css', 'match-safari-date-20261009-2']]) assert(read('index.html').includes(`${asset}?v=${version}`));
 for (const asset of ['account.js', 'players.js']) assert(read('index.html').includes(`${asset}?v=wp-c9-capability-surfaces-20261007-1`));
 console.log('PASS WP-C8 real-helper 25/100-row search/filter/page/reset/clamp, global/tied rank, empty/error, context isolation, native controls and Account contract');

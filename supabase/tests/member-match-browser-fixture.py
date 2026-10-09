@@ -4,7 +4,7 @@ All RPCs below are in-memory stubs. This is presentation evidence, not live auth
 """
 import argparse
 from pathlib import Path
-P=argparse.ArgumentParser();P.add_argument('--out',required=True);args=P.parse_args()
+P=argparse.ArgumentParser();P.add_argument('--out',required=True);P.add_argument('--with-nav',action='store_true',help='Exercise existing shared mobile navigation/safe-area CSS');args=P.parse_args()
 repo=Path(__file__).resolve().parents[2]
 out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
 app=(repo/'app.js').read_text(encoding='utf8')
@@ -52,6 +52,9 @@ draw();
 html='''<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Match presentation fixture — no production</title><link rel="stylesheet" href="app.css"><body><main style="max-width:1100px;margin:auto;padding:16px"><h1 id="page-title" tabindex="-1">Match fixture · Không kết nối production</h1><label>Fixture identity <select id="identity">'''
 html+=''.join(f'<option {"selected" if i=="B1" else ""}>{i}</option>' for i in ['A1','A2','B1','B2','C1','DELEGATE','ADMIN'])
 html+='''</select></label><p id="fixture-error"></p><div id="global-message"></div><div id="notice-status" role="status" aria-live="polite" class="sr-only"></div><div id="notice-alert" role="alert" class="sr-only"></div><div id="content"></div></main><script>'''+bootstrap+shared+'</script><script src="matches.js"></script><script>'+finish+'</script></body></html>'
+if args.with_nav:
+    html=html.replace('<body><main style="max-width:1100px;margin:auto;padding:16px">', '<body><div class="shell"><aside class="sidebar"><nav class="sidebar-nav" aria-label="Fixture navigation"><button class="nav-item active" type="button">Trận đấu</button></nav></aside><main class="main">')
+    html=html.replace('</main><script>', '</main></div><script>')
 (out/'index.html').write_text(html,encoding='utf8')
 for name in ['app.css','matches.js']:(out/name).write_bytes((repo/name).read_bytes())
 print(out/'index.html')
