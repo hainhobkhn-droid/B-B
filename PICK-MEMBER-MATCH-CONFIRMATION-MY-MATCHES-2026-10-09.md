@@ -424,3 +424,16 @@ The user conditionally authorized release after this Safari PASS and rerunning a
 Final release scope: app.css; index.html; docs/PICK-UI-SYSTEM-V2.md; supabase/tests/member-match-confirmation-ui-test.cjs; supabase/tests/member-match-browser-fixture.py; supabase/tests/wp-c5-information-hierarchy-ui-test.cjs; supabase/tests/wp-c6-responsive-mobile-ui-test.cjs; supabase/tests/wp-c8-long-list-ui-test.cjs; this report. All nine files are within the final approved Match/UI scope. Calibration files, audit-output.txt and supabase/.temp are excluded. Deployment evidence will be recorded after Pages verification.
 
 Pre-commit re-run: frontend 21/21 PASS; isolated local PostgreSQL backend 11/11 PASS; both filter surfaces browser fixture 1280/390/375/320 PASS (46px controls, common grid, no horizontal overflow/runtime errors). PostgreSQL fixture was initially stopped; after starting localhost port 55439, all 11 tests executed successfully. No production SQL was executed. User-reported real iPhone Safari PASS satisfies the conditional release gate; agent Safari automation is still unavailable. Syntax/AST/UTF-8/trailing-whitespace/Calibration-integrity checks run before staging.
+
+
+## 33. Safari date follow-up deployment evidence
+
+Implementation commit: `106e8f752a0a129a76cd70b8f9b7dea65deadce9` — `fix: normalize shared match date controls on safari`. Exactly nine approved Match/UI files committed; no Calibration, migration or unrelated files. Push main -> origin/main PASS; HEAD == origin/main verified. Staged file list was printed before commit; cached diff check PASS.
+
+GitHub Pages SUCCESS: https://github.com/hainhobkhn-droid/B-B/actions/runs/37899039250.
+
+Production byte parity PASS for index.html, app.css, app.js and matches.js. CSS cache tag `match-safari-date-20261009-2` verified in served HTML and runtime DOM; unchanged JavaScript cache tags remain `member-match01-20261009-1`. Production CSSOM includes the shared native date normalization selector. Production unauthenticated login smoke PASS at 1280/390/375/320 without document overflow. Both Match filter surfaces passed disconnected fixture checks at those sizes before release; served asset parity links that fixture source to published bytes.
+
+Real iPhone Safari PASS is user-reported (direct confirmation before release); no agent Safari engine or screenshot evidence is claimed. Live authenticated MEMBER/delegated/ADMIN production Match smoke remains NOT RUN because no authenticated browser session is available. Overall MATCH-D status stays **DEPLOYED / PARTIALLY VERIFIED** for that residual gap; this Safari follow-up has been published after the user-confirmed real-device gate.
+
+Frontend 21/21; isolated backend 11/11; V2 regression; browser fixture 1280/390/375/320; syntax/AST/UTF-8/no BOM/U+FFFD=0; whitespace; git diff --check and cached check PASS. All 187 Calibration artifact hashes remain unchanged. No migration reapplied, production SQL/business-data mutation, Rating change or Calibration work performed. A documentation-only follow-up commit records this evidence; no frontend change in that commit.
