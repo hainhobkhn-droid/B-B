@@ -15,6 +15,8 @@
   button,
       actionAccordion,
       paginatedList,
+      matchLookupList,
+      matchLookupDate,
       panel,
       el,
       rows,
@@ -27,6 +29,7 @@
       sources,
       recent,
       table,
+      tableRecords,
       matchCols,
       matchCode
     } = ctx;
@@ -7098,6 +7101,7 @@ function voidApprovedMatchForm(root) {
               title,
               meta
             );
+            appendMatchCreator(titleWrap, match);
 
             const badge =
               makeNode(
@@ -7496,7 +7500,7 @@ function voidApprovedMatchForm(root) {
 
         const confirmationAction = actionAccordion({
           root,
-          title: 'Cần xử lý — Xác nhận & xử lý kết quả',
+          title: 'Cần xử lý — Cần xác nhận & xử lý kết quả',
           semantic: 'warning',
           icon: '!',
           className: 'match-action-card match-action-approve match-confirm-section'
@@ -8746,7 +8750,7 @@ function voidApprovedMatchForm(root) {
 
             if (heading) {
               heading.textContent =
-                `\u0058\u00e1\u0063 \u006e\u0068\u1ead\u006e \u0026 \u0078\u1eed \u006c\u00fd \u006b\u1ebf\u0074 \u0071\u0075\u1ea3 (${actionable.length})`;
+                `Cần xác nhận & xử lý kết quả (${actionable.length})`;
             }
 
             notice(
@@ -8799,7 +8803,114 @@ function voidApprovedMatchForm(root) {
         loadConfirmations();
       }
 
+      // MEMBER-MATCH01: read models own identity/scope; no client player argument.
+      let creatorContext;
+      function appendMatchCreator(node, match) {
+        const label = el('div', 'Người tạo: Đang tải…', 'muted match-confirm-meta');
+        node.append(label);
+        creatorContext ||= client.rpc('get_match_creator_context');
+        creatorContext.then(({ data, error }) => {
+          if (error) {
+            label.textContent = 'Người tạo: Chưa tải được thông tin';
+            return;
+          }
+          const item = (Array.isArray(data) ? data : []).find(row => raw(row.match_id) === raw(match.id));
+          label.textContent = `Người tạo: ${raw(item?.creator_name).trim() || 'Không xác định'}`;
+          if (item?.match_created_at) {
+            label.append(el('span', ` · Tạo lúc ${new Date(item.match_created_at).toLocaleString('vi-VN')}`));
+          }
+        }).catch(() => { label.textContent = 'Người tạo: Chưa tải được thông tin'; });
+      }
+
+      // Calendar-day filters use the club timezone, independently of browser timezone.
+      function myMatchCalendarDate(match) { return matchLookupDate(match.played_at); }
+
+      function myMatchStatus(match) {
+        return match.status === 'PENDING' && match.opponent_rejected ? 'REJECTED' : match.status;
+      }
+
+      function memberMyMatches(root) {
+        if (isAdmin() || raw(state.profile?.role).toUpperCase() !== 'MEMBER') return;
+        const accordion = actionAccordion({ root, title: 'Trận đấu của tôi', semantic: 'info', icon: '≡', expanded: false,
+          className: 'member-my-matches' });
+        const section = panel('Trận đấu của tôi', accordion.body);
+        const message = el('div', 'Đang tải trận đấu của tôi…', 'notice');
+        section.append(message);
+        client.rpc('get_my_matches').then(({ data, error }) => {
+          if (!section.isConnected) return;
+          if (error) { notice(message, explain(error), true); return; }
+          if (!data || !Array.isArray(data.matches)) {
+            notice(message, 'Chưa tải được trận đấu của tôi.', true); return;
+          }
+          if (!data.player_id) {
+            message.textContent = 'Tài khoản chưa liên kết với hồ sơ VĐV.';
+            return;
+          }
+          message.hidden = true;
+          const matches = data.matches;
+          const approved = matches.filter(match => match.status === 'APPROVED');
+          const result = match => {
+            if (match.status !== 'APPROVED' || !['A', 'B'].includes(match.my_team)) return null;
+            if (match.team_a_score == null || match.team_b_score == null) return null;
+            const difference = Number(match.team_a_score) - Number(match.team_b_score);
+            return difference === 0 ? 'Hòa' : ((difference > 0) === (match.my_team === 'A') ? 'Thắng' : 'Thua');
+          };
+          section.append(el('p', `${matches.length} trận tham gia · ${approved.length} đã duyệt · ${approved.filter(m => result(m) === 'Thắng').length} thắng · ${approved.filter(m => result(m) === 'Thua').length} thua · ${matches.filter(m => myMatchStatus(m) === 'PENDING').length} chờ xác nhận`, 'muted'));
+          const content = el('div', null, 'match-lookup-results');
+          matchLookupList({
+            root: section, key: 'member-my-matches', data: matches, content,
+            searchPlaceholder: 'Tìm trong trận đấu của tôi…',
+            emptyText: 'Bạn chưa có trận đấu nào.',
+            searchText: match => `${matchCode(match)} ${(match.players || []).map(player => player.full_name).join(' ')}`,
+            statusOf: myMatchStatus,
+            statusOptions: [['', 'Tất cả'], ['PENDING', 'Chờ xác nhận'], ['APPROVED', 'Đã duyệt'], ['REJECTED', 'Bị từ chối'], ['INVALID', 'Không hợp lệ'], ['VOIDED', 'Đã hủy']],
+            renderRows(visible) {
+              content.replaceChildren();
+              const team = side => match => (match.players || []).filter(player => player.team === side).map(player => player.full_name).join(' + ') || '—';
+              const status = match => {
+                const value = myMatchStatus(match);
+                const labels = { PENDING: 'Chờ xác nhận', REJECTED: 'Bị từ chối', APPROVED: 'Đã duyệt', INVALID: 'Không hợp lệ', VOIDED: 'Đã hủy' };
+                const tones = { PENDING: 'pending', REJECTED: 'invalid', APPROVED: 'approved', INVALID: 'invalid', VOIDED: 'voided' };
+                return el('span', labels[value] || value, `status ${tones[value] || ''}`);
+              };
+              const columns = [ ['Mã trận', matchCode], ['Thời gian', match => new Date(match.played_at).toLocaleString('vi-VN', { timeZone: 'Asia/Bangkok' })],
+                ['Đội A', team('A')], ['Tỷ số', match => `${match.team_a_score ?? '—'} – ${match.team_b_score ?? '—'}`],
+                ['Đội B', team('B')], ['Thể thức', match => match.match_type], ['Trạng thái', status] ];
+              if (visible.length) tableRecords(content, 'Trận đấu của tôi', visible, columns, { mobileCards: true });
+            }
+          });
+        }).catch(error => { if (section.isConnected) notice(message, explain(error), true); });
+      }
+
+      function matchHistoryLookup(root) {
+        const accordion = actionAccordion({ root, title: 'Tra cứu trận đấu đã diễn ra', semantic: 'info', icon: '≡', expanded: false });
+        table(
+          accordion.body,
+          'Tra cứu trận đấu đã diễn ra',
+          recent(
+            rows('matches'),
+            'played_at'
+          ),
+          matchCols,
+          {
+            matchLookup: true,
+            status: true,
+            unavailable:
+              !!state.errors.matches,
+            dateKey: 'played_at',
+            mobileCards: true,
+            pageSize: 20,
+            pageSizes: isAdmin()
+              ? [20, 50, 100]
+              : [20, 50],
+            reportCountLabel:
+              'trận trong phạm vi đang lọc'
+          }
+        );
+      }
+
       function matchesPage() {
+        creatorContext = null;
         const root = el('div', null, 'matches-ui');
         $('content').append(root);
 
@@ -8835,6 +8946,8 @@ function voidApprovedMatchForm(root) {
             navigationIntent ===
               'member-create-match'
           );
+          memberMyMatches(actionRoot);
+          matchHistoryLookup(actionRoot);
           if (actionRoot.children.length > 1) {
             root.append(actionRoot);
           }
@@ -8844,28 +8957,7 @@ function voidApprovedMatchForm(root) {
           adminMatchCenter(root);
         }
 
-        table(
-          root,
-          'Tra cứu trận đấu đã diễn ra',
-          recent(
-            rows('matches'),
-            'played_at'
-          ),
-          matchCols,
-          {
-            status: true,
-            unavailable:
-              !!state.errors.matches,
-            dateKey: 'played_at',
-            mobileCards: true,
-            pageSize: 20,
-            pageSizes: isAdmin()
-              ? [20, 50, 100]
-              : [20, 50],
-            reportCountLabel:
-              'trận trong phạm vi đang lọc'
-          }
-        );
+        if (isAdmin()) matchHistoryLookup(root);
         const lineupGrid = root.querySelector('#pending-team-a-1')?.closest('.form-grid');
         if (lineupGrid) {
           lineupGrid.classList.add('match-form-grid');

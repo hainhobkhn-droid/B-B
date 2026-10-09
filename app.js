@@ -548,33 +548,66 @@
       // WP-C8 SHARED LIST START
       const listContexts = new Map();
       let listControlId = 0;
+      function matchLookupDate(value) {
+        const date = new Date(value);
+        if (!value || !Number.isFinite(date.getTime())) return '';
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(date);
+        const part = type => parts.find(item => item.type === type).value;
+        return `${part('year')}-${part('month')}-${part('day')}`;
+      }
+      function matchLookupList({ root, key, data, content, renderRows, searchText,
+        statusOptions, statusOf = row => row.status, dateOf = row => row.played_at,
+        searchPlaceholder = '', emptyText = 'Chưa có dữ liệu hiển thị trong phạm vi quyền của bạn.',
+        noResultText = 'Không tìm thấy trận đấu phù hợp với bộ lọc.', pageSizes = [20, 50], unavailable = false }) {
+        return paginatedList({ root, key, data, content, renderRows, searchText,
+          searchLabel: 'Tìm kiếm', searchPlaceholder, layout: 'lookup',
+          pageSize: 20, pageSizes, emptyText, noResultText, unavailable,
+          validateFilters: values => values.from && values.to && values.from > values.to
+            ? 'Từ ngày phải trước hoặc bằng Đến ngày.' : '',
+          filters: [ { key: 'status', label: 'Trạng thái', options: statusOptions,
+              matches: (row, value) => statusOf(row) === value },
+            { key: 'from', label: 'Từ ngày', type: 'date',
+              matches: (row, value) => matchLookupDate(dateOf(row)) >= value },
+            { key: 'to', label: 'Đến ngày', type: 'date',
+              matches: (row, value) => !!matchLookupDate(dateOf(row)) && matchLookupDate(dateOf(row)) <= value } ]
+        });
+      }
       function paginatedList({ root, key, data, content, renderRows,
-        searchText, searchLabel = 'Tìm theo tên', filters = [],
-        emptyText = 'Chưa có dữ liệu.', pageSize = 20, unavailable = false }) {
+        searchText, searchLabel = 'Tìm theo tên', searchPlaceholder = '', filters = [],
+        emptyText = 'Chưa có dữ liệu.', pageSize = 20, pageSizes = [], validateFilters = null, layout = 'list', noResultText = 'Không tìm thấy kết quả phù hợp. Hãy xóa bộ lọc.', unavailable = false }) {
         const contextKey = `${state.session?.user?.id || 'anonymous'}:${key}`;
         const saved = listContexts.get(contextKey) || { query: '', filters: {}, page: 1 };
         listContexts.set(contextKey, saved);
-        const toolbar = el('div', null, 'list-toolbar');
+        const toolbar = el('div', null, layout === 'lookup' ? 'match-lookup-filter-toolbar' : pageSizes.length ? 'list-toolbar list-toolbar--extended' : 'list-toolbar');
         const labelControl = (label, control) => {
           control.id = `list-control-${++listControlId}`;
-          const field = el('div', null, 'list-control');
-          const labelNode = el('label', label, 'list-control-label');
+          const field = el('div', null, layout === 'lookup' ? 'list-control match-lookup-filter-field' : 'list-control');
+          const labelNode = el('label', label, layout === 'lookup' ? 'list-control-label match-lookup-filter-label' : 'list-control-label');
           labelNode.htmlFor = control.id;
           field.append(labelNode, control);
           toolbar.append(field);
         };
         const search = el('input', null, 'field');
-        search.type = 'search'; search.value = saved.query;
+        search.type = 'search'; search.value = saved.query; search.placeholder = searchPlaceholder;
         labelControl(searchLabel, search);
         const selects = filters.map(filter => {
-          const select = el('select', null, 'field');
-          filter.options.forEach(([value, label]) => {
+          const select = el(filter.type === 'date' ? 'input' : 'select', null, 'field');
+          if (filter.type === 'date') select.type = 'date';
+          (filter.options || []).forEach(([value, label]) => {
             const option = el('option', label); option.value = value; select.append(option);
           });
           select.value = saved.filters[filter.key] || '';
           labelControl(filter.label, select);
           return { filter, select };
         });
+        const size = pageSizes.length ? el('select', null, 'field') : null;
+        if (size) {
+          pageSizes.forEach(value => { const option = el('option', String(value)); option.value = String(value); size.append(option); });
+          size.value = String(pageSizes.includes(saved.pageSize) ? saved.pageSize : pageSize);
+          labelControl('Số dòng / trang', size);
+        }
         const clear = button('Xóa bộ lọc', () => {
           search.value = ''; selects.forEach(({ select }) => { select.value = ''; });
           changed();
@@ -585,7 +618,7 @@
         const announcement = el('div'); announcement.hidden = true;
         const announcementHost = el('div', null, 'sr-only');
         announcementHost.append(announcement);
-        const pager = el('div', null, 'list-pager');
+        const pager = el('div', null, layout === 'lookup' ? 'pager list-pager' : 'list-pager');
         const previous = button('Trang trước', () => { saved.page--; draw(true); });
         const next = button('Trang sau', () => { saved.page++; draw(true); });
         const pageLabel = el('span', '', 'muted text-sm');
@@ -593,35 +626,169 @@
         root.append(toolbar, summary, message, content, pager, announcementHost);
         function draw(announce = false) {
           const query = fold(search.value.trim());
-          const found = data.filter(row => (!query || fold(searchText(row)).includes(query)) &&
+          const invalid = validateFilters ? validateFilters(Object.fromEntries(selects.map(({ filter, select }) => [filter.key, select.value]))) : '';
+          const currentPageSize = size ? Number(size.value) : pageSize;
+          const found = invalid ? [] : data.filter(row => (!query || fold(searchText(row)).includes(query)) &&
             selects.every(({ filter, select }) => !select.value || filter.matches(row, select.value)));
-          const pages = Math.max(1, Math.ceil(found.length / pageSize));
+          const pages = Math.max(1, Math.ceil(found.length / currentPageSize));
           saved.page = Math.max(1, Math.min(saved.page, pages));
-          const start = (saved.page - 1) * pageSize;
-          const end = Math.min(start + pageSize, found.length);
+          const start = (saved.page - 1) * currentPageSize;
+          const end = Math.min(start + currentPageSize, found.length);
           summary.textContent = unavailable ? 'Chưa tải được số liệu. Hãy tải lại trang.' :
             `${found.length ? start + 1 : 0}–${end} / ${found.length} kết quả`;
           message.hidden = found.length > 0 && !unavailable;
-          message.textContent = unavailable ? 'Nguồn dữ liệu chưa sẵn sàng.' :
-            data.length ? 'Không tìm thấy kết quả phù hợp. Hãy xóa bộ lọc.' : emptyText;
+          message.textContent = invalid || (unavailable ? 'Nguồn dữ liệu chưa sẵn sàng.' :
+            data.length ? noResultText : emptyText);
           previous.disabled = unavailable || saved.page === 1;
           next.disabled = unavailable || saved.page === pages;
           pageLabel.textContent = `Trang ${saved.page}/${pages}`;
           clear.disabled = !search.value && selects.every(({ select }) => !select.value);
           renderRows(unavailable ? [] : found.slice(start, end));
-          if (announce) notice(announcement, summary.textContent);
+          if (announce) notice(announcement, invalid || summary.textContent);
         }
         function changed() {
           saved.query = search.value;
           selects.forEach(({ filter, select }) => { saved.filters[filter.key] = select.value; });
+          if (size) saved.pageSize = Number(size.value);
           saved.page = 1; draw(true);
         }
         search.addEventListener('input', changed);
+        if (size) size.addEventListener('change', changed);
         selects.forEach(({ select }) => select.addEventListener('change', changed));
         draw();
         return Object.freeze({ refresh: () => draw() });
       }
       // WP-C8 SHARED LIST END
+
+      // MATCH LOOKUP SHARED RECORDS START
+      function tableRecords(host, title, data, columns, opts = {}) {
+        const values = row => columns.map(column => column[1](row));
+          const wrap = el(
+            'div',
+            null,
+            'table-wrap'
+          );
+
+          wrap.tabIndex = 0;
+
+          wrap.setAttribute(
+            'role',
+            'region'
+          );
+
+          wrap.setAttribute(
+            'aria-label',
+            title
+          );
+
+          const t = el('table');
+          const caption = el(
+            'caption',
+            title,
+            'sr-only'
+          );
+
+          const head = el('thead');
+          const hr = el('tr');
+
+          columns.forEach(c => {
+            const th = el(
+              'th',
+              c[0]
+            );
+
+            th.scope = 'col';
+            hr.append(th);
+          });
+
+          head.append(hr);
+
+          const body = el('tbody');
+
+          data
+            .forEach(r => {
+              const tr = el('tr');
+
+              values(r).forEach(v => {
+                const td = el('td');
+
+                if (v instanceof Node) {
+                  td.append(v);
+                } else {
+                  td.textContent = raw(v);
+                }
+
+                tr.append(td);
+              });
+
+              body.append(tr);
+            });
+
+          t.append(
+            caption,
+            head,
+            body
+          );
+
+          wrap.append(t);
+          host.append(wrap);
+
+          if (opts.mobileCards) {
+            const mobileCards = el(
+              'div',
+              null,
+              'table-mobile-cards'
+            );
+
+            data
+              .forEach(r => {
+                const card = el(
+                  'article',
+                  null,
+                  'table-mobile-card'
+                );
+
+                values(r).forEach(
+                  (v, index) => {
+                    const cardRow = el(
+                      'div',
+                      null,
+                      'table-mobile-card-row'
+                    );
+
+                    cardRow.append(
+                      el(
+                        'span',
+                        columns[index][0],
+                        'table-mobile-card-label'
+                      )
+                    );
+
+                    const cardValue = el(
+                      'div',
+                      null,
+                      'table-mobile-card-value'
+                    );
+
+                    if (v instanceof Node) {
+                      cardValue.append(v);
+                    } else {
+                      cardValue.textContent = raw(v);
+                    }
+
+                    cardRow.append(cardValue);
+                    card.append(cardRow);
+                  }
+                );
+
+                mobileCards.append(card);
+              });
+
+            host.append(mobileCards);
+          }
+
+      }
+      // MATCH LOOKUP SHARED RECORDS END
 
       function table(
         parent,
@@ -631,6 +798,18 @@
         opts = {}
       ) {
         const section = panel(title, parent);
+        if (opts.matchLookup) {
+          const content = el('div', null, 'match-lookup-results');
+          const values = row => columns.map(column => column[1](row));
+          matchLookupList({ root: section, key: 'match-history-lookup', data, content,
+            searchPlaceholder: 'Tìm trong tra cứu trận đấu đã diễn ra…',
+            searchText: row => values(row).map(value => value instanceof Node ? value.textContent : raw(value)).join(' '),
+            statusOptions: [['', 'Tất cả'], ...[...new Set(data.map(row => row.status).filter(Boolean))].sort().map(status => [status, badge(status).textContent])],
+            pageSizes: opts.pageSizes, unavailable: opts.unavailable,
+            renderRows(visible) { content.replaceChildren(); if (visible.length) tableRecords(content, title, visible, columns, opts); }
+          });
+          return;
+        }
         const tools = el('div', null, 'tools');
         const search = el('input', null, 'field');
 
@@ -1000,137 +1179,7 @@
             return;
           }
 
-          const wrap = el(
-            'div',
-            null,
-            'table-wrap'
-          );
-
-          wrap.tabIndex = 0;
-
-          wrap.setAttribute(
-            'role',
-            'region'
-          );
-
-          wrap.setAttribute(
-            'aria-label',
-            title
-          );
-
-          const t = el('table');
-          const caption = el(
-            'caption',
-            title,
-            'sr-only'
-          );
-
-          const head = el('thead');
-          const hr = el('tr');
-
-          columns.forEach(c => {
-            const th = el(
-              'th',
-              c[0]
-            );
-
-            th.scope = 'col';
-            hr.append(th);
-          });
-
-          head.append(hr);
-
-          const body = el('tbody');
-
-          found
-            .slice(
-              (page - 1) * pageSize,
-              page * pageSize
-            )
-            .forEach(r => {
-              const tr = el('tr');
-
-              values(r).forEach(v => {
-                const td = el('td');
-
-                if (v instanceof Node) {
-                  td.append(v);
-                } else {
-                  td.textContent = raw(v);
-                }
-
-                tr.append(td);
-              });
-
-              body.append(tr);
-            });
-
-          t.append(
-            caption,
-            head,
-            body
-          );
-
-          wrap.append(t);
-          host.append(wrap);
-
-          if (opts.mobileCards) {
-            const mobileCards = el(
-              'div',
-              null,
-              'table-mobile-cards'
-            );
-
-            found
-              .slice(
-                (page - 1) * pageSize,
-                page * pageSize
-              )
-              .forEach(r => {
-                const card = el(
-                  'article',
-                  null,
-                  'table-mobile-card'
-                );
-
-                values(r).forEach(
-                  (v, index) => {
-                    const cardRow = el(
-                      'div',
-                      null,
-                      'table-mobile-card-row'
-                    );
-
-                    cardRow.append(
-                      el(
-                        'span',
-                        columns[index][0],
-                        'table-mobile-card-label'
-                      )
-                    );
-
-                    const cardValue = el(
-                      'div',
-                      null,
-                      'table-mobile-card-value'
-                    );
-
-                    if (v instanceof Node) {
-                      cardValue.append(v);
-                    } else {
-                      cardValue.textContent = raw(v);
-                    }
-
-                    cardRow.append(cardValue);
-                    card.append(cardRow);
-                  }
-                );
-
-                mobileCards.append(card);
-              });
-
-            host.append(mobileCards);
-          }
+          tableRecords(host, title, found.slice((page - 1) * pageSize, page * pageSize), columns, opts);
 
           const pg = el(
             'div',
@@ -2361,6 +2410,8 @@
             isAdmin,
             canApproveMatches,
             paginatedList,
+            matchLookupList,
+            matchLookupDate,
             button,
             actionAccordion,
             panel,
@@ -2375,6 +2426,7 @@
             sources,
             recent,
             table,
+            tableRecords,
             matchCols,
             matchCode
           });

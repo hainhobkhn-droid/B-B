@@ -135,7 +135,7 @@ assert(!appSource.includes('match-action-collapsible'));
 assert.match(accountSource, /return actionAccordion\(\{/);
 assert.match(playersSource, /const controller = actionAccordion\(\{/);
 assert(!matchesSource.includes('makeMatchActionAccordion'));
-assert.equal((matchesSource.match(/actionAccordion\(\{/g) || []).length, 3);
+assert.equal((matchesSource.match(/actionAccordion\(\{/g) || []).length, 5);
 assert.equal((fundSource.match(/Action = actionAccordion\(\{/g) || []).length, 3);
 assert.equal((appSource.match(/Action = actionAccordion\(\{/g) || []).length, 5);
 

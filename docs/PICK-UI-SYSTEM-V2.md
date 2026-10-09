@@ -900,3 +900,433 @@ The two governing operational rules are:
 and:
 
 > ADMIN and delegated MEMBER must use the same management workflow for the same capability, with backend authorization determining which actions are available.
+
+
+## Shared Data List Filter Pattern
+
+### 1. Mục tiêu
+
+Các giao diện có dạng danh sách dữ liệu kèm tìm kiếm, lọc và phân trang phải dùng cùng một ngôn ngữ UI và cùng một shared filter pattern.
+
+Nguyên tắc bắt buộc:
+
+- Cùng loại dữ liệu / cùng kiểu thao tác phải dùng cùng cấu trúc UI.
+- Không được mỗi module tự tạo một kiểu filter riêng nếu use case tương đương.
+- Không được thay đổi thứ tự field, kích thước control, cách hiển thị page size, vị trí reset filter hoặc responsive behavior mà không có lý do UX rõ ràng.
+- Ưu tiên tái sử dụng shared component, shared class và shared responsive rule hiện có.
+
+Pattern này áp dụng cho:
+- searchable list;
+- filterable list;
+- paginated list;
+- history list;
+- member-specific list;
+- admin/member data browser;
+- các surface tương đương về sau.
+
+---
+
+### 2. Thứ tự field chuẩn
+
+Khi một list có đầy đủ các loại filter sau, thứ tự mặc định phải là:
+
+1. `Tìm kiếm`
+2. `Trạng thái`
+3. `Từ ngày`
+4. `Đến ngày`
+5. `Số dòng / trang`
+6. `Xóa bộ lọc`
+
+Nếu một surface không sử dụng một field nào đó thì bỏ field đó, nhưng giữ nguyên relative order của các field còn lại.
+
+Không tự đổi thứ tự giữa các module nếu cùng pattern.
+
+---
+
+### 3. Tìm kiếm
+
+Label chuẩn:
+
+`Tìm kiếm`
+
+Quy tắc:
+
+- Search input dùng shared input style.
+- Trim whitespace.
+- Case-insensitive nếu business logic cho phép.
+- Placeholder thay đổi theo context.
+- Khi search thay đổi, page phải reset về 1.
+- Search không được reset các filter khác.
+- Search không được làm thay đổi authorization/data scope.
+- Search chỉ lọc trên dataset mà backend đã cho phép user đọc.
+
+Desktop:
+- Search là field rộng nhất trong filter row.
+
+Mobile:
+- Search chiếm full width.
+
+---
+
+### 4. Trạng thái
+
+Label chuẩn:
+
+`Trạng thái`
+
+Quy tắc:
+
+- Dùng shared/native select style.
+- Options lấy từ authoritative status/business contract.
+- UI có thể map status sang label thân thiện.
+- Không invent backend state mới chỉ để phục vụ filter.
+- Khi status thay đổi, page reset về 1.
+- Các filter khác được giữ nguyên.
+
+---
+
+### 5. Từ ngày / Đến ngày
+
+Labels chuẩn:
+
+- `Từ ngày`
+- `Đến ngày`
+
+Quy tắc:
+
+- Hai field dùng cùng input style.
+- Cùng chiều cao, border, radius, padding, icon behavior.
+- `Từ ngày > Đến ngày` phải hiển thị validation rõ ràng.
+- Không silently swap hai giá trị.
+- Date filtering dùng inclusive day boundary nếu business contract định nghĩa theo ngày lịch.
+- Timezone semantics phải được implementation ghi rõ khi có ảnh hưởng đến kết quả.
+
+Đối với PICK hiện tại:
+- date filtering phải giữ behavior thống nhất theo timezone hiện hành của hệ thống;
+- không để mỗi module tự xử lý timezone khác nhau.
+
+---
+
+### 6. Số dòng / trang
+
+Label chuẩn:
+
+`Số dòng / trang`
+
+Dùng một convention thống nhất toàn hệ thống.
+
+Preferred options:
+
+- `10`
+- `20`
+- `50`
+
+Nếu project đã có shared constants khác thì reuse constants hiện có.
+
+Không được để:
+- một nơi hiển thị `20`;
+- nơi khác hiển thị `20 dòng / trang`;
+
+nếu cùng shared pattern.
+
+Khi page size thay đổi:
+- reset về page 1;
+- giữ nguyên Search;
+- giữ nguyên Status;
+- giữ nguyên From/To date;
+- cập nhật result count và pagination hợp lệ.
+
+---
+
+### 7. Xóa bộ lọc
+
+Label chuẩn:
+
+`Xóa bộ lọc`
+
+Semantic:
+- neutral;
+- không dùng danger/red.
+
+Quy tắc:
+
+- Reset tất cả filter về default.
+- Reset page về 1.
+- Cùng vị trí và cùng style trên các surface dùng shared pattern.
+- Không tạo behavior khác nhau giữa các module tương đương.
+
+Nếu không có filter active:
+- dùng một behavior thống nhất toàn hệ thống:
+  - disabled;
+  hoặc
+  - hidden.
+
+Không được module này disabled còn module khác hidden nếu cùng shared component.
+
+---
+
+### 8. Filter combination
+
+Các filter kết hợp theo logic:
+
+`Search`
+AND `Status`
+AND `From Date`
+AND `To Date`
+
+Sau đó mới áp dụng pagination.
+
+Khi bất kỳ filter nào thay đổi:
+- reset page về 1;
+- giữ các filter khác;
+- cập nhật result count;
+- không làm mất user context không liên quan.
+
+---
+
+### 9. Desktop layout
+
+Trên Desktop, filter block dùng shared compact grid/row.
+
+Thứ tự:
+
+`Tìm kiếm | Trạng thái | Từ ngày | Đến ngày | Số dòng / trang | Xóa bộ lọc`
+
+Nguyên tắc:
+
+- Search rộng nhất.
+- Status có width vừa phải.
+- From/To cùng width.
+- Page size compact.
+- Clear filter cùng hàng nếu đủ không gian.
+- Labels align cùng baseline.
+- Controls cùng chiều cao.
+- Filter block và result container dùng cùng left edge.
+- Không dùng spacing tùy ý theo từng module.
+
+---
+
+### 10. Mobile layout
+
+Trên Mobile, default pattern là một cột cho form/filter có nhiều trường.
+
+Thứ tự:
+
+1. Tìm kiếm
+2. Trạng thái
+3. Từ ngày
+4. Đến ngày
+5. Số dòng / trang
+6. Xóa bộ lọc
+
+Nguyên tắc:
+
+- Search full width.
+- Các control còn lại full width.
+- Không ép nhiều field lên cùng hàng nếu làm giảm usability.
+- Không horizontal overflow.
+- Date icon/select arrow không bị clip.
+- Touch target đạt chuẩn Mobile của PICK UI System V2.
+- Không duplicate business DOM riêng cho Mobile nếu CSS responsive có thể xử lý.
+
+Hai cột chỉ được dùng khi:
+- V2 hoặc shared component cho phép rõ ràng;
+- field vẫn đủ rộng;
+- không gây overflow;
+- pattern được áp dụng nhất quán cho các surface tương đương.
+
+Với Match surfaces hiện tại:
+- Mobile dùng một cột làm chuẩn.
+
+---
+
+### 11. Result count
+
+Thứ tự visual chuẩn:
+
+`Filter block`
+→ `Result count`
+→ `List / Table / Cards`
+→ `Pagination`
+
+Result count có thể thay wording theo context, ví dụ:
+
+- `1–20 / 28 kết quả`
+- `80 trận trong phạm vi đang lọc`
+
+Nhưng phải giữ:
+- typography;
+- spacing;
+- hierarchy;
+- placement
+
+theo cùng shared pattern.
+
+---
+
+### 12. Empty states
+
+Phải phân biệt hai trường hợp:
+
+#### Dataset thực sự rỗng
+
+Ví dụ:
+
+`Bạn chưa có dữ liệu.`
+
+hoặc context-specific message.
+
+#### Có dữ liệu nhưng filter không ra kết quả
+
+Ví dụ:
+
+`Không tìm thấy dữ liệu phù hợp với bộ lọc.`
+
+Không dùng cùng một empty-state message cho hai trường hợp.
+
+---
+
+### 13. Pagination
+
+Pagination phải reuse pattern của WP-C8.
+
+Quy tắc:
+
+- Filter change → page = 1.
+- Page-size change → page = 1.
+- Search/status/date filters được giữ nguyên.
+- Không để page index vượt phạm vi.
+- Result count phải đồng bộ với filtered dataset.
+- Pagination component/style phải nhất quán giữa các list surfaces.
+
+---
+
+### 14. Accessibility
+
+Bắt buộc:
+
+- mỗi input/select có label rõ;
+- keyboard usable;
+- focus visible;
+- native input/select được ưu tiên;
+- hidden accordion body không để control tabbable;
+- validation date range phải có accessible feedback;
+- dynamic result count chỉ announce khi cần, theo WP-C7;
+- không spam live-region;
+- Mobile 390px và 320px không horizontal overflow.
+
+---
+
+### 15. Shared component / CSS rule
+
+Nếu hai surface cùng use case thì phải ưu tiên reuse:
+
+- shared filter wrapper;
+- shared filter grid;
+- shared filter field;
+- shared input/select/date styles;
+- shared page-size control;
+- shared clear-filter control;
+- shared responsive behavior;
+- shared result-count pattern;
+- shared pagination pattern.
+
+Không tạo module-specific CSS như:
+
+- `.my-matches-filter-*`
+- `.history-filter-*`
+
+nếu khác biệt chỉ là tên module.
+
+Module-specific CSS chỉ được dùng khi có semantic hoặc layout reason thực sự.
+
+---
+
+### 16. Match surfaces — authoritative example
+
+Hai surface sau phải dùng cùng Shared Data List Filter Pattern:
+
+- `Trận đấu của tôi`
+- `Tra cứu trận đấu đã diễn ra`
+
+Hai surface được phép khác nhau ở:
+
+- data source;
+- search placeholder;
+- status options;
+- summary content;
+- result-specific metadata.
+
+Nhưng phải giống nhau ở:
+
+- field order;
+- control sizing;
+- filter layout;
+- Desktop behavior;
+- Mobile behavior;
+- page-size convention;
+- clear-filter behavior;
+- result-count placement;
+- pagination;
+- spacing;
+- accessibility;
+- responsive breakpoint.
+
+#### Desktop
+
+Cả hai dùng:
+
+`Tìm kiếm | Trạng thái | Từ ngày | Đến ngày | Số dòng / trang | Xóa bộ lọc`
+
+hoặc shared grid tương đương.
+
+#### Mobile
+
+Cả hai dùng một-column pattern:
+
+- Tìm kiếm
+- Trạng thái
+- Từ ngày
+- Đến ngày
+- Số dòng / trang
+- Xóa bộ lọc
+
+Không được để một surface dùng 2 cột còn surface kia dùng 1 cột nếu cùng shared pattern.
+
+---
+
+### 17. Regression requirement
+
+Các UI regression test phải bảo vệ tối thiểu:
+
+- cùng shared filter wrapper/class;
+- cùng field order;
+- cùng page-size convention;
+- cùng reset-filter placement;
+- cùng label convention;
+- cùng control classes;
+- cùng responsive behavior;
+- Mobile 390px không overflow;
+- Mobile 320px không overflow;
+- pagination giữ đúng contract;
+- filter behavior không làm thay đổi authorization/data scope.
+
+Khi thêm một list/filter surface mới, phải kiểm tra xem use case có thuộc Shared Data List Filter Pattern hay không trước khi tạo layout mới.
+
+---
+
+### 18. Rule mở rộng trong tương lai
+
+`PICK-UI-SYSTEM-V2.md` là authoritative UI contract.
+
+Khi một pattern đã được định nghĩa trong V2:
+
+- implementation mới phải reuse pattern;
+- không tự tạo variation chỉ vì khác module;
+- nếu thực sự cần variation mới, phải cập nhật V2 trước hoặc đồng thời với implementation;
+- variation phải có lý do UX/semantic rõ ràng;
+- không được để implementation đi trước design contract trong thời gian dài.
+
+Nguyên tắc:
+
+**Design system trước, implementation theo sau.**
