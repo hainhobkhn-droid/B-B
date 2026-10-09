@@ -1,6 +1,6 @@
 # MEMBER MATCH CONFIRMATION + MY MATCHES + ADMIN CREATOR VISIBILITY
 
-Date: 2026-10-09. Preparation PASS; backend gate PASS; MATCH-D status: **PARTIALLY VERIFIED — final 15-file scope approved; release gates PASS; frontend deployment pending; live authenticated browser sessions NOT RUN**.
+Date: 2026-10-09. MATCH-D status: **DEPLOYED / PARTIALLY VERIFIED**. Backend gate and release gates PASS; Pages and production asset parity verified. Live authenticated production browser sessions NOT RUN.
 
 # 1. Scope
 
@@ -368,3 +368,20 @@ User directly approved V2 manual filter-pattern addition and the one-line WP-C4 
 - PICK-MEMBER-MATCH-CONFIRMATION-MY-MATCHES-2026-10-09.md
 
 Frontend 21/21, backend 11/11, V2/source regression, browser fixtures 1280/390/320, syntax/AST/UTF-8 and git diff --check PASS. Production schema/business mutation in this release NO; already deployed migration is included solely for source parity and is not reapplied. Live authenticated production browser remains NOT RUN. Deployment evidence follows verification; final state must remain DEPLOYED / PARTIALLY VERIFIED if no authenticated session is available.
+
+# 30. MATCH-D deployment evidence
+
+Implementation commit: `07675508dc4d767e058ce9116f4d95f224dc7dff`. Exactly 15 approved files committed and pushed on main; no Calibration/unrelated files. HEAD == origin/main verified after push. Pages workflow SUCCESS: https://github.com/hainhobkhn-droid/B-B/actions/runs/37896302058.
+
+Production index.html/app.js/app.css/matches.js exactly match committed bytes. Cache tag `member-match01-20261009-1` verified both in served HTML and live browser DOM. Asset SHA-256:
+
+- index.html: `386038af14d4558250236f3f6bb1050a53577316620f5af7bf59a5082920d11c`
+- app.js: `bf7fd1bcf1724287ce7ccfcf20f8661f0683c8b4bac86ee823e6463f5e48c564`
+- app.css: `b5404e0b2e296c0c65b74d255bdced8f17a6c37eeefe5b2981447b99b87f26d8`
+- matches.js: `f615438981c974e7f70c3c740b422ad76e879ff6ba7b1950de23e376dbcd5c97`
+
+Production login runtime loads successfully; no authenticated browser session exists, so live MEMBER/delegated/ADMIN Match actions remain NOT RUN. No account/credential creation or production Confirm/Reject actions were performed. A disconnected fixture built from the exact served app.js/app.css/matches.js bytes PASS at 1280/390/320: two identical shared filter grids, correct one-column mobile layout, no overflow/runtime errors, same trimmed search results. This is production-byte fixture evidence, not live JWT/E2E evidence.
+
+Pre-commit staged gates: frontend 21/21, isolated backend 11/11, V2 regression, desktop/mobile fixtures, syntax/AST/UTF-8 and cached diff check PASS. V2 diff only appends Shared Data List Filter Pattern; WP-C4 diff only changes count 3 to 5. No production SQL/migration or business-data mutation during MATCH-D. Previously deployed migration was committed for source parity only, not reapplied.
+
+Final status: **DEPLOYED / PARTIALLY VERIFIED**. Residual gap: live authenticated Match UI sessions. Calibration artifacts remain unchanged and outside all Match commits. Documentation-only evidence update follows the implementation commit; no frontend source change.
