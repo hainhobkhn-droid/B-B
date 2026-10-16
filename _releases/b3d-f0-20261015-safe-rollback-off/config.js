@@ -1,0 +1,17 @@
+window.APP_CONFIG = {
+  SUPABASE_URL: 'https://bflwaqlvnesuqoyikxar.supabase.co',
+
+  SUPABASE_ANON_KEY:
+    'sb_publishable_NiFIbGkglgbBvlYVN_jXBw_CUW9Kw0r',
+
+  APP_NAME: 'PICK',
+
+  CLUB_NAME: 'B&B Club',
+
+  CLUB_TAGLINE:
+    'Cùng chơi • Cùng tiến bộ',
+
+  CLUB_LOGO:
+    './logo.jpg'
+};
+window.PICK_PREPLAY = Object.freeze({"release": "B3D_FRONTEND_SAFE_ROLLBACK_OFF", "enabled": false, "prepareUrl": "https://pick-b3d-gateway-297592672982.asia-southeast1.run.app/prepare", "routerCompatible": true});
