@@ -1,0 +1,31 @@
+{
+  "tag": "iam-match-permission-p1-20261026-v1",
+  "files": {
+    "_releases/iam-match-permission-p1-20261026-v1/account.js": "d6c53ba0da1183006865467c20af8196277572a455704cb6ada347c94882e6bb",
+    "_releases/iam-match-permission-p1-20261026-v1/app.css": "2857780438459266debcde9345b26af19bcaaa78bf5b76b35dd6d7a33ac08c6a",
+    "_releases/iam-match-permission-p1-20261026-v1/app.js": "cb53cae7dc329fedcd214b086480033344f094caec9ed3471d807da8bdd89630",
+    "_releases/iam-match-permission-p1-20261026-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/iam-match-permission-p1-20261026-v1/fund.js": "8d4ac4507fa58d5b7b1f7381a25b28a6f5aa223d040b344d4092afdb0fa8120c",
+    "_releases/iam-match-permission-p1-20261026-v1/matches.js": "7cf3e16ce59c2c68d324cfcf5e2f53353492fb4e6716f0123c7e2a5fb756aa5f",
+    "_releases/iam-match-permission-p1-20261026-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/iam-match-permission-p1-20261026-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/iam-match-permission-p1-20261026-v1/players.js": "92978ed4b89d00d08ee40aa1c8adf1296e51cbc32c9d7ff6bcbcc6edf8f1e12a",
+    "_releases/iam-match-permission-p1-20261026-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/iam-match-permission-p1-20261026-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/iam-match-permission-p1-20261026-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "960957496c7d59f8ffed38859461c73d498dc1a99eaf0f2ea96cc27f031f915f"
+  },
+  "aggregate_sha256": "5132f7a4ff4d572fc47a20e5eab309aba48ccbdebf00bd552ebd00ff0b9698ef",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "changed_runtime_files": [
+    "app.js",
+    "matches.js",
+    "preplay.js",
+    "index.html"
+  ],
+  "unchanged_assets": 9,
+  "rollback_aggregate": "dffec2b3e82091fab197195e450dd159c98646f3d35ccc6f4b3e3e9160e0cc01",
+  "base_commit": "d15dfc7d455d3cf642308bccfbdfeb2195f15e26",
+  "athlete_entry": "CLOSED",
+  "new_gcp_dependency": false
+}

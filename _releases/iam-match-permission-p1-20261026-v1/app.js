@@ -1,0 +1,12352 @@
+'use strict';
+
+    (() => {
+      const $ = id => document.getElementById(id);
+
+      const modules = [
+        ['overview', '◉', 'Tổng quan'],
+        ['matches', '▦', 'Trận đấu'],
+        ['players', '♧', 'VĐV'],
+        ['ranking', '↗', 'BXH'],
+        ['fund', '₫', 'Quỹ'],
+        ['contribution', '♡', 'Cống hiến'],
+        ['tournaments', '⚑', 'Giải đấu'],
+        ['admin', '⚙', 'Quản trị']
+      ];
+
+      const FALLBACK_RATING_VERSION = 'V1.1';
+      const FALLBACK_OFFICIAL_MIN_MATCHES = 5;
+
+      const tables = [
+        'players',
+        'matches',
+        'match_players',
+        'rating_events',
+        'rating_settings',
+        'rating_match_weights',
+        'fund_rules',
+        'fund_obligation_campaigns',
+        'fund_contributions',
+        'fund_payments',
+        'fund_transactions',
+        'leagues',
+        'tournaments',
+       'tournament_registrations',
+        'tournament_payments'
+      ];
+
+      const labels = {
+        players: 'Vận động viên',
+        matches: 'Trận đấu',
+        match_players: 'Thành phần trận đấu',
+        rating_events: 'Lịch sử điểm',
+        rating_settings: 'Thiết lập điểm',
+        rating_match_weights: 'Trọng số trận đấu',
+        fund_rules: 'Quy định quỹ',
+        fund_obligation_campaigns: 'Danh mục khoản phải đóng',
+        fund_contributions: 'Khoản đóng góp',
+        fund_payments: 'Thanh toán',
+        fund_transactions: 'Sổ giao dịch',
+        leagues: 'Giải nội bộ',
+        tournaments: 'Giải đấu'
+      };
+
+      const state = {
+        session: null,
+        profile: null,
+        data: {},
+        errors: {},
+        partial: {},
+        fundCollectionBalances: [],
+        fundCollectionBalancesReady: false,
+        page: 'overview',
+        busy: false,
+        writeBusy: false,
+        generation: 0,
+        controller: null,
+        navigationIntent: null,
+        updated: null
+      };
+
+      let memberAnalyticsDispose = null;
+      let fundUiDispose = null;
+      let client;
+      let subscription;
+      let authSequence = 0;
+
+      const num = v =>
+        v === null ||
+        v === undefined ||
+        v === '' ||
+        typeof v === 'boolean'
+          ? null
+          : Number.isFinite(Number(v))
+            ? Number(v)
+            : null;
+
+      const number = v =>
+        num(v) === null
+          ? '—'
+          : new Intl.NumberFormat('vi-VN', {
+              maximumFractionDigits: 2
+            }).format(Number(v));
+
+      const money = v =>
+        num(v) === null
+          ? '—'
+          : new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND',
+              maximumFractionDigits: 0
+            }).format(Number(v));
+
+      const date = v =>
+        !v || !Number.isFinite(new Date(v).getTime())
+          ? '—'
+          : new Intl.DateTimeFormat('vi-VN', {
+              dateStyle: 'short',
+              timeStyle: 'short'
+            }).format(new Date(v));
+
+      const pick = (r, ...keys) => {
+        for (const k of keys) {
+          if (r[k] !== null && r[k] !== undefined) {
+            return r[k];
+          }
+        }
+        return null;
+      };
+
+      const raw = v =>
+        v == null || v === ''
+          ? '—'
+          : typeof v === 'object'
+            ? JSON.stringify(v)
+            : String(v);
+
+      const upper = v =>
+        String(v || '').toUpperCase();
+
+      const fold = v =>
+        String(v)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/Đ/g, 'D')
+          .toLowerCase();
+
+      const rows = t =>
+        state.data[t] || [];
+
+      const activeRatingSettings = () =>
+        rows('rating_settings')
+          .find(
+            item =>
+              item.is_active === true
+          ) ||
+        null;
+
+      const currentRatingVersion = () =>
+        String(
+          activeRatingSettings()
+            ?.algorithm_version ||
+          FALLBACK_RATING_VERSION
+        );
+
+      const officialMinMatches = () => {
+        const value =
+          Number(
+            activeRatingSettings()
+              ?.provisional_matches
+          );
+
+        return Number.isFinite(value) &&
+          value >= 0
+          ? value
+          : FALLBACK_OFFICIAL_MIN_MATCHES;
+      };
+
+      const ready = (...ts) =>
+        ts.every(
+          t =>
+            Array.isArray(state.data[t]) &&
+            !state.errors[t] &&
+            !state.partial[t]
+        );
+
+      const isAdmin = () =>
+        upper(state.profile?.role) === 'ADMIN' &&
+        state.profile?.is_active === true;
+
+      const hasCapability = name =>
+        state.profile?.is_active === true &&
+        (
+          isAdmin() ||
+          state.profile?.[name] === true
+        );
+
+      const canCollectTournamentFee = () =>
+        hasCapability('can_collect_tournament_fee');
+
+      const canApproveMatches = () =>
+        hasCapability('can_approve_matches');
+
+      // Presentation mirrors frozen backend containment; this never authorizes creation.
+      const memberMatchEntryOpen = () => false;
+
+      const canManageTournaments = () =>
+        hasCapability('can_manage_tournaments');
+
+      const canManageFund = () =>
+        hasCapability('can_manage_fund');
+
+      const canManageMembers = () =>
+        hasCapability('can_manage_members');
+
+      const canManagePlayers = () =>
+        hasCapability('can_manage_players');
+
+      const canManagePlayerLifecycle = () =>
+        hasCapability('can_manage_player_lifecycle');
+
+      const canAdjustRating = () =>
+        hasCapability('can_adjust_rating');
+
+      const canCollectFund = () =>
+        hasCapability('can_collect_fund');
+
+      const canViewAudit = () =>
+        hasCapability('can_view_audit');
+
+      function el(tag, text, cls) {
+        const n = document.createElement(tag);
+
+        if (text !== undefined && text !== null) {
+          n.textContent = String(text);
+        }
+
+        if (cls) {
+          n.className = cls;
+        }
+
+        return n;
+      }
+
+      function button(text, fn, cls = 'btn') {
+        const n = el('button', text, cls);
+        n.type = 'button';
+        n.addEventListener('click', fn);
+        return n;
+      }
+
+      // WP-C4 SHARED ACTION ACCORDION START
+      let actionAccordionSequence = 0;
+
+      function actionAccordion(options = {}) {
+        const {
+          root = null,
+          title,
+          semantic = 'neutral',
+          icon = null,
+          expanded = false,
+          group = null,
+          onOpen = null,
+          render: renderContent = null,
+          className = ''
+        } = options;
+
+        if (!title) {
+          throw new Error('ACTION_ACCORDION_TITLE_REQUIRED');
+        }
+
+        const allowedSemantics = new Set([
+          'create',
+          'info',
+          'warning',
+          'danger',
+          'neutral'
+        ]);
+        const resolvedSemantic = allowedSemantics.has(semantic)
+          ? semantic
+          : 'neutral';
+        const defaultIcons = {
+          create: '+',
+          info: '✎',
+          warning: '!',
+          danger: '!',
+          neutral: '›'
+        };
+        const panelId =
+          `action-accordion-${state.generation || 0}-${++actionAccordionSequence}`;
+        const wrapper = el(
+          'section',
+          null,
+          `action-accordion action-accordion-${resolvedSemantic}${className ? ` ${className}` : ''}`
+        );
+        const toggle = el('button', null, 'action-accordion-toggle');
+        const iconNode = el(
+          'span',
+          icon || defaultIcons[resolvedSemantic],
+          'action-accordion-icon'
+        );
+        const titleNode = el('span', title, 'action-accordion-title');
+        const chevron = el('span', '›', 'action-accordion-chevron');
+        const body = el('div', null, 'action-accordion-panel');
+
+        toggle.type = 'button';
+        toggle.setAttribute('aria-controls', panelId);
+        iconNode.setAttribute('aria-hidden', 'true');
+        chevron.setAttribute('aria-hidden', 'true');
+        body.id = panelId;
+
+        const controller = {
+          wrapper,
+          toggle,
+          body,
+          title,
+          setExpanded(next) {
+            const open = !!next;
+            if (open && Array.isArray(group)) {
+              group.forEach(item => {
+                if (item !== controller) {
+                  item.setExpanded(false);
+                }
+              });
+            }
+            const wasOpen = toggle.getAttribute('aria-expanded') === 'true';
+            if (!open && typeof body.contains === 'function' && body.contains(document.activeElement)) {
+              toggle.focus({ preventScroll: true });
+            }
+            toggle.setAttribute('aria-expanded', String(open));
+            body.hidden = !open;
+            wrapper.classList.toggle('is-expanded', open);
+            if (open && !wasOpen && typeof onOpen === 'function') {
+              void onOpen(controller);
+            }
+          }
+        };
+
+        toggle.append(iconNode, titleNode, chevron);
+        toggle.addEventListener('click', () => {
+          controller.setExpanded(body.hidden);
+        });
+        wrapper.append(toggle, body);
+
+        if (Array.isArray(group)) {
+          group.push(controller);
+        }
+        if (root) {
+          root.append(wrapper);
+        }
+        if (typeof renderContent === 'function') {
+          renderContent(body, controller);
+        }
+        controller.setExpanded(expanded);
+        return controller;
+      }
+      // WP-C4 SHARED ACTION ACCORDION END
+
+      // WP-C7 SHARED NOTICE START
+      const noticeDeliveries = new WeakMap();
+      function notice(target, text, isError = false, isSuccess = false) {
+        const options = isError && typeof isError === 'object'
+          ? isError
+          : { tone: isError ? 'error' : isSuccess ? 'success' : 'info' };
+        const value = text ? String(text) : '';
+        const previous = noticeDeliveries.get(target);
+        const unchanged = previous?.text === value &&
+          previous.critical === (options.critical === true) && !target.hidden;
+        target.hidden = !value;
+        target.className = 'notice' +
+          (options.tone === 'error' ? ' error' : '') +
+          (options.tone === 'success' ? ' success' : '');
+        // One persistent announcer owns delivery, even inside a live preview.
+        target.removeAttribute('role');
+        target.setAttribute('aria-live', 'off');
+        if (target.textContent !== value || target.childElementCount > 0) target.textContent = value;
+        if (!value) noticeDeliveries.delete(target);
+        if (!value || unchanged || options.announce === false || !target.isConnected) return;
+        const announcer = $(options.critical === true ? 'notice-alert' : 'notice-status');
+        if (announcer) {
+          announcer.textContent = value;
+          noticeDeliveries.set(target, { text: value, critical: options.critical === true });
+        }
+      }
+      // WP-C7 SHARED NOTICE END
+
+      // WP-C7 CONTENT FOCUS START
+      let pendingContentFocus = null;
+      function preserveContentFocus(root) {
+        const active = document.activeElement;
+        if (root.contains(active)) {
+          pendingContentFocus = { id: active.id || null, page: state.page };
+        }
+        const pending = pendingContentFocus;
+        if (!pending) return;
+        queueMicrotask(() => {
+          if (state.busy) return;
+          if (pendingContentFocus !== pending) return;
+          pendingContentFocus = null;
+          if (state.page !== pending.page || !root.isConnected) return;
+          // Never steal focus from a user who has moved to another control.
+          const current = document.activeElement;
+          if (current && current !== document.body && current !== active) return;
+          const replacement = pending.id ? $(pending.id) : null;
+          const target = replacement && root.contains(replacement) &&
+            !replacement.disabled && !replacement.closest('[hidden]')
+            ? replacement : $('page-title');
+          target?.focus({ preventScroll: true });
+        });
+      }
+      // WP-C7 CONTENT FOCUS END
+
+      function panel(title, parent = $('content')) {
+        const n = el('section', null, 'panel');
+        const heading = el('h2', title);
+        heading.tabIndex = -1;
+        n.append(heading);
+        parent.append(n);
+        return n;
+      }
+
+      function badge(value) {
+        const s = upper(value);
+
+        const texts = {
+          APPROVED: 'Đã duyệt',
+          PENDING: 'Chờ duyệt',
+          REJECTED: 'Bị từ chối',
+          VOIDED: 'Đã hủy',
+          INVALID: 'Không hợp lệ',
+          ACTIVE: 'Đang hoạt động',
+          INACTIVE: 'Ngừng hoạt động',
+          COMPLETED: 'Hoàn tất',
+          CANCELLED: 'Đã hủy',
+          PAID: 'Đã thanh toán',
+          UNPAID: 'Chưa thanh toán',
+          PARTIAL: 'Thanh toán một phần',
+          CHUA_DONG: 'Chưa đóng',
+          DONG_MOT_PHAN: 'Đóng một phần',
+          DA_DONG: 'Đã đóng',
+          MIEN: 'Miễn',
+          DIEU_CHINH: 'Điều chỉnh',
+          ADMIN: 'Quản trị viên',
+          MEMBER: 'Thành viên'
+        };
+
+        return el(
+          'span',
+          texts[s] || raw(value),
+          'badge ' +
+            (
+              [
+                'APPROVED',
+                'ACTIVE',
+                'PAID',
+                'COMPLETED',
+                'DA_DONG'
+              ].includes(s)
+                ? 'good'
+                : [
+                    'PENDING',
+                    'PARTIAL',
+                    'UNPAID',
+                    'CHUA_DONG',
+                    'DONG_MOT_PHAN'
+                  ].includes(s)
+                  ? 'pending'
+                  : [
+                      'VOIDED',
+                      'INVALID',
+                      'REJECTED',
+                      'CANCELLED',
+                      'INACTIVE'
+                    ].includes(s)
+                    ? 'bad'
+                    : ''
+            )
+        );
+      }
+
+      const playerName = id => {
+        const r = rows('players').find(p => p.id === id);
+
+        return r
+          ? raw(
+              pick(
+                r,
+                'full_name',
+                'display_name',
+                'name',
+                'player_name'
+              )
+            )
+          : id
+            ? String(id)
+            : '—';
+      };
+
+      function sources(parent, ts) {
+        for (const t of ts) {
+          if (state.errors[t]) {
+            const n = el('div', null, 'notice error');
+
+            n.append(
+              el(
+                'span',
+                labels[t] + ': ' + state.errors[t] + ' '
+              ),
+              button(
+                'Thử lại',
+                () => load()
+              )
+            );
+
+            parent.append(n);
+          } else if (state.partial[t]) {
+            parent.append(
+              el(
+                'p',
+                labels[t] +
+                  ': chỉ hiển thị tối đa 10.000 dòng. Các chỉ số tổng hợp liên quan tạm ẩn.',
+                'notice'
+              )
+            );
+          }
+        }
+      }
+
+      function grid(parent, items, extraClass = '') {
+        const n = el(
+          'div',
+          null,
+          (
+            'ui-kpi-grid ' +
+            extraClass
+          ).trim()
+        );
+
+        for (const [label, value, hint] of items) {
+          const c = el('div', null, 'stat ui-summary-card');
+
+          c.append(
+            el('div', label, 'muted ui-card-label'),
+            el('strong', value, 'ui-card-value')
+          );
+
+          if (hint) {
+            c.append(
+              el(
+                'p',
+                hint,
+                'muted mt-2 mb-0 ui-card-meta'
+              )
+            );
+          }
+
+          n.append(c);
+        }
+
+        parent.append(n);
+      }
+
+      // WP-C8 SHARED LIST START
+      const listContexts = new Map();
+      let listControlId = 0;
+      function matchLookupDate(value) {
+        const date = new Date(value);
+        if (!value || !Number.isFinite(date.getTime())) return '';
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(date);
+        const part = type => parts.find(item => item.type === type).value;
+        return `${part('year')}-${part('month')}-${part('day')}`;
+      }
+      function matchLookupList({ root, key, data, content, renderRows, searchText,
+        statusOptions, statusOf = row => row.status, dateOf = row => row.played_at,
+        searchPlaceholder = '', emptyText = 'Chưa có dữ liệu hiển thị trong phạm vi quyền của bạn.',
+        noResultText = 'Không tìm thấy trận đấu phù hợp với bộ lọc.', pageSizes = [20, 50], unavailable = false }) {
+        return paginatedList({ root, key, data, content, renderRows, searchText,
+          searchLabel: 'Tìm kiếm', searchPlaceholder, layout: 'lookup',
+          pageSize: 20, pageSizes, emptyText, noResultText, unavailable,
+          validateFilters: values => values.from && values.to && values.from > values.to
+            ? 'Từ ngày phải trước hoặc bằng Đến ngày.' : '',
+          filters: [ { key: 'status', label: 'Trạng thái', options: statusOptions,
+              matches: (row, value) => statusOf(row) === value },
+            { key: 'from', label: 'Từ ngày', type: 'date',
+              matches: (row, value) => matchLookupDate(dateOf(row)) >= value },
+            { key: 'to', label: 'Đến ngày', type: 'date',
+              matches: (row, value) => !!matchLookupDate(dateOf(row)) && matchLookupDate(dateOf(row)) <= value } ]
+        });
+      }
+      function paginatedList({ root, key, data, content, renderRows,
+        searchText, searchLabel = 'Tìm theo tên', searchPlaceholder = '', filters = [],
+        emptyText = 'Chưa có dữ liệu.', pageSize = 20, pageSizes = [], validateFilters = null, layout = 'list', noResultText = 'Không tìm thấy kết quả phù hợp. Hãy xóa bộ lọc.', unavailable = false }) {
+        const contextKey = `${state.session?.user?.id || 'anonymous'}:${key}`;
+        const saved = listContexts.get(contextKey) || { query: '', filters: {}, page: 1 };
+        listContexts.set(contextKey, saved);
+        const toolbar = el('div', null, layout === 'lookup' ? 'match-lookup-filter-toolbar' : pageSizes.length ? 'list-toolbar list-toolbar--extended' : 'list-toolbar');
+        const labelControl = (label, control) => {
+          control.id = `list-control-${++listControlId}`;
+          const field = el('div', null, layout === 'lookup' ? 'list-control match-lookup-filter-field' : 'list-control');
+          const labelNode = el('label', label, layout === 'lookup' ? 'list-control-label match-lookup-filter-label' : 'list-control-label');
+          labelNode.htmlFor = control.id;
+          field.append(labelNode, control);
+          toolbar.append(field);
+        };
+        const search = el('input', null, 'field');
+        search.type = 'search'; search.value = saved.query; search.placeholder = searchPlaceholder;
+        labelControl(searchLabel, search);
+        const selects = filters.map(filter => {
+          const select = el(filter.type === 'date' ? 'input' : 'select', null, 'field');
+          if (filter.type === 'date') select.type = 'date';
+          (filter.options || []).forEach(([value, label]) => {
+            const option = el('option', label); option.value = value; select.append(option);
+          });
+          select.value = saved.filters[filter.key] || '';
+          labelControl(filter.label, select);
+          return { filter, select };
+        });
+        const size = pageSizes.length ? el('select', null, 'field') : null;
+        if (size) {
+          pageSizes.forEach(value => { const option = el('option', String(value)); option.value = String(value); size.append(option); });
+          size.value = String(pageSizes.includes(saved.pageSize) ? saved.pageSize : pageSize);
+          labelControl('Số dòng / trang', size);
+        }
+        const clear = button('Xóa bộ lọc', () => {
+          search.value = ''; selects.forEach(({ select }) => { select.value = ''; });
+          changed();
+        });
+        toolbar.append(clear);
+        const summary = el('p', '', 'list-result-count muted text-sm');
+        const message = el('p', '', 'muted text-sm');
+        const announcement = el('div'); announcement.hidden = true;
+        const announcementHost = el('div', null, 'sr-only');
+        announcementHost.append(announcement);
+        const pager = el('div', null, layout === 'lookup' ? 'pager list-pager' : 'list-pager');
+        const previous = button('Trang trước', () => { saved.page--; draw(true); });
+        const next = button('Trang sau', () => { saved.page++; draw(true); });
+        const pageLabel = el('span', '', 'muted text-sm');
+        pager.append(previous, pageLabel, next);
+        root.append(toolbar, summary, message, content, pager, announcementHost);
+        function draw(announce = false) {
+          const query = fold(search.value.trim());
+          const invalid = validateFilters ? validateFilters(Object.fromEntries(selects.map(({ filter, select }) => [filter.key, select.value]))) : '';
+          const currentPageSize = size ? Number(size.value) : pageSize;
+          const found = invalid ? [] : data.filter(row => (!query || fold(searchText(row)).includes(query)) &&
+            selects.every(({ filter, select }) => !select.value || filter.matches(row, select.value)));
+          const pages = Math.max(1, Math.ceil(found.length / currentPageSize));
+          saved.page = Math.max(1, Math.min(saved.page, pages));
+          const start = (saved.page - 1) * currentPageSize;
+          const end = Math.min(start + currentPageSize, found.length);
+          summary.textContent = unavailable ? 'Chưa tải được số liệu. Hãy tải lại trang.' :
+            `${found.length ? start + 1 : 0}–${end} / ${found.length} kết quả`;
+          message.hidden = found.length > 0 && !unavailable;
+          message.textContent = invalid || (unavailable ? 'Nguồn dữ liệu chưa sẵn sàng.' :
+            data.length ? noResultText : emptyText);
+          previous.disabled = unavailable || saved.page === 1;
+          next.disabled = unavailable || saved.page === pages;
+          pageLabel.textContent = `Trang ${saved.page}/${pages}`;
+          clear.disabled = !search.value && selects.every(({ select }) => !select.value);
+          renderRows(unavailable ? [] : found.slice(start, end));
+          if (announce) notice(announcement, invalid || summary.textContent);
+        }
+        function changed() {
+          saved.query = search.value;
+          selects.forEach(({ filter, select }) => { saved.filters[filter.key] = select.value; });
+          if (size) saved.pageSize = Number(size.value);
+          saved.page = 1; draw(true);
+        }
+        search.addEventListener('input', changed);
+        if (size) size.addEventListener('change', changed);
+        selects.forEach(({ select }) => select.addEventListener('change', changed));
+        draw();
+        return Object.freeze({ refresh: () => draw() });
+      }
+      // WP-C8 SHARED LIST END
+
+      // MATCH LOOKUP SHARED RECORDS START
+      function tableRecords(host, title, data, columns, opts = {}) {
+        const values = row => columns.map(column => column[1](row));
+          const wrap = el(
+            'div',
+            null,
+            'table-wrap'
+          );
+
+          wrap.tabIndex = 0;
+
+          wrap.setAttribute(
+            'role',
+            'region'
+          );
+
+          wrap.setAttribute(
+            'aria-label',
+            title
+          );
+
+          const t = el('table');
+          const caption = el(
+            'caption',
+            title,
+            'sr-only'
+          );
+
+          const head = el('thead');
+          const hr = el('tr');
+
+          columns.forEach(c => {
+            const th = el(
+              'th',
+              c[0]
+            );
+
+            th.scope = 'col';
+            hr.append(th);
+          });
+
+          head.append(hr);
+
+          const body = el('tbody');
+
+          data
+            .forEach(r => {
+              const tr = el('tr');
+
+              values(r).forEach(v => {
+                const td = el('td');
+
+                if (v instanceof Node) {
+                  td.append(v);
+                } else {
+                  td.textContent = raw(v);
+                }
+
+                tr.append(td);
+              });
+
+              body.append(tr);
+            });
+
+          t.append(
+            caption,
+            head,
+            body
+          );
+
+          wrap.append(t);
+          host.append(wrap);
+
+          if (opts.mobileCards) {
+            const mobileCards = el(
+              'div',
+              null,
+              'table-mobile-cards'
+            );
+
+            data
+              .forEach(r => {
+                const card = el(
+                  'article',
+                  null,
+                  'table-mobile-card'
+                );
+
+                values(r).forEach(
+                  (v, index) => {
+                    const cardRow = el(
+                      'div',
+                      null,
+                      'table-mobile-card-row'
+                    );
+
+                    cardRow.append(
+                      el(
+                        'span',
+                        columns[index][0],
+                        'table-mobile-card-label'
+                      )
+                    );
+
+                    const cardValue = el(
+                      'div',
+                      null,
+                      'table-mobile-card-value'
+                    );
+
+                    if (v instanceof Node) {
+                      cardValue.append(v);
+                    } else {
+                      cardValue.textContent = raw(v);
+                    }
+
+                    cardRow.append(cardValue);
+                    card.append(cardRow);
+                  }
+                );
+
+                mobileCards.append(card);
+              });
+
+            host.append(mobileCards);
+          }
+
+      }
+      // MATCH LOOKUP SHARED RECORDS END
+
+      function table(
+        parent,
+        title,
+        data,
+        columns,
+        opts = {}
+      ) {
+        const section = panel(title, parent);
+        if (opts.matchLookup) {
+          const content = el('div', null, 'match-lookup-results');
+          const values = row => columns.map(column => column[1](row));
+          matchLookupList({ root: section, key: 'match-history-lookup', data, content,
+            searchPlaceholder: 'Tìm trong tra cứu trận đấu đã diễn ra…',
+            searchText: row => values(row).map(value => value instanceof Node ? value.textContent : raw(value)).join(' '),
+            statusOptions: [['', 'Tất cả'], ...[...new Set(data.map(row => row.status).filter(Boolean))].sort().map(status => [status, badge(status).textContent])],
+            pageSizes: opts.pageSizes, unavailable: opts.unavailable,
+            renderRows(visible) { content.replaceChildren(); if (visible.length) tableRecords(content, title, visible, columns, opts); }
+          });
+          return;
+        }
+        const tools = el('div', null, 'tools');
+        const search = el('input', null, 'field');
+
+        search.type = 'search';
+        search.placeholder =
+          'Tìm trong ' + title.toLowerCase() + '…';
+
+        search.setAttribute(
+          'aria-label',
+          search.placeholder
+        );
+
+        const searchField = el(
+          'label',
+          null,
+          'table-date-filter'
+        );
+
+        searchField.append(
+          el(
+            'span',
+            'Tìm kiếm',
+            'table-date-filter-label'
+          ),
+          search
+        );
+
+        tools.append(searchField);
+
+        let filter = null;
+
+        if (opts.status) {
+          filter = el('select', null, 'field');
+
+          filter.setAttribute(
+            'aria-label',
+            'Lọc trạng thái'
+          );
+
+          filter.append(
+            new Option(
+              'Tất cả trạng thái',
+              ''
+            )
+          );
+
+          [
+            ...new Set(
+              data
+                .map(r => r.status)
+                .filter(Boolean)
+            )
+          ]
+            .sort()
+            .forEach(s =>
+              filter.append(
+                new Option(
+                  badge(s).textContent,
+                  s
+                )
+              )
+            );
+
+          const filterField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          filterField.append(
+            el(
+              'span',
+              'Trạng thái',
+              'table-date-filter-label'
+            ),
+            filter
+          );
+
+          tools.append(filterField);
+        }
+
+        let dateFrom = null;
+        let dateTo = null;
+        let pageSizeSelect = null;
+        let reportSummary = null;
+
+        if (opts.dateKey) {
+          dateFrom = el(
+            'input',
+            null,
+            'field'
+          );
+
+          dateFrom.type = 'date';
+
+          dateFrom.setAttribute(
+            'aria-label',
+            'Từ ngày'
+          );
+
+          dateTo = el(
+            'input',
+            null,
+            'field'
+          );
+
+          dateTo.type = 'date';
+
+          dateTo.setAttribute(
+            'aria-label',
+            'Đến ngày'
+          );
+
+          const dateFromField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          dateFromField.append(
+            el(
+              'span',
+              'Từ ngày',
+              'table-date-filter-label'
+            ),
+            dateFrom
+          );
+
+          const dateToField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          dateToField.append(
+            el(
+              'span',
+              'Đến ngày',
+              'table-date-filter-label'
+            ),
+            dateTo
+          );
+
+          tools.append(
+            dateFromField,
+            dateToField
+          );
+        }
+
+        if (
+          Array.isArray(opts.pageSizes) &&
+          opts.pageSizes.length
+        ) {
+          pageSizeSelect = el(
+            'select',
+            null,
+            'field'
+          );
+
+          pageSizeSelect.setAttribute(
+            'aria-label',
+            'Số dòng mỗi trang'
+          );
+
+          opts.pageSizes.forEach(
+            size =>
+              pageSizeSelect.append(
+                new Option(
+                  `${size} dòng / trang`,
+                  String(size)
+                )
+              )
+          );
+
+          pageSizeSelect.value =
+            String(
+              opts.pageSize ||
+              opts.pageSizes[0]
+            );
+
+          const pageSizeField = el(
+            'label',
+            null,
+            'table-date-filter'
+          );
+
+          pageSizeField.append(
+            el(
+              'span',
+              'Số dòng / trang',
+              'table-date-filter-label'
+            ),
+            pageSizeSelect
+          );
+
+          tools.append(pageSizeField);
+        }
+
+        section.append(tools);
+
+        if (opts.reportCountLabel) {
+          reportSummary = el(
+            'p',
+            '',
+            'muted mb-3'
+          );
+
+          section.append(
+            reportSummary
+          );
+        }
+
+        const host = el('div');
+        section.append(host);
+
+        let page = 1;
+
+        const values = r =>
+          columns.map(c => c[1](r));
+
+        const currentPageSize = () => {
+          const selected =
+            Number(
+              pageSizeSelect?.value
+            );
+
+          if (
+            Number.isFinite(selected) &&
+            selected > 0
+          ) {
+            return selected;
+          }
+
+          const configured =
+            Number(opts.pageSize);
+
+          return (
+            Number.isFinite(configured) &&
+            configured > 0
+          )
+            ? configured
+            : 20;
+        };
+
+        const localDateKey = value => {
+          if (!value) {
+            return null;
+          }
+
+          const parsed =
+            new Date(value);
+
+          if (
+            !Number.isFinite(
+              parsed.getTime()
+            )
+          ) {
+            return null;
+          }
+
+          const year =
+            parsed.getFullYear();
+
+          const month =
+            String(
+              parsed.getMonth() + 1
+            ).padStart(2, '0');
+
+          const day =
+            String(
+              parsed.getDate()
+            ).padStart(2, '0');
+
+          return `${year}-${month}-${day}`;
+        };
+
+        const matchesDateRange = r => {
+          if (!opts.dateKey) {
+            return true;
+          }
+
+          const value =
+            typeof opts.dateKey ===
+              'function'
+              ? opts.dateKey(r)
+              : r?.[opts.dateKey];
+
+          const key =
+            localDateKey(value);
+
+          if (!key) {
+            return false;
+          }
+
+          return (
+            (
+              !dateFrom?.value ||
+              key >= dateFrom.value
+            ) &&
+            (
+              !dateTo?.value ||
+              key <= dateTo.value
+            )
+          );
+        };
+
+        function draw() {
+          host.replaceChildren();
+
+          const q = fold(
+            search.value.trim()
+          );
+
+          const found = data.filter(
+            r =>
+              (
+                !filter ||
+                !filter.value ||
+                r.status === filter.value
+              ) &&
+              matchesDateRange(r) &&
+              (
+                !q ||
+                values(r).some(v =>
+                  fold(
+                    v instanceof Node
+                      ? v.textContent
+                      : raw(v)
+                  ).includes(q)
+                )
+              )
+          );
+
+          const pageSize =
+            currentPageSize();
+
+          const pages = Math.max(
+            1,
+            Math.ceil(
+              found.length / pageSize
+            )
+          );
+
+          if (reportSummary) {
+            reportSummary.textContent =
+              `${number(found.length)} ${opts.reportCountLabel}`;
+          }
+
+          page = Math.min(
+            page,
+            pages
+          );
+
+          if (!found.length) {
+            host.append(
+              el(
+                'p',
+                data.length
+                  ? 'Không có kết quả phù hợp. Hãy thay đổi từ khóa hoặc bộ lọc.'
+                  : opts.unavailable
+                    ? 'Chưa có dữ liệu để hiển thị do nguồn dữ liệu tải chưa thành công.'
+                    : 'Chưa có dữ liệu hiển thị trong phạm vi quyền của bạn.',
+                'muted py-6'
+              )
+            );
+
+            return;
+          }
+
+          tableRecords(host, title, found.slice((page - 1) * pageSize, page * pageSize), columns, opts);
+
+          const pg = el(
+            'div',
+            null,
+            'pager'
+          );
+
+          const actions = el(
+            'div',
+            null,
+            'flex gap-2'
+          );
+
+          const prev = button(
+            '← Trước',
+            () => {
+              page--;
+              draw();
+            }
+          );
+
+          const next = button(
+            'Sau →',
+            () => {
+              page++;
+              draw();
+            }
+          );
+
+          prev.disabled =
+            page === 1;
+
+          next.disabled =
+            page === pages;
+
+          actions.append(
+            prev,
+            next
+          );
+
+          pg.append(
+            el(
+              'span',
+              number(found.length) +
+                ' dòng • Trang ' +
+                page +
+                '/' +
+                pages,
+              'muted'
+            ),
+            actions
+          );
+
+          host.append(pg);
+        }
+
+        search.addEventListener(
+          'input',
+          () => {
+            page = 1;
+            draw();
+          }
+        );
+
+        if (filter) {
+          filter.addEventListener(
+            'change',
+            () => {
+              page = 1;
+              draw();
+            }
+          );
+        }
+
+        [
+          dateFrom,
+          dateTo,
+          pageSizeSelect
+        ]
+          .filter(Boolean)
+          .forEach(
+            control =>
+              control.addEventListener(
+                'change',
+                () => {
+                  page = 1;
+                  draw();
+                }
+              )
+          );
+
+        draw();
+      }
+
+      const col = (label, ...keys) => [
+        label,
+        r => pick(r, ...keys)
+      ];
+
+      const moneyCol = (label, ...keys) => [
+        label,
+        r => money(
+          pick(r, ...keys)
+        )
+      ];
+
+      const dateCol = (label, ...keys) => [
+        label,
+        r => date(
+          pick(r, ...keys)
+        )
+      ];
+
+      const statusCol = [
+        'Trạng thái',
+        r => badge(r.status)
+      ];
+
+      const playerCol = [
+        'VĐV',
+        r => playerName(r.player_id)
+      ];
+
+      function team(match, side) {
+        if (!ready('match_players')) {
+          return 'Chưa tải thành phần';
+        }
+
+        const entries = rows('match_players')
+          .filter(
+            p =>
+              p.match_id === match.id &&
+              upper(
+                pick(
+                  p,
+                  'team',
+                  'team_side'
+                )
+              ) === side
+          );
+
+        return entries.length
+          ? entries
+              .map(
+                p =>
+                  playerName(
+                    p.player_id
+                  )
+              )
+              .join(' / ')
+          : 'Chưa có VĐV';
+      }
+
+      function matchCode(match) {
+        if (
+          !match ||
+          match.match_number === null ||
+          match.match_number === undefined ||
+          match.match_number === ''
+        ) {
+          return 'Không có mã trận';
+        }
+
+        const matchNumber =
+          Number(match.match_number);
+
+        if (!Number.isSafeInteger(matchNumber) || matchNumber < 1 ||
+            !['number', 'string'].includes(typeof match.match_number) ||
+            (typeof match.match_number === 'string' && !/^\d+$/.test(match.match_number))) {
+          return 'Không có mã trận';
+        }
+
+        const numberText =
+          String(matchNumber).padStart(4, '0');
+
+        const playedAt =
+          new Date(match.played_at);
+
+        if (
+          typeof match.played_at !== 'string' || !match.played_at.trim() ||
+          !Number.isFinite(
+            playedAt.getTime()
+          )
+        ) {
+          return 'Không có mã trận';
+        }
+
+        const parts =
+          new Intl.DateTimeFormat(
+            'en-GB',
+            {
+              timeZone:
+                'Asia/Ho_Chi_Minh',
+              day: '2-digit',
+              month: '2-digit',
+              year: '2-digit'
+            }
+          ).formatToParts(
+            playedAt
+          );
+
+        const values =
+          Object.fromEntries(
+            parts.map(
+              part => [
+                part.type,
+                part.value
+              ]
+            )
+          );
+
+        const dateText =
+          `${values.day}${values.month}${values.year}`;
+
+        return `${dateText}-${numberText}`;
+      }
+      const matchCols = [
+        [
+          'Mã trận',
+          r => matchCode(r)
+        ],
+        dateCol(
+          'Thời gian',
+          'played_at'
+        ),
+        [
+          'Đội A',
+          r => team(r, 'A')
+        ],
+        [
+          'Tỷ số',
+          r =>
+            number(r.team_a_score) +
+            ' – ' +
+            number(r.team_b_score)
+        ],
+        [
+          'Đội B',
+          r => team(r, 'B')
+        ],
+        col(
+          'Thể thức',
+          'match_type'
+        ),
+        statusCol
+      ];
+
+      const recent = (data, key) =>
+        [...data].sort(
+          (a, b) =>
+            (Date.parse(b[key]) || 0) -
+            (Date.parse(a[key]) || 0)
+        );
+
+      function ranking() {
+        const matchCounts =
+          new Map();
+
+        rows('rating_events')
+          .filter(
+            event =>
+              event.algorithm_version ===
+                currentRatingVersion() &&
+              event.player_id &&
+              event.match_id
+          )
+          .forEach(event => {
+            const playerId =
+              String(
+                event.player_id
+              );
+
+            if (
+              !matchCounts.has(
+                playerId
+              )
+            ) {
+              matchCounts.set(
+                playerId,
+                new Set()
+              );
+            }
+
+            matchCounts
+              .get(playerId)
+              .add(
+                String(
+                  event.match_id
+                )
+              );
+          });
+
+        return rows('players')
+          .map(player => ({
+            ...player,
+            rated_matches:
+              matchCounts.has(
+                String(
+                  player.id
+                )
+              )
+                ? matchCounts
+                    .get(
+                      String(
+                        player.id
+                      )
+                    ).size
+                : 0
+          }))
+          .filter(
+            player =>
+              upper(
+                player.status
+              ) ===
+                'ACTIVE' &&
+              upper(
+                player.player_type
+              ) ===
+                'CLUB' &&
+              num(
+                player.current_rating
+              ) !==
+                null &&
+              player.rated_matches >=
+                officialMinMatches()
+          )
+          .sort(
+            (a, b) =>
+              Number(
+                b.current_rating
+              ) -
+                Number(
+                  a.current_rating
+                ) ||
+              playerName(a.id)
+                .localeCompare(
+                  playerName(b.id),
+                  'vi'
+                )
+          )
+          .map(
+            (player, index, all) => ({
+              ...player,
+              rank:
+                all.findIndex(
+                  other =>
+                    Number(
+                      other.current_rating
+                    ) ===
+                    Number(
+                      player.current_rating
+                    )
+                ) + 1
+            })
+          );
+      }
+
+      const rankCols = [
+        col('Hạng', 'rank'),
+        [
+          'Vận động viên',
+          r => playerName(r.id)
+        ],
+        [
+          'Điểm hiện tại',
+          r => number(r.current_rating)
+        ],
+        [
+          'Trận Rated',
+          r => number(r.rated_matches)
+        ]
+      ];
+
+      // UI03A1: capability-driven management workspace shared by ADMIN
+      // and delegated MEMBER. Backend remains the authority for actions.
+      function overviewManagementWorkspace(root) {
+        const cards = [];
+
+        if (canApproveMatches()) {
+          const pendingMatches =
+            ready('matches')
+              ? rows('matches').filter(
+                  match =>
+                    upper(match.status) === 'PENDING'
+                ).length
+              : null;
+
+          cards.push({
+            variant: 'pending',
+            icon: '!',
+            title: 'Trận cần xử lý',
+            value:
+              pendingMatches === null
+                ? '—'
+                : number(pendingMatches),
+            hint:
+              pendingMatches
+                ? 'Có trận đang chờ kiểm tra hoặc duyệt.'
+                : 'Không có trận chờ duyệt.',
+            action: 'Mở Trận đấu',
+            page: 'matches'
+          });
+        }
+
+        if (
+          canManagePlayers() ||
+          canManagePlayerLifecycle() || canAdjustRating()
+        ) {
+          const activePlayers =
+            ready('players')
+              ? rows('players').filter(
+                  player =>
+                    upper(player.status) === 'ACTIVE'
+                ).length
+              : null;
+
+          cards.push({
+            variant: 'info',
+            icon: '♧',
+            title: 'Quản lý VĐV',
+            value:
+              activePlayers === null
+                ? '—'
+                : number(activePlayers),
+            hint: canManagePlayers() || canManagePlayerLifecycle()
+              ? 'Quản lý danh sách VĐV trong phạm vi được ủy quyền.'
+              : 'Điều chỉnh Rating trong phạm vi được ủy quyền.',
+            action: 'Mở VĐV',
+            page: 'players'
+          });
+        }
+
+        if (
+          canManageFund() ||
+          canCollectFund()
+        ) {
+          // DASH-FUND01: FUND04 balances are authoritative, including refunds.
+          // Never fall back to contribution.status or gross payments while unavailable.
+          const balances = state.fundCollectionBalances;
+          const balancesReady = state.fundCollectionBalancesReady === true &&
+            Array.isArray(balances) && balances.every(row =>
+              row?.amount_remaining != null && row.amount_remaining !== '' &&
+              Number.isFinite(Number(row.amount_remaining)));
+          const unsettled = balancesReady
+            ? balances.filter(row => Number(row.amount_remaining) > 0).length
+            : null;
+
+          cards.push({
+            variant:
+              unsettled === null ? 'info' : unsettled > 0 ? 'pending' : 'success',
+            icon: '₫',
+            title: 'Quỹ cần xử lý',
+            value:
+              unsettled === null
+                ? '—'
+                : number(unsettled),
+            hint:
+              unsettled === null
+                ? 'Chưa tải được số liệu Quỹ'
+                : unsettled > 0
+                  ? 'Có ' + number(unsettled) + ' nghĩa vụ quỹ còn phải thu.'
+                  : 'Không có nghĩa vụ quỹ còn phải thu.',
+            action: 'Mở Quỹ',
+            page: 'fund'
+          });
+        }
+
+        if (
+          canManageTournaments() ||
+          canCollectTournamentFee()
+        ) {
+          const tournamentCount =
+            ready('tournaments')
+              ? rows('tournaments').length
+              : null;
+
+          cards.push({
+            variant: 'info',
+            icon: '⚑',
+            title: 'Giải đấu',
+            value:
+              tournamentCount === null
+                ? '—'
+                : number(tournamentCount),
+            hint:
+              canManageTournaments() && canCollectTournamentFee()
+                ? 'Quản lý giải và thu phí trong phạm vi được ủy quyền.'
+                : canCollectTournamentFee()
+                  ? 'Thu phí giải đấu trong phạm vi được ủy quyền.'
+                  : 'Quản lý giải đấu trong phạm vi được ủy quyền.',
+            action: 'Mở Giải đấu',
+            page: 'tournaments'
+          });
+        }
+
+        if (!cards.length) {
+          return;
+        }
+
+        const section =
+          panel(
+            'Cần xử lý',
+            root
+          );
+
+        section.classList.add(
+          'overview-management'
+        );
+
+        section.append(
+          el(
+            'p',
+            isAdmin()
+              ? 'Các nghiệp vụ quản trị cần chú ý ngay.'
+              : 'Các nghiệp vụ bạn đang được ủy quyền xử lý.',
+            'muted overview-management-intro'
+          )
+        );
+
+        const list =
+          el(
+            'div',
+            null,
+            'overview-management-grid'
+          );
+
+        cards.forEach(item => {
+          const card =
+            el(
+              'article',
+              null,
+              'overview-management-card ' +
+                'overview-management-' +
+                item.variant
+            );
+
+          const head =
+            el(
+              'div',
+              null,
+              'overview-management-head'
+            );
+
+          head.append(
+            el(
+              'span',
+              item.icon,
+              'overview-management-icon'
+            ),
+            el(
+              'h3',
+              item.title,
+              'overview-management-title'
+            )
+          );
+
+          card.append(
+            head,
+            el(
+              'strong',
+              item.value,
+              'overview-management-value'
+            ),
+            el(
+              'p',
+              item.hint,
+              'overview-management-hint'
+            ),
+            button(
+              item.action + ' →',
+              () => navigate(item.page),
+              'btn overview-management-action'
+            )
+          );
+
+          list.append(card);
+        });
+
+        section.append(list);
+      }
+      function memberOverview(root) {
+        if (state.navigationIntent?.kind === 'member-activity' && upper(state.profile?.role) === 'MEMBER') {
+          const owner = state.session?.user?.id, generation = state.generation;
+          root.append(button('← Tổng quan', () => navigate('overview'), 'btn secondary'));
+          if (owner && window.PickMemberActivity) {
+            memberAnalyticsDispose = window.PickMemberActivity.mount({ root, client, el, button, panel,
+              isCurrent: () => state.session?.user?.id === owner && state.generation === generation && upper(state.profile?.role) === 'MEMBER'
+            });
+          } else root.append(el('p', 'Chưa tải được hoạt động. Vui lòng tải lại trang.', 'notice error'));
+          return;
+        }
+        sources(
+          root,
+          [
+            'players',
+            'fund_transactions',
+            'tournaments',
+            'tournament_registrations'
+          ]
+        );
+
+        const playerId =
+          raw(
+            state.profile?.player_id
+          );
+
+        const player =
+          rows('players').find(
+            item =>
+              raw(item.id) ===
+              playerId
+          );
+
+        const hero =
+          el(
+            'section',
+            null,
+            'hero overview-hero overview-member-hero'
+          );
+
+        hero.append(
+          el(
+            'p',
+            'TRANG CÁ NHÂN',
+            'text-xs tracking-widest mb-3'
+          ),
+          el(
+            'h2',
+            player
+              ? raw(player.full_name)
+              : raw(
+                  state.profile?.full_name
+                ) ||
+                'Thành viên CLB',
+            'text-2xl sm:text-3xl mb-2'
+          ),
+          el(
+            'p',
+            player
+              ? 'Thành viên câu lạc bộ · Hồ sơ VĐV đã liên kết'
+              : 'Tài khoản chưa liên kết VĐV.',
+            'mb-5 text-green-100'
+          )
+        );
+
+        root.append(hero);
+
+        // MP-AN01-P2 MOUNT: only caller-own RPCs; no Match/router/entry flag changes.
+        if (upper(state.profile?.role) === 'MEMBER' && state.session?.user?.id) {
+          const owner = state.session.user.id;
+          const generation = state.generation;
+          if (window.PickMemberAnalytics) {
+            memberAnalyticsDispose = window.PickMemberAnalytics.mount({
+              root, client, el, button, panel, grid,
+              isCurrent: () => state.session?.user?.id === owner &&
+                state.generation === generation && upper(state.profile?.role) === 'MEMBER'
+            });
+          } else {
+            root.append(el('p', 'Chưa tải được thống kê Rating. Vui lòng tải lại trang.', 'notice error'));
+          }
+        }
+
+        if (upper(state.profile?.role) === 'MEMBER') {
+          root.append(button('Xem toàn bộ hoạt động →', () => navigate('overview', { kind: 'member-activity' }), 'btn secondary'));
+        }
+
+        if (!playerId || !player) {
+          root.append(
+            el(
+              'p',
+              'Tài khoản MEMBER chưa được liên kết với VĐV CLUB đang hoạt động. Vui lòng liên hệ ADMIN.',
+              'notice error'
+            )
+          );
+
+          return;
+        }
+
+        const ownFundObligations = Array.isArray(state.memberFundObligations)?state.memberFundObligations:[];
+        const r2Remaining=state.memberFundR2?.overview?.total_remaining;
+        const outstandingFundReady=ready('fund_transactions') && (r2Remaining!=null ? Number.isFinite(Number(r2Remaining)) : ownFundObligations.every(item=>Number.isFinite(Number(item.amount_remaining))));
+        const outstandingFund=outstandingFundReady ? (r2Remaining!=null?Number(r2Remaining):ownFundObligations.reduce((sum,item)=>sum+Math.max(Number(item.amount_remaining)||0,0),0)) : null;
+
+        const ownRegistrations =
+          rows(
+            'tournament_registrations'
+          ).filter(
+            item =>
+              raw(item.player_id) ===
+                playerId ||
+              raw(
+                item.partner_player_id
+              ) ===
+                playerId
+          );
+
+        const activeRegistrations =
+          ownRegistrations.filter(
+            item =>
+              upper(item.status) !==
+              'HUY'
+          );
+
+
+        overviewManagementWorkspace(root);
+
+        grid(
+          root,
+          [
+            [
+              'Quỹ chưa đóng',
+              outstandingFundReady
+                ? money(
+                    outstandingFund
+                  )
+                : '—',
+              !outstandingFundReady
+                ? 'Chưa tải được số liệu Quỹ'
+                : outstandingFund > 0
+                ? 'Còn nghĩa vụ cần hoàn tất'
+                : 'Đã hoàn tất nghĩa vụ'
+            ],
+            [
+              'Đăng ký giải',
+              number(
+                activeRegistrations.length
+              ),
+              activeRegistrations.length
+                ? 'Đăng ký đang hoạt động'
+                : 'Chưa có đăng ký'
+            ]
+          ],
+          'overview-kpi-grid overview-member-kpis'
+        );
+
+        const shortcuts =
+          panel(
+            'Thao tác nhanh',
+            root
+          );
+
+        shortcuts.classList.add(
+          'overview-quick-actions'
+        );
+
+        const actions =
+          el(
+            'div',
+            null,
+            'flex flex-wrap gap-2'
+          );
+
+        if (memberMatchEntryOpen()) actions.append(
+          button(
+            'Tạo trận',
+            () =>
+              navigate(
+                'matches',
+                'member-create-match'
+              ),
+            'btn primary'
+          )
+        );
+        actions.append(
+          button(
+            'Đăng ký giải',
+            () =>
+              navigate('tournaments'),
+            'btn'
+          ),
+          button(
+            'Xem BXH',
+            () =>
+              navigate('ranking'),
+            'btn'
+          )
+        );
+
+        shortcuts.append(
+          actions
+        );
+      }
+      function overview() {
+        const root = $('content');
+
+        if (!isAdmin()) {
+          memberOverview(root);
+          return;
+        }
+
+        const hero = el(
+          'section',
+          null,
+          'hero overview-hero overview-admin-hero'
+        );
+
+        hero.append(
+          el(
+            'p',
+            'MỖI TRẬN ĐẤU, MỘT BƯỚC TIẾN',
+            'text-xs tracking-widest mb-3'
+          ),
+          el(
+            'h2',
+            'Sẵn sàng cho buổi ra sân tiếp theo?',
+            'text-2xl sm:text-3xl mb-3'
+          ),
+          el(
+            'p',
+            'Theo dõi nhịp hoạt động của câu lạc bộ tại một nơi.',
+            'mb-5 text-green-100'
+          ),
+          button(
+            'Xem các trận đấu →',
+            () =>
+              navigate('matches'),
+            'btn'
+          )
+        );
+
+        root.append(hero);
+
+        overviewManagementWorkspace(root);
+
+        // UI03A2: keep the dashboard exception-first and compact.
+        if (ready('players')) {
+          const today =
+            new Date();
+
+          const currentMonth =
+            today.getMonth() + 1;
+
+          const currentDay =
+            today.getDate();
+
+          const todayBirthdays =
+            rows('players').filter(player => {
+              if (
+                upper(player.status) === 'INACTIVE' ||
+                !player.date_of_birth
+              ) {
+                return false;
+              }
+
+              const parts =
+                String(
+                  player.date_of_birth
+                )
+                  .slice(0, 10)
+                  .split('-');
+
+              return (
+                Number(parts[1]) === currentMonth &&
+                Number(parts[2]) === currentDay
+              );
+            });
+
+          if (todayBirthdays.length) {
+            const birthdayNotice =
+              panel(
+                '🎂 Sinh nhật hôm nay',
+                root
+              );
+
+            birthdayNotice.classList.add(
+              'overview-today-notice'
+            );
+
+            birthdayNotice.append(
+              el(
+                'p',
+                todayBirthdays
+                  .map(player =>
+                    raw(player.full_name)
+                  )
+                  .join(' • '),
+                'overview-today-names'
+              ),
+              el(
+                'p',
+                `${number(
+                  todayBirthdays.length
+                )} VĐV có sinh nhật hôm nay.`,
+                'muted mb-0'
+              )
+            );
+          }
+        }
+        sources(
+          root,
+          [
+            'players',
+            'matches',
+            'fund_payments',
+            'tournaments'
+          ]
+        );
+
+        grid(
+          root,
+          [
+            [
+              'Vận động viên',
+              ready('players')
+                ? number(
+                    rows('players').filter(
+                      p =>
+                        p.status !==
+                        'INACTIVE'
+                    ).length
+                  )
+                : '—',
+              'Không gồm VĐV đã ngừng hoạt động'
+            ],
+            [
+              'Trận đã duyệt',
+              ready('matches')
+                ? number(
+                    rows('matches').filter(
+                      m =>
+                        upper(
+                          m.status
+                        ) ===
+                        'APPROVED'
+                    ).length
+                  )
+                : '—',
+              'Theo dữ liệu tài khoản được xem'
+            ],
+            [
+              'Chờ duyệt',
+              ready('matches')
+                ? number(
+                    rows('matches').filter(
+                      m =>
+                        upper(
+                          m.status
+                        ) ===
+                        'PENDING'
+                    ).length
+                  )
+                : '—',
+              'Có thể tiếp tục hoàn thiện ở module Trận đấu'
+            ],
+            [
+              'Giải đấu',
+              ready('tournaments')
+                ? number(
+                    rows('tournaments').length
+                  )
+                : '—',
+              'Tất cả giải được hiển thị'
+            ]
+          ],
+          'overview-kpi-grid overview-admin-kpis'
+        );
+
+        sources(
+          root,
+          ['match_players']
+        );
+
+
+        table(
+          root,
+          'Dẫn đầu bảng xếp hạng',
+          ranking().slice(0, 5),
+          rankCols,
+          {
+            unavailable:
+              !!state.errors.players
+          }
+        );
+      }
+
+      function playersPage() {
+    if (
+      !window.PickPlayers ||
+      typeof window.PickPlayers.create !== 'function'
+    ) {
+      throw new Error(
+        'Không tải được module VĐV (players.js).'
+      );
+    }
+
+    const playerModule =
+      window.PickPlayers.create({
+        $,
+        state,
+        client,
+        isAdmin,
+        canManageMembers,
+        canManagePlayers,
+        canManagePlayerLifecycle,
+        paginatedList,
+        canAdjustRating,
+        button,
+        actionAccordion,
+        el,
+        rows,
+        raw,
+        upper,
+      num,
+      pick,
+      grid,
+      number,
+      dateCol,
+      col,
+      money,
+      moneyCol,
+      ready,
+      recent,
+      settings,
+      sources,
+        table,
+        panel,
+        notice,
+        load,
+        render,
+        explain,
+        playerName,
+      matchCode,
+      load,
+      render,
+        CURRENT_RATING_VERSION:
+          currentRatingVersion()
+      });
+
+    playerModule.playersPage();
+  }
+  function matchesPage() {
+        if (
+          !window.PickMatches ||
+          typeof window.PickMatches.create !== 'function'
+        ) {
+          throw new Error(
+            'Không tải được module Trận đấu (matches.js).'
+          );
+        }
+
+        const matchModule =
+          window.PickMatches.create({
+            $,
+            state,
+            client,
+            isAdmin,
+            canApproveMatches,
+            memberMatchEntryOpen,
+            paginatedList,
+            matchLookupList,
+            matchLookupDate,
+            button,
+            actionAccordion,
+            panel,
+            el,
+            rows,
+            raw,
+            pick,
+            notice,
+            load,
+            render,
+            explain,
+            sources,
+            recent,
+            table,
+            tableRecords,
+            matchCols,
+            matchCode
+          });
+
+        matchModule.matchesPage();
+      }
+
+      function fund() {
+  if (
+    !window.PickFund ||
+    typeof window.PickFund.create !== 'function'
+  ) {
+    throw new Error(
+      'Không tải được module Quỹ (fund.js).'
+    );
+  }
+
+  const fundGen = state.generation, fundUser = state.session?.user.id;
+  const fundModule =
+    window.PickFund.create({
+      $,
+      state,
+      client,
+      isAdmin,
+      canManageFund,
+      canCollectFund,
+      button,
+      actionAccordion,
+      el,
+      rows,
+      raw,
+      upper,
+      num,
+      pick,
+      grid,
+      number,
+      dateCol,
+      col,
+      money,
+      moneyCol,
+      ready,
+      recent,
+      settings,
+      sources,
+      table,
+      panel,
+      notice,
+      playerName,
+      matchCode,
+      load,
+      render,
+      isCurrent: () => state.generation === fundGen && state.session?.user.id === fundUser && state.page === 'fund',
+      readMemberFund,
+      readFundPage: async (name,args) => {
+        const owner=state.session?.user.id,generation=state.generation;
+        const result=await query(client.rpc(name,args),state.controller?.signal);
+        if(owner!==state.session?.user.id||generation!==state.generation)throw new Error("STALE_SESSION");
+        return result.data;
+      },
+      refreshIndividualFund: async result => {
+        const [contributions,balances,campaign] = await Promise.all([
+          query(client.rpc('get_fund_management_contributions'),state.controller?.signal),
+          query(client.rpc('get_fund_collection_balances'),state.controller?.signal),
+          query(client.from('fund_obligation_campaigns').select('id,category,title,amount_due,due_date,occurred_on,status,target_player_id').eq('id',result.campaign_id).single(),state.controller?.signal)
+        ]);
+        if (fundGen !== state.generation || fundUser !== state.session?.user.id) throw new Error('STALE_SESSION');
+        if (!Array.isArray(contributions.data) || !Array.isArray(balances.data) || !campaign.data) throw new Error('FUND_RESPONSE_INVALID');
+        state.data.fund_contributions=contributions.data;
+        state.fundCollectionBalances=balances.data;state.fundCollectionBalancesReady=true;
+        state.data.fund_obligation_campaigns=[...(state.data.fund_obligation_campaigns||[]).filter(c=>c.id!==campaign.data.id),campaign.data];
+      }
+    });
+
+  fundUiDispose = fundModule.fund();
+}
+const fieldLabels = {
+        id: 'Mã',
+        name: 'Tên',
+        key: 'Khóa',
+        value: 'Giá trị',
+        setting_key: 'Thiết lập',
+        setting_value: 'Giá trị',
+        description: 'Mô tả',
+        algorithm_version: 'Phiên bản',
+        match_type: 'Thể thức',
+        weight: 'Trọng số',
+        is_active: 'Đang áp dụng',
+        amount: 'Số tiền',
+        amount_loss: 'Mức thua',
+        amount_draw: 'Mức hòa',
+        amount_win: 'Mức thắng',
+        effective_from: 'Hiệu lực từ',
+        effective_to: 'Hiệu lực đến',
+        created_at: 'Ngày tạo',
+        updated_at: 'Cập nhật',
+        rule_type: 'Loại quy định',
+        score_mode: 'Cách tính tỷ số'
+      };
+
+      function settings(root, t) {
+        const data = rows(t);
+
+        const keys = [
+          ...new Set(
+            data.flatMap(
+              r =>
+                Object.keys(r)
+            )
+          )
+        ];
+
+        table(
+          root,
+          labels[t],
+          data,
+          keys.map(k => [
+            fieldLabels[k] || k,
+            r =>
+              typeof r[k] ===
+              'boolean'
+                ? r[k]
+                  ? 'Có'
+                  : 'Không'
+                : raw(r[k])
+          ]),
+          {
+            unavailable:
+              !!state.errors[t]
+          }
+        );
+      }
+      // CONTRIBUTION FUN UI V2
+      function contributions() {
+        const root = $('content');
+
+        sources(
+          root,
+          [
+            'players',
+            'matches',
+            'match_players',
+            'fund_contributions'
+          ]
+        );
+
+        root.append(
+          el(
+            'p',
+            'Góc vui của CLB: vinh danh người âm thầm nuôi quỹ, người chăm ra sân và nhắc nhẹ những thành viên hơi lâu chưa thấy mặt. 😄',
+            'notice'
+          )
+        );
+
+        if (
+          !ready(
+            'players',
+            'matches',
+            'match_players',
+            'fund_contributions'
+          )
+        ) {
+          root.append(
+            el(
+              'p',
+              'Cần tải đủ VĐV, trận đấu, thành phần trận và nghĩa vụ quỹ để tổng hợp Cống hiến.',
+              'muted'
+            )
+          );
+
+          return;
+        }
+
+        const clubPlayers =
+          rows('players')
+            .filter(
+              player =>
+                upper(
+                  player.player_type
+                ) === 'CLUB' &&
+                upper(
+                  player.status
+                ) === 'ACTIVE'
+            );
+
+        const clubPlayerIds =
+          new Set(
+            clubPlayers.map(
+              player =>
+                player.id
+            )
+          );
+
+        const approvedMatches =
+          new Map(
+            rows('matches')
+              .filter(
+                match =>
+                  upper(
+                    match.status
+                  ) ===
+                  'APPROVED'
+              )
+              .map(
+                match => [
+                  match.id,
+                  match
+                ]
+              )
+          );
+
+        const participation =
+          new Map();
+
+        for (
+          const matchPlayer of rows(
+            'match_players'
+          )
+        ) {
+          if (
+            !clubPlayerIds.has(
+              matchPlayer.player_id
+            ) ||
+            !approvedMatches.has(
+              matchPlayer.match_id
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            !participation.has(
+              matchPlayer.player_id
+            )
+          ) {
+            participation.set(
+              matchPlayer.player_id,
+              new Set()
+            );
+          }
+
+          participation
+            .get(
+              matchPlayer.player_id
+            )
+            .add(
+              matchPlayer.match_id
+            );
+        }
+
+        const contributionStats =
+          new Map();
+
+        for (
+          const contribution of rows(
+            'fund_contributions'
+          )
+        ) {
+          const playerId =
+            contribution.player_id;
+
+          const reason =
+            upper(
+              contribution.reason
+            );
+
+          const status =
+            upper(
+              contribution.status
+            );
+
+          const amount =
+            Number(
+              contribution.amount_due
+            ) || 0;
+
+          if (
+            !clubPlayerIds.has(
+              playerId
+            ) ||
+            !approvedMatches.has(
+              contribution.match_id
+            ) ||
+            ![
+              'THUA',
+              'HOA'
+            ].includes(
+              reason
+            ) ||
+            [
+              'MIEN',
+              'DIEU_CHINH'
+            ].includes(
+              status
+            ) ||
+            amount <= 0
+          ) {
+            continue;
+          }
+
+          if (
+            !contributionStats.has(
+              playerId
+            )
+          ) {
+            contributionStats.set(
+              playerId,
+              {
+                amount: 0,
+                losses: 0,
+                draws: 0
+              }
+            );
+          }
+
+          const stat =
+            contributionStats.get(
+              playerId
+            );
+
+          stat.amount += amount;
+
+          if (
+            reason === 'THUA'
+          ) {
+            stat.losses += 1;
+          }
+
+          if (
+            reason === 'HOA'
+          ) {
+            stat.draws += 1;
+          }
+        }
+
+        const totalApprovedMatches =
+          approvedMatches.size;
+
+        const playerStats =
+          clubPlayers.map(
+            player => {
+              const matchIds =
+                participation.get(
+                  player.id
+                ) ||
+                new Set();
+
+              const contribution =
+                contributionStats.get(
+                  player.id
+                ) || {
+                  amount: 0,
+                  losses: 0,
+                  draws: 0
+                };
+
+              const matchCount =
+                matchIds.size;
+
+              return {
+                player,
+                playerId:
+                  player.id,
+                name:
+                  playerName(
+                    player.id
+                  ),
+                matchCount,
+                participationRate:
+                  totalApprovedMatches
+                    ? (
+                        matchCount /
+                        totalApprovedMatches
+                      ) * 100
+                    : 0,
+                contributionAmount:
+                  contribution.amount,
+                losses:
+                  contribution.losses,
+                draws:
+                  contribution.draws
+              };
+            }
+          );
+
+        const contributionRanking =
+          [...playerStats]
+            .filter(
+              row =>
+                row.contributionAmount >
+                0
+            )
+            .sort(
+              (a, b) =>
+                b.contributionAmount -
+                  a.contributionAmount ||
+                b.losses -
+                  a.losses ||
+                a.name.localeCompare(
+                  b.name,
+                  'vi'
+                )
+            );
+
+        const energeticRanking =
+          [...playerStats]
+            .filter(
+              row =>
+                row.matchCount > 0
+            )
+            .sort(
+              (a, b) =>
+                b.matchCount -
+                  a.matchCount ||
+                a.name.localeCompare(
+                  b.name,
+                  'vi'
+                )
+            );
+
+        const sleepyRanking =
+          [...playerStats]
+            .filter(
+              row =>
+                row.matchCount > 0
+            )
+            .sort(
+              (a, b) =>
+                a.matchCount -
+                  b.matchCount ||
+                a.name.localeCompare(
+                  b.name,
+                  'vi'
+                )
+            );
+
+        const sharedRanks = (
+          data,
+          value
+        ) => {
+          let previous = null;
+          let rank = 0;
+
+          return data.map(
+            (
+              row,
+              index
+            ) => {
+              const current =
+                value(row);
+
+              if (
+                index === 0 ||
+                current !== previous
+              ) {
+                rank =
+                  index + 1;
+
+                previous =
+                  current;
+              }
+
+              return {
+                ...row,
+                rank
+              };
+            }
+          );
+        };
+
+        const contributionRows =
+          sharedRanks(
+            contributionRanking,
+            row =>
+              row.contributionAmount
+          );
+
+        const energeticRows =
+          sharedRanks(
+            energeticRanking,
+            row =>
+              row.matchCount
+          );
+
+        const sleepyRows =
+          sharedRanks(
+            sleepyRanking,
+            row =>
+              row.matchCount
+          );
+
+        const medal = rank => {
+          if (rank === 1) {
+            return '🥇';
+          }
+
+          if (rank === 2) {
+            return '🥈';
+          }
+
+          if (rank === 3) {
+            return '🥉';
+          }
+
+          return '#' + rank;
+        };
+
+        const percent = value =>
+          (
+            Math.round(
+              value * 10
+            ) / 10
+          ).toLocaleString(
+            'vi-VN'
+          ) + '%';
+
+        const topLine = (
+          row,
+          valueText,
+          detailText
+        ) => {
+          const line =
+            el(
+              'div',
+              null,
+              'contribution-top-line'
+            );
+
+          line.append(
+            el(
+              'span',
+              medal(
+                row.rank
+              ),
+              'contribution-medal'
+            ),
+            el(
+              'span',
+              row.name,
+              'contribution-top-name'
+            ),
+            el(
+              'span',
+              valueText,
+              'contribution-top-value'
+            )
+          );
+
+          if (detailText) {
+            line.append(
+              el(
+                'span',
+                detailText,
+                'contribution-top-detail'
+              )
+            );
+          }
+
+          return line;
+        };
+
+        const emptyTop = text =>
+          el(
+            'p',
+            text,
+            'muted contribution-empty'
+          );
+
+        let openedSection = null;
+
+        const sections =
+          new Map();
+
+        const closeSection = key => {
+          const section =
+            sections.get(key);
+
+          if (!section) {
+            return;
+          }
+
+          section.body.hidden =
+            true;
+
+          section.toggle.textContent =
+            '▶ ' +
+            section.closedLabel;
+
+          section.card.classList.remove(
+            'contribution-card-open'
+          );
+        };
+
+        const createCard = ({
+          key,
+          variant,
+          icon,
+          title,
+          joke,
+          topRows,
+          renderTop,
+          closedLabel,
+          openLabel,
+          renderDetail
+        }) => {
+          const card =
+            el(
+              'section',
+              null,
+              'contribution-card contribution-card-' +
+                variant
+            );
+
+          const head =
+            el(
+              'div',
+              null,
+              'contribution-card-head'
+            );
+
+          const titleWrap =
+            el(
+              'div',
+              null,
+              'contribution-card-title-wrap'
+            );
+
+          titleWrap.append(
+            el(
+              'div',
+              icon,
+              'contribution-card-icon'
+            ),
+            el(
+              'h3',
+              title,
+              'contribution-card-title'
+            )
+          );
+
+          head.append(
+            titleWrap
+          );
+
+          card.append(
+            head,
+            el(
+              'p',
+              joke,
+              'contribution-card-joke'
+            )
+          );
+
+          const podium =
+            el(
+              'div',
+              null,
+              'contribution-podium'
+            );
+
+          if (
+            topRows.length
+          ) {
+            topRows
+              .slice(
+                0,
+                3
+              )
+              .forEach(
+                row =>
+                  podium.append(
+                    renderTop(
+                      row
+                    )
+                  )
+              );
+          } else {
+            podium.append(
+              emptyTop(
+                'Chưa đủ dữ liệu để trao danh hiệu. Ban tổ chức đang ngồi chờ drama. 😄'
+              )
+            );
+          }
+
+          card.append(
+            podium
+          );
+
+          const body =
+            el(
+              'div',
+              null,
+              'contribution-detail'
+            );
+
+          body.hidden =
+            true;
+
+          const toggle =
+            button(
+              '▶ ' +
+                closedLabel,
+              () => {
+                const willOpen =
+                  body.hidden;
+
+                if (
+                  openedSection &&
+                  openedSection !==
+                    key
+                ) {
+                  closeSection(
+                    openedSection
+                  );
+                }
+
+                if (
+                  willOpen
+                ) {
+                  body.hidden =
+                    false;
+
+                  toggle.textContent =
+                    '▼ ' +
+                    openLabel;
+
+                  card.classList.add(
+                    'contribution-card-open'
+                  );
+
+                  openedSection =
+                    key;
+                } else {
+                  closeSection(
+                    key
+                  );
+
+                  openedSection =
+                    null;
+                }
+              },
+              'contribution-detail-toggle'
+            );
+
+          renderDetail(
+            body
+          );
+
+          card.append(
+            toggle,
+            body
+          );
+
+          sections.set(
+            key,
+            {
+              body,
+              toggle,
+              card,
+              closedLabel
+            }
+          );
+
+          return card;
+        };
+
+        let contributionListId = 0;
+        const createDetailTable = (
+          data,
+          columns
+        ) => {
+          const wrap =
+            el(
+              'div',
+              null,
+              'table-wrap'
+            );
+
+          const tableEl =
+            document.createElement(
+              'table'
+            );
+
+          const thead =
+            document.createElement(
+              'thead'
+            );
+
+          const headerRow =
+            document.createElement(
+              'tr'
+            );
+
+          columns.forEach(
+            column => {
+              const th =
+                document.createElement(
+                  'th'
+                );
+
+              th.textContent =
+                column[0];
+
+              headerRow.append(
+                th
+              );
+            }
+          );
+
+          thead.append(
+            headerRow
+          );
+
+          const tbody =
+            document.createElement(
+              'tbody'
+            );
+
+          const container = el('div');
+          paginatedList({
+            root: container, key: `contribution-${++contributionListId}`, data, content: wrap,
+            searchLabel: 'Tìm trong bảng Cống hiến',
+            searchText: row => columns.map(column => column[1](row)).join(' '),
+            renderRows(visibleRows) {
+              tbody.replaceChildren();
+              visibleRows.forEach(
+            row => {
+              const tr =
+                document.createElement(
+                  'tr'
+                );
+
+              columns.forEach(
+                column => {
+                  const td =
+                    document.createElement(
+                      'td'
+                    );
+
+                  td.textContent =
+                    String(
+                      column[1](
+                        row
+                      ) ?? ''
+                    );
+
+                  tr.append(
+                    td
+                  );
+                }
+              );
+
+              tbody.append(
+                tr
+              );
+            }
+          );
+
+            }
+          });
+          tableEl.append(thead, tbody);
+          wrap.append(tableEl);
+          return container;
+        };
+
+        const cards =
+          el(
+            'div',
+            null,
+            'contribution-fun-grid'
+          );
+
+        cards.append(
+          createCard({
+            key:
+              'contribution',
+            variant:
+              'gold',
+            icon:
+              '❤️',
+            title:
+              'Bảng vàng Cống hiến',
+            joke:
+              '“Thua không đáng sợ. Quan trọng là sau trận, quỹ CLB lại khỏe hơn một chút.” 😄',
+            topRows:
+              contributionRows,
+            renderTop:
+              row =>
+                topLine(
+                  row,
+                  money(
+                    row.contributionAmount
+                  ),
+                  row.losses +
+                    ' thua · ' +
+                    row.draws +
+                    ' hòa'
+                ),
+            closedLabel:
+              'Xem bảng vàng đầy đủ',
+            openLabel:
+              'Thu gọn bảng vàng',
+            renderDetail:
+              body => {
+                if (
+                  !contributionRows.length
+                ) {
+                  body.append(
+                    emptyTop(
+                      'Chưa phát sinh nghĩa vụ quỹ hợp lệ từ các trận đã duyệt.'
+                    )
+                  );
+
+                  return;
+                }
+
+                body.append(
+                  createDetailTable(
+                    contributionRows,
+                    [
+                      [
+                        'Hạng',
+                        row =>
+                          medal(
+                            row.rank
+                          )
+                      ],
+                      [
+                        'VĐV',
+                        row =>
+                          row.name
+                      ],
+                      [
+                        'Cống hiến',
+                        row =>
+                          money(
+                            row.contributionAmount
+                          )
+                      ],
+                      [
+                        'Thua',
+                        row =>
+                          number(
+                            row.losses
+                          )
+                      ],
+                      [
+                        'Hòa',
+                        row =>
+                          number(
+                            row.draws
+                          )
+                      ]
+                    ]
+                  ),
+                  el(
+                    'p',
+                    'Chỉ tính nghĩa vụ THUA/HÒA từ trận APPROVED. Đã đóng hay chưa đóng không làm thay đổi danh hiệu.',
+                    'muted contribution-footnote'
+                  )
+                );
+              }
+          }),
+
+          createCard({
+            key:
+              'energetic',
+            variant:
+              'fire',
+            icon:
+              '🔥',
+            title:
+              'Năng nổ nhất',
+            joke:
+              '“Có mặt đều đến mức sân mà biết nói chắc cũng gọi tên.” ⚡',
+            topRows:
+              energeticRows,
+            renderTop:
+              row =>
+                topLine(
+                  row,
+                  number(
+                    row.matchCount
+                  ) +
+                    ' trận',
+                  percent(
+                    row.participationRate
+                  ) +
+                    ' số trận CLB'
+                ),
+            closedLabel:
+              'Xem hội mê ra sân',
+            openLabel:
+              'Thu gọn hội mê ra sân',
+            renderDetail:
+              body => {
+                if (
+                  !energeticRows.length
+                ) {
+                  body.append(
+                    emptyTop(
+                      'Chưa có VĐV CLUB nào tham gia trận APPROVED.'
+                    )
+                  );
+
+                  return;
+                }
+
+                body.append(
+                  createDetailTable(
+                    energeticRows,
+                    [
+                      [
+                        'Hạng',
+                        row =>
+                          medal(
+                            row.rank
+                          )
+                      ],
+                      [
+                        'VĐV',
+                        row =>
+                          row.name
+                      ],
+                      [
+                        'Trận',
+                        row =>
+                          number(
+                            row.matchCount
+                          )
+                      ],
+                      [
+                        'Tỷ lệ tham gia',
+                        row =>
+                          percent(
+                            row.participationRate
+                          )
+                      ]
+                    ]
+                  )
+                );
+              }
+          }),
+
+          createCard({
+            key:
+              'sleepy',
+            variant:
+              'sleepy',
+            icon:
+              '😴',
+            title:
+              'Khiển trách nhẹ',
+            joke:
+              '“CLB đang xác minh xem bạn còn nhớ đường ra sân không…” 👀',
+            topRows:
+              sleepyRows,
+            renderTop:
+              row =>
+                topLine(
+                  row,
+                  number(
+                    row.matchCount
+                  ) +
+                    ' trận',
+                  'Khiển trách rất nhẹ thôi 😇'
+                ),
+            closedLabel:
+              'Xem sổ điểm danh đáng ngờ',
+            openLabel:
+              'Thu gọn sổ điểm danh',
+            renderDetail:
+              body => {
+                if (
+                  !sleepyRows.length
+                ) {
+                  body.append(
+                    emptyTop(
+                      'Chưa có ai đủ dữ liệu để bị nhắc. Mọi người đang rất ngoan. 😇'
+                    )
+                  );
+
+                  return;
+                }
+
+                body.append(
+                  createDetailTable(
+                    sleepyRows,
+                    [
+                      [
+                        'Mức độ đáng ngờ',
+                        row =>
+                          row.rank === 1
+                            ? '👀 Cần quan tâm'
+                            : '#' +
+                              row.rank
+                      ],
+                      [
+                        'VĐV',
+                        row =>
+                          row.name
+                      ],
+                      [
+                        'Đã ra sân',
+                        row =>
+                          number(
+                            row.matchCount
+                          ) +
+                          ' trận'
+                      ],
+                      [
+                        'Tỷ lệ',
+                        row =>
+                          percent(
+                            row.participationRate
+                          )
+                      ]
+                    ]
+                  ),
+                  el(
+                    'p',
+                    'Chỉ xét ACTIVE + CLUB đã từng ra sân ít nhất 1 trận. Thành viên 0 trận chưa bị “khiển trách” để tránh oan cho người mới.',
+                    'muted contribution-footnote'
+                  )
+                );
+              }
+          })
+        );
+
+        root.append(
+          cards
+        );
+      }
+
+
+      function accountPage() {
+        if (
+          !window.PickAccount ||
+          typeof window.PickAccount.create !== 'function'
+        ) {
+          throw new Error(
+            'Không tải được module Tài khoản (account.js).'
+          );
+        }
+
+        const accountModule =
+          window.PickAccount.create({
+            $,
+            state,
+            client,
+            isAdmin,
+            canViewAudit,
+            button,
+            actionAccordion,
+            panel,
+            el,
+            rows,
+            raw,
+            upper,
+            number,
+            date,
+            sources,
+            ready,
+            notice,
+            load,
+            render,
+            explain,
+            badge,
+            table,
+            settings,
+            query,
+            activeRatingSettings,
+            signupRatingConfig
+          });
+
+        accountModule.accountPage();
+      }
+
+      // ACC06B: only the server may attest Auth success and complete the flag.
+      async function changeMyPassword(password, expectedUserId) {
+        const { data, error } = await client.functions.invoke('change-my-password', { body: { password } });
+        if (error) {
+          let code = 'PASSWORD_UPDATE_UNCONFIRMED';
+          try { code = (await error.context.json())?.error || code; } catch { /* Fail closed on transport errors. */ }
+          throw Object.assign(new Error(code), { code, status: error.context?.status });
+        }
+        if (data?.success !== true || data?.profile_id !== expectedUserId || data?.must_change_password !== false) {
+          throw Object.assign(new Error('PASSWORD_UPDATE_UNCONFIRMED'), { code: 'PASSWORD_UPDATE_UNCONFIRMED' });
+        }
+      }
+
+      function forcedPasswordChange(root) {
+        if (
+          !state.session ||
+          state.profile?.must_change_password !== true
+        ) {
+          return;
+        }
+
+        const section =
+          panel(
+            'Đổi mật khẩu lần đầu',
+            root
+          );
+
+        section.append(
+          el(
+            'p',
+            'Bạn cần đổi mật khẩu tạm trước khi sử dụng hệ thống.',
+            'notice'
+          )
+        );
+
+        const form =
+          el('form');
+
+        const grid =
+          el(
+            'div',
+            null,
+            'form-grid'
+          );
+
+        const makeField = (
+          id,
+          labelText
+        ) => {
+          const group =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const label =
+            el(
+              'label',
+              labelText
+            );
+
+          label.htmlFor = id;
+
+          const input =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          input.id = id;
+          input.type = 'password';
+          input.required = true;
+          input.minLength = 8;
+          input.autocomplete =
+            'new-password';
+
+          group.append(
+            label,
+            input
+          );
+
+          grid.append(
+            group
+          );
+
+          return input;
+        };
+
+        const password =
+          makeField(
+            'forced-new-password',
+            'Mật khẩu mới'
+          );
+
+        const confirmPassword =
+          makeField(
+            'forced-confirm-password',
+            'Nhập lại mật khẩu mới'
+          );
+
+        const message =
+          el(
+            'div',
+            null,
+            'notice'
+          );
+
+        message.hidden = true;
+        message.setAttribute(
+          'role',
+          'status'
+        );
+
+        const submit =
+          el(
+            'button',
+            'Đổi mật khẩu và tiếp tục',
+            'btn primary'
+          );
+
+        submit.type =
+          'submit';
+
+        const actions =
+          el(
+            'div',
+            null,
+            'form-actions'
+          );
+
+        actions.append(
+          submit
+        );
+
+        form.append(
+          grid,
+          actions,
+          message
+        );
+
+        section.append(
+          form
+        );
+
+        form.addEventListener(
+          'submit',
+          async event => {
+            event.preventDefault();
+
+            if (
+              state.writeBusy ||
+              state.busy ||
+              !state.session
+            ) {
+              return;
+            }
+
+            if (
+              password.value.length < 8
+            ) {
+              notice(
+                message,
+                'Mật khẩu mới cần ít nhất 8 ký tự.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              password.value !==
+              confirmPassword.value
+            ) {
+              notice(
+                message,
+                'Mật khẩu xác nhận không khớp.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              !form.reportValidity()
+            ) {
+              return;
+            }
+
+            state.writeBusy = true;
+
+            password.disabled = true;
+            confirmPassword.disabled = true;
+            submit.disabled = true;
+
+            submit.textContent =
+              'Đang cập nhật…';
+
+            notice(
+              message,
+              ''
+            );
+
+            try {
+              await changeMyPassword(password.value, state.session.user.id);
+
+              password.value = '';
+              confirmPassword.value = '';
+
+              await load();
+
+              render();
+
+              notice(
+                $('global-message'),
+                'Đã đổi mật khẩu thành công.',
+                false,
+                true
+              );
+
+            } catch (error) {
+              console.error(
+                'FORCED_PASSWORD_CHANGE_ERROR',
+                error
+              );
+
+              let text =
+                'Chưa xác nhận hoàn tất. Hãy thử lại với một mật khẩu mới khác; nếu đã tải lại trang, vẫn thực hiện bước này.';
+
+              if (
+                error?.code ===
+                'weak_password'
+              ) {
+                text =
+                  'Mật khẩu chưa đủ mạnh. Hãy chọn mật khẩu khó đoán hơn.';
+              } else if (
+                error?.code ===
+                'same_password'
+              ) {
+                text =
+                  'Mật khẩu mới phải khác mật khẩu hiện tại.';
+              }
+
+              notice(
+                message,
+                text,
+                true
+              );
+
+            } finally {
+              state.writeBusy = false;
+
+              password.disabled = false;
+              confirmPassword.disabled = false;
+              submit.disabled = false;
+
+              submit.textContent =
+                'Đổi mật khẩu và tiếp tục';
+            }
+          }
+        );
+      }
+
+      function navigate(
+        page,
+        intent = null
+      ) {
+        state.page =
+          modules.some(
+            m => m[0] === page
+          )
+            ? page
+            : 'overview';
+
+        state.navigationIntent =
+          intent;
+
+        render();
+      }
+
+      function render() {
+        fundUiDispose?.();
+        fundUiDispose = null;
+        memberAnalyticsDispose?.();
+        memberAnalyticsDispose = null;
+        const current =
+          modules.find(
+            m =>
+              m[0] ===
+              state.page
+          );
+
+        const visiblePageTitle =
+          current[0] === 'admin'
+            ? (isAdmin() ? 'Quản trị tài khoản' : 'Tài khoản')
+            : current[2];
+
+        $('page-title').textContent =
+          visiblePageTitle;
+
+        document
+          .querySelectorAll(
+            '[data-page]'
+          )
+          .forEach(n => {
+            if (
+              n.dataset.page ===
+              state.page
+            ) {
+              n.setAttribute(
+                'aria-current',
+                'page'
+              );
+            } else {
+              n.removeAttribute(
+                'aria-current'
+              );
+            }
+          });
+
+        const root =
+          $('content');
+
+        preserveContentFocus(root);
+        root.replaceChildren();
+
+        root.setAttribute(
+          'aria-busy',
+          String(
+            state.busy
+          )
+        );
+
+        if (!state.profile) {
+          root.append(
+            el(
+              'p',
+              state.busy
+                ? 'Đang xác nhận tài khoản…'
+                : 'Chưa thể tải hồ sơ. Chọn Làm mới để thử lại.',
+              'notice'
+            )
+          );
+
+          return;
+        }
+
+        if (state.busy) {
+          root.append(
+            el(
+              'p',
+              'Đang tải dữ liệu câu lạc bộ…',
+              'muted'
+            )
+          );
+
+          const sk = el(
+            'div',
+            null,
+            'grid grid-cols-1 sm:grid-cols-2 gap-4'
+          );
+
+          for (
+            let i = 0;
+            i < 4;
+            i++
+          ) {
+            sk.append(
+              el(
+                'div',
+                null,
+                'skeleton'
+              )
+            );
+          }
+
+          root.append(sk);
+
+          return;
+        }
+
+        if (['PENDING', 'REJECTED'].includes(state.profile.membership_status)) {
+          memberApprovalStatus(root);
+          return;
+        }
+        if (state.profile.membership_status !== 'APPROVED') {
+          root.append(el('p', 'Chưa xác định được trạng thái duyệt. Vui lòng làm mới hoặc liên hệ ADMIN.', 'notice error'));
+          return;
+        }
+
+        if (
+          state.profile
+            .is_active !==
+          true
+        ) {
+          root.append(
+            el(
+              'p',
+              'Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.',
+              'notice error'
+            )
+          );
+
+          return;
+        }
+
+
+        if (
+          state.profile
+            .must_change_password ===
+          true
+        ) {
+          forcedPasswordChange(root);
+          return;
+        }
+
+        switch (
+          state.page
+        ) {
+          case 'overview':
+            overview();
+            break;
+
+          case 'matches':
+            matchesPage();
+            break;
+
+          case 'players':
+        playersPage();
+        break;
+      case 'ranking': {
+        const rankingRoot = el('div', null, 'ranking-ui');
+        root.append(rankingRoot);
+        // BXH DETAIL V1
+        // RANKING DETAIL VISUAL V1
+
+        sources(
+          rankingRoot,
+          [
+            'players',
+            'rating_events',
+            'matches',
+            'match_players'
+          ]
+        );
+
+        rankingRoot.append(
+          el(
+            'p',
+            'BXH chính thức chỉ gồm VĐV CLUB đang hoạt động, có ít nhất 5 trận Rated hợp lệ trong phiên bản Rating hiện hành; đồng điểm cùng hạng.',
+            'notice'
+          )
+        );
+
+        const rankingRows =
+          ranking();
+
+        // BXH EXCLUSIVE ACCORDION V1.1
+        let openedRankingPlayerId =
+          null;
+
+        let renderRankingList =
+          null;
+
+        const rankingSection =
+          panel(
+            'Bảng xếp hạng',
+            rankingRoot
+          );
+
+        if (!rankingRows.length) {
+          rankingSection.append(
+            el(
+              'p',
+              state.errors.players || state.errors.rating_events
+                ? 'Chưa tải được số liệu BXH. Hãy tải lại trang.'
+                : 'Chưa có VĐV đủ điều kiện vào BXH chính thức.',
+              'muted'
+            )
+          );
+        } else {
+          const rankingList =
+            el(
+              'div',
+              null,
+              'ranking-list ui-card-list'
+            );
+
+          const drawRankingList = visibleRows => {
+              rankingList.innerHTML =
+                '';
+
+              visibleRows.forEach(
+                player => {
+                  const isRankingOpen =
+                    openedRankingPlayerId ===
+                    player.id;
+
+                  const card =
+                    el(
+                      'div',
+                      null,
+                      isRankingOpen
+                        ? 'ranking-card ranking-card-open ui-compact-card'
+                        : 'ranking-card ui-compact-card'
+                    );
+
+                  const header =
+                    el(
+                      'div',
+                      null,
+                      'ranking-header'
+                    );
+
+                  card.dataset.rank = String(player.rank);
+                  const rank = el('div', '#' + player.rank, 'ranking-position');
+                  rank.setAttribute('aria-label', 'Hạng ' + player.rank);
+                  const summary = el('h3', playerName(player.id), 'ranking-name');
+                  summary.title = playerName(player.id);
+                  const ratingSummary = el('div', null, 'ranking-rating');
+                  ratingSummary.append(
+                    el('span', 'Rating', 'ranking-label'),
+                    el('strong', number(player.current_rating), 'ranking-value')
+                  );
+                  const matchesSummary = el('div', null, 'ranking-matches');
+                  matchesSummary.append(
+                    el('span', 'Trận Rated', 'ranking-label'),
+                    el('strong', number(player.rated_matches), 'ranking-match-count')
+                  );
+
+                  const toggle =
+                    button(
+                      openedRankingPlayerId ===
+                        player.id
+                        ? 'Thu gọn'
+                        : 'Xem chi tiết',
+                      () => {
+                        const willOpenRanking =
+                          openedRankingPlayerId !==
+                          player.id;
+
+                        if (willOpenRanking) {
+                          if (
+                            typeof memberHistoryBody !==
+                              'undefined' &&
+                            !memberHistoryBody.hidden
+                          ) {
+                            memberHistoryBody.hidden =
+                              true;
+
+                            memberHistoryToggle.setAttribute('aria-expanded', 'false');
+                            memberHistoryToggle.textContent =
+                              '▶ Lịch sử Rating theo thành viên';
+                          }
+
+                          openedRankingPlayerId =
+                            player.id;
+                        } else {
+                          openedRankingPlayerId =
+                            null;
+                        }
+
+                        renderRankingList();
+                        document.getElementById('ranking-toggle-' + player.id)?.focus({ preventScroll: true });
+                      },
+                      'btn ranking-card-toggle ranking-detail-toggle'
+                    );
+
+                  toggle.type =
+                    'button';
+
+                  toggle.id = 'ranking-toggle-' + player.id;
+                  toggle.setAttribute('aria-expanded', String(isRankingOpen));
+                  toggle.setAttribute('aria-label', (isRankingOpen ? 'Thu gọn' : 'Xem chi tiết') + ' — ' + playerName(player.id));
+                  header.append(
+                    rank,
+                    summary,
+                    ratingSummary,
+                    matchesSummary,
+                    toggle
+                  );
+
+                  card.append(
+                    header
+                  );
+
+                  if (
+                    openedRankingPlayerId ===
+                    player.id
+                  ) {
+                    const detail =
+                      el(
+                        'div',
+                        null,
+                        'ranking-detail'
+                      );
+
+                    detail.id = 'ranking-detail-' + player.id;
+                    toggle.setAttribute('aria-controls', detail.id);
+
+                    const approvedMatches =
+                      new Map(
+                        rows('matches')
+                          .filter(
+                            match =>
+                              upper(
+                                match.status
+                              ) ===
+                              'APPROVED'
+                          )
+                          .map(
+                            match => [
+                              match.id,
+                              match
+                            ]
+                          )
+                      );
+
+                    const appearances =
+                      [];
+                    const seen =
+                      new Set();
+
+                    rows('match_players')
+                      .filter(
+                        item =>
+                          item.player_id ===
+                          player.id &&
+                          approvedMatches.has(
+                            item.match_id
+                          )
+                      )
+                      .forEach(
+                        item => {
+                          const key =
+                            `${item.match_id}:${player.id}`;
+
+                          if (
+                            seen.has(key)
+                          ) {
+                            return;
+                          }
+
+                          seen.add(key);
+
+                          const match =
+                            approvedMatches.get(
+                              item.match_id
+                            );
+
+                          const scoreA =
+                            Number(
+                              match.team_a_score
+                            );
+
+                          const scoreB =
+                            Number(
+                              match.team_b_score
+                            );
+
+                          let result =
+                            'D';
+
+                          if (
+                            scoreA !== scoreB
+                          ) {
+                            const teamAWon =
+                              scoreA > scoreB;
+
+                            result =
+                              (
+                                item.team === 'A' &&
+                                teamAWon
+                              ) ||
+                              (
+                                item.team === 'B' &&
+                                !teamAWon
+                              )
+                                ? 'W'
+                                : 'L';
+                          }
+
+                          appearances.push({
+                            match,
+                            result
+                          });
+                        }
+                      );
+
+                    appearances.sort(
+                      (a, b) => {
+                        const timeDiff =
+                          new Date(
+                            b.match.played_at
+                          ).getTime() -
+                          new Date(
+                            a.match.played_at
+                          ).getTime();
+
+                        if (timeDiff) {
+                          return timeDiff;
+                        }
+
+                        const numberDiff =
+                          Number(
+                            b.match.match_number ||
+                            0
+                          ) -
+                          Number(
+                            a.match.match_number ||
+                            0
+                          );
+
+                        if (numberDiff) {
+                          return numberDiff;
+                        }
+
+                        return String(
+                          b.match.id
+                        ).localeCompare(
+                          String(
+                            a.match.id
+                          )
+                        );
+                      }
+                    );
+
+                    const recentForm =
+                      appearances.slice(
+                        0,
+                        5
+                      );
+
+                    const formSection =
+                      el(
+                        'div',
+                        null,
+                        'mt-2'
+                      );
+
+                    formSection.append(
+                      el(
+                        'div',
+                        'Phong độ gần đây',
+                        'font-semibold mb-2'
+                      )
+                    );
+
+                    if (!recentForm.length) {
+                      formSection.append(
+                        el(
+                          'div',
+                          'Chưa có trận.',
+                          'text-sm opacity-60'
+                        )
+                      );
+                    } else {
+                      const formLine =
+                        el(
+                          'div',
+                          null,
+                          'flex flex-wrap gap-2'
+                        );
+
+                      recentForm.forEach(
+                        item => {
+                          const badge =
+                            el(
+                              'span',
+                              item.result,
+                              'ranking-result ranking-result-' + item.result
+                            );
+
+                          badge.setAttribute('aria-label', item.result === 'W' ? 'Thắng' : item.result === 'L' ? 'Thua' : 'Hòa');
+                          badge.title =
+                            matchCode(
+                              item.match
+                            );
+
+                          formLine.append(
+                            badge
+                          );
+                        }
+                      );
+
+                      formSection.append(
+                        formLine
+                      );
+                    }
+
+                    const ratingEvents =
+                      rows('rating_events')
+                        .filter(
+                          event =>
+                            event.player_id ===
+                              player.id &&
+                            (
+                              !event.algorithm_version ||
+                              event.algorithm_version ===
+                                currentRatingVersion()
+                            )
+                        )
+                        .map(
+                          event => {
+                            const match =
+                              rows('matches')
+                                .find(
+                                  item =>
+                                    item.id ===
+                                    event.match_id
+                                );
+
+                            return {
+                              ...event,
+                              played_at:
+                                match?.played_at ||
+                                event.created_at,
+                              match
+                            };
+                          }
+                        )
+                        .sort(
+                          (a, b) =>
+                            new Date(
+                              b.played_at
+                            ).getTime() -
+                            new Date(
+                              a.played_at
+                            ).getTime()
+                        );
+
+                    const ratingSection =
+                      el(
+                        'div',
+                        null,
+                        'mt-4'
+                      );
+
+                    const ratingBody =
+                      el(
+                        'div',
+                        null,
+                        'ranking-event-list'
+                      );
+
+                    ratingBody.hidden =
+                      true;
+
+                    const ratingToggle =
+                      button(
+                        'Xem lịch sử Rating',
+                        () => {
+                          ratingBody.hidden =
+                            !ratingBody.hidden;
+
+                          ratingToggle.setAttribute('aria-expanded', String(!ratingBody.hidden));
+                          ratingToggle.textContent =
+                            ratingBody.hidden
+                              ? 'Xem lịch sử Rating'
+                              : 'Thu gọn lịch sử Rating';
+                        },
+                        'btn ranking-card-toggle ranking-history-toggle'
+                      );
+
+                    ratingToggle.type =
+                      'button';
+
+                    ratingBody.id = 'ranking-events-' + player.id;
+                    ratingToggle.setAttribute('aria-controls', ratingBody.id);
+                    ratingToggle.setAttribute('aria-expanded', 'false');
+                    ratingBody.append(el('p', 'Tối đa 10 thay đổi gần nhất. Xem toàn bộ trong Lịch sử Rating theo thành viên.', 'ranking-history-hint'));
+                    if (!ratingEvents.length) {
+                      ratingBody.append(
+                        el(
+                          'div',
+                          'Chưa có lịch sử Rating.',
+                          'text-sm opacity-60'
+                        )
+                      );
+                    } else {
+                      ratingEvents
+                        .slice(
+                          0,
+                          10
+                        )
+                        .forEach(
+                          event => {
+                            const before =
+                              num(
+                                pick(
+                                  event,
+                                  'rating_before',
+                                  'before_rating'
+                                )
+                              );
+
+                            const after =
+                              num(
+                                pick(
+                                  event,
+                                  'rating_after',
+                                  'after_rating'
+                                )
+                              );
+
+                            const delta =
+                              num(
+                                pick(
+                                  event,
+                                  'rating_delta',
+                                  'delta',
+                                  'change',
+                                  'delta_applied'
+                                )
+                              );
+
+                            const deltaText =
+                              delta === null
+                                ? '—'
+                                : (
+                                    delta >= 0
+                                      ? '+'
+                                      : ''
+                                  ) +
+                                  Number(
+                                    delta
+                                  ).toFixed(3);
+
+                            const eventLine =
+                              el(
+                                'div',
+                                null,
+                                'ranking-event'
+                              );
+
+                            eventLine.append(
+                              el(
+                                'div',
+                                event.match
+                                  ? matchCode(
+                                      event.match
+                                    )
+                                  : (
+                                      event.match_id
+                                        ? String(
+                                            event.match_id
+                                          ).slice(
+                                            0,
+                                            8
+                                          )
+                                        : 'Điều chỉnh'
+                                    ),
+                                'font-semibold'
+                              ),
+                              el(
+                                'div',
+                                `${
+                                  before === null
+                                    ? '—'
+                                    : number(before)
+                                } → ${
+                                  after === null
+                                    ? '—'
+                                    : number(after)
+                                } (${deltaText})`,
+                                'ranking-event-values'
+                              )
+                            );
+
+                            eventLine.append(
+                              el('span', date(event.played_at), 'ranking-event-date')
+                            );
+                            eventLine.dataset.change = delta === null || delta === 0 ? 'neutral' : delta > 0 ? 'positive' : 'negative';
+                            ratingBody.append(
+                              eventLine
+                            );
+                          }
+                        );
+                    }
+
+                    ratingSection.append(
+                      ratingToggle,
+                      ratingBody
+                    );
+
+                    detail.append(
+                      el(
+                        'div',
+                        `Rating hiện tại: ${number(player.current_rating)}`,
+                        'font-semibold'
+                      ),
+                      el(
+                        'div',
+                        `Trận Rated hợp lệ: ${number(player.rated_matches)}`,
+                        'text-sm opacity-70 mt-1'
+                      ),
+                      formSection,
+                      ratingSection
+                    );
+
+                    card.append(
+                      detail
+                    );
+                  }
+
+                  rankingList.append(
+                    card
+                  );
+                }
+              );
+            };
+
+          rankingSection.append(el('p', 'Hạng hiển thị là hạng toàn BXH, không thay đổi theo tìm kiếm.', 'muted text-sm'));
+          const rankingControls = paginatedList({
+            root: rankingSection, key: 'ranking-directory', data: rankingRows, content: rankingList,
+            searchText: player => playerName(player.id), searchLabel: 'Tìm tên VĐV trong BXH',
+            unavailable: !!(state.errors.players || state.errors.rating_events),
+            renderRows: drawRankingList
+          });
+          renderRankingList = () => rankingControls.refresh();
+        }
+    // BXH EXCLUSIVE ACCORDION V1
+    // MEMBER RATING HISTORY V1
+    // MEMBER RATING HISTORY VISUAL V1
+
+    const memberHistoryWrapper =
+      el(
+        'div',
+        null,
+        'app-action app-action-info member-rating-history mt-4'
+      );
+
+    const memberHistoryBody =
+      el(
+        'div',
+        null,
+        'member-rating-history-body'
+      );
+
+    memberHistoryBody.hidden =
+      true;
+
+    const memberHistoryToggle =
+      button(
+        '▶ Lịch sử Rating theo thành viên',
+        () => {
+          const willOpenMemberHistory =
+            memberHistoryBody.hidden;
+
+          if (willOpenMemberHistory) {
+            openedRankingPlayerId =
+              null;
+
+            if (
+              typeof renderRankingList ===
+              'function'
+            ) {
+              renderRankingList();
+            }
+
+            memberHistoryBody.hidden =
+              false;
+          } else {
+            memberHistoryBody.hidden =
+              true;
+          }
+
+          memberHistoryToggle.setAttribute('aria-expanded', String(!memberHistoryBody.hidden));
+          memberHistoryToggle.textContent =
+            memberHistoryBody.hidden
+              ? '▶ Lịch sử Rating theo thành viên'
+              : '▼ Thu gọn lịch sử Rating theo thành viên';
+        },
+        'app-action-toggle member-rating-history-toggle'
+      );
+
+    memberHistoryToggle.type =
+      'button';
+
+    memberHistoryBody.id = 'ranking-member-history';
+    memberHistoryToggle.setAttribute('aria-controls', memberHistoryBody.id);
+    memberHistoryToggle.setAttribute('aria-expanded', 'false');
+
+    const memberHistoryControls =
+      el(
+        'div',
+        null,
+        'mb-3'
+      );
+
+    memberHistoryControls.append(
+      el(
+        'div',
+        'Chọn VĐV',
+        'text-sm font-semibold mb-2'
+      )
+    );
+
+    const memberHistorySelect =
+      el(
+        'select',
+        null,
+        'field'
+      );
+
+    memberHistorySelect.setAttribute(
+      'aria-label',
+      'Chọn VĐV để xem lịch sử Rating'
+    );
+
+    memberHistorySelect.append(
+      new Option(
+        '— Chọn VĐV —',
+        ''
+      )
+    );
+
+    rows('players')
+      .slice()
+      .sort(
+        (a, b) =>
+          playerName(a.id)
+            .localeCompare(
+              playerName(b.id),
+              'vi'
+            )
+      )
+      .forEach(
+        player => {
+          memberHistorySelect.append(
+            new Option(
+              playerName(player.id),
+              player.id
+            )
+          );
+        }
+      );
+
+    memberHistoryControls.append(
+      memberHistorySelect
+    );
+
+    const memberHistoryContent =
+      el('div', null, 'ranking-member-content');
+
+    const renderMemberHistory =
+      () => {
+        memberHistoryContent.innerHTML =
+          '';
+
+        const playerId =
+          memberHistorySelect.value;
+
+        if (!playerId) {
+          memberHistoryContent.append(
+            el(
+              'p',
+              'Chọn một VĐV để xem toàn bộ lịch sử Rating.',
+              'muted'
+            )
+          );
+
+          return;
+        }
+
+        const selectedPlayer =
+          rows('players')
+            .find(
+              player =>
+                player.id ===
+                playerId
+            );
+
+        const playerEvents =
+          rows('rating_events')
+            .filter(
+              event =>
+                event.player_id ===
+                  playerId &&
+                (
+                  !event.algorithm_version ||
+                  event.algorithm_version ===
+                    currentRatingVersion()
+                )
+            )
+            .map(
+              event => {
+                const match =
+                  rows('matches')
+                    .find(
+                      item =>
+                        item.id ===
+                        event.match_id
+                    );
+
+                return {
+                  ...event,
+                  played_at:
+                    match?.played_at ||
+                    event.created_at,
+                  match_reference:
+                    match
+                      ? (
+                          'Trận ' +
+                          matchCode(match) +
+                          ' • ' +
+                          number(
+                            match.team_a_score
+                          ) +
+                          ' – ' +
+                          number(
+                            match.team_b_score
+                          )
+                        )
+                      : (
+                          event.match_id
+                            ? '#' +
+                              String(
+                                event.match_id
+                              ).slice(
+                                0,
+                                8
+                              )
+                            : 'Điều chỉnh'
+                        )
+                };
+              }
+            )
+            .sort(
+              (a, b) => {
+                const timeDiff =
+                  new Date(
+                    b.played_at
+                  ).getTime() -
+                  new Date(
+                    a.played_at
+                  ).getTime();
+
+                if (timeDiff) {
+                  return timeDiff;
+                }
+
+                return String(
+                  b.id || ''
+                ).localeCompare(
+                  String(
+                    a.id || ''
+                  )
+                );
+              }
+            );
+
+        memberHistoryContent.append(
+          el(
+            'div',
+            selectedPlayer
+              ? playerName(
+                  selectedPlayer.id
+                )
+              : 'VĐV',
+            'font-semibold mb-1'
+          ),
+          el(
+            'div',
+            `Rating hiện tại: ${
+              selectedPlayer
+                ? number(
+                    selectedPlayer.current_rating
+                  )
+                : '—'
+            } • ${
+              playerEvents.length
+            } thay đổi Rating`,
+            'text-sm opacity-70 mb-3'
+          )
+        );
+
+        if (!playerEvents.length) {
+          memberHistoryContent.append(
+            el(
+              'p',
+              'VĐV này chưa có lịch sử Rating trong phiên bản hiện hành.',
+              'muted'
+            )
+          );
+
+          return;
+        }
+
+        memberHistoryContent.append(el('p', 'Trên điện thoại, vuốt ngang bảng để xem đủ thời gian, điểm và trận liên quan.', 'ranking-table-hint'));
+        table(
+          memberHistoryContent,
+          'Toàn bộ lịch sử Rating',
+          playerEvents,
+          [
+            dateCol(
+              'Thời gian trận',
+              'played_at'
+            ),
+            [
+              'Điểm trước',
+              r =>
+                number(
+                  pick(
+                    r,
+                    'rating_before',
+                    'before_rating'
+                  )
+                )
+            ],
+            [
+              'Thay đổi',
+              r => {
+                const delta =
+                  num(
+                    pick(
+                      r,
+                      'rating_delta',
+                      'delta',
+                      'change',
+                      'delta_applied'
+                    )
+                  );
+
+                if (delta === null) {
+                  return '—';
+                }
+
+                return (
+                  delta >= 0
+                    ? '+'
+                    : ''
+                ) +
+                Number(
+                  delta
+                ).toFixed(3);
+              }
+            ],
+            [
+              'Điểm sau',
+              r =>
+                number(
+                  pick(
+                    r,
+                    'rating_after',
+                    'after_rating'
+                  )
+                )
+            ],
+            [
+              'Trận liên quan',
+              r =>
+                r.match_reference ||
+                (
+                  r.match_id
+                    ? '#' +
+                      String(
+                        r.match_id
+                      ).slice(
+                        0,
+                        8
+                      )
+                    : 'Điều chỉnh'
+                )
+            ]
+          ],
+          {
+            unavailable:
+              !!state.errors.rating_events ||
+              !!state.errors.matches
+          }
+        );
+      };
+
+    memberHistorySelect.addEventListener(
+      'change',
+      renderMemberHistory
+    );
+
+    renderMemberHistory();
+
+    memberHistoryBody.append(
+      memberHistoryControls,
+      memberHistoryContent
+    );
+
+    memberHistoryWrapper.append(
+      memberHistoryToggle,
+      memberHistoryBody
+    );
+
+    rankingRoot.append(
+      memberHistoryWrapper
+    );
+
+        break;
+      }
+      case 'fund':
+            fund();
+            break;
+
+          case 'contribution':
+            contributions();
+            break;
+          case 'tournaments': {
+            // TOURNAMENT CREATE UI V1A
+            sources(
+              root,
+              [
+                'tournaments',
+                'matches',
+                'match_players',
+                'players',
+                'tournament_registrations',
+                'tournament_payments'
+              ]
+            );
+
+            // TOURNAMENT UNIFIED ACCORDION V1D.1
+            let openedTournamentId =
+              null;
+
+            const tournamentCards =
+              new Map();
+
+            const memberCanRegister =
+              upper(state.profile?.role) === 'MEMBER' &&
+              state.profile?.is_active === true;
+            const tournamentActionRoot =
+              canManageTournaments() || memberCanRegister
+                ? el('section', null, 'workflow-section workflow-actions tournament-actions')
+                : null;
+
+            if (tournamentActionRoot) {
+              tournamentActionRoot.append(
+                el('h2', 'Thao tác', 'workflow-section-heading')
+              );
+            }
+
+            let tournamentNeedsRoot = null;
+
+            if (canManageTournaments()) {
+              if (state.errors.tournament_registrations) {
+                tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                tournamentNeedsRoot.append(
+                  el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                  el('p', 'Chưa tải được đăng ký giải cần xử lý. Vui lòng tải lại.', 'notice error')
+                );
+              } else if (!ready('tournament_registrations')) {
+                tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                tournamentNeedsRoot.append(
+                  el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                  el('p', 'Đang tải đăng ký giải cần xử lý…', 'muted')
+                );
+              } else {
+                const pendingRegistrations = rows('tournament_registrations')
+                  .filter(registration => upper(registration.status) === 'DANG_KY');
+
+                if (pendingRegistrations.length) {
+                  tournamentNeedsRoot = el('section', null, 'workflow-section workflow-attention');
+                  tournamentNeedsRoot.append(
+                    el('h2', 'Cần xử lý', 'workflow-section-heading'),
+                    el(
+                      'p',
+                      `Có ${number(pendingRegistrations.length)} đăng ký giải đang chờ xác nhận.`,
+                      'notice'
+                    )
+                  );
+
+                  const pendingList = el('div', null, 'workflow-attention-list');
+                  pendingRegistrations.slice(0, 5).forEach(registration => {
+                    const tournament = rows('tournaments').find(
+                      item => raw(item.id) === raw(registration.tournament_id)
+                    );
+                    const player = rows('players').find(
+                      item => raw(item.id) === raw(registration.player_id)
+                    );
+                    pendingList.append(
+                      button(
+                        `${raw(player?.full_name) || 'VĐV'} • ${raw(tournament?.name) || 'Giải đấu'}`,
+                        () => {
+                          const entry = tournamentCards.get(registration.tournament_id);
+                          if (entry?.body?.hidden) {
+                            entry.toggle?.click();
+                          }
+                          entry?.card?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                        },
+                        'btn'
+                      )
+                    );
+                  });
+                  tournamentNeedsRoot.append(pendingList);
+                }
+              }
+            }
+
+            let closeTournamentCard =
+              () => {};
+
+            let closeTournamentDetail =
+              () => {};
+
+            let closeTournamentAdminActions =
+              () => {};
+
+            if (canManageTournaments()) {
+              const tournamentAdminActionGroup = [];
+              const createAction = actionAccordion({
+                title: 'Tạo giải đấu',
+                semantic: 'create',
+                icon: '+',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: createWrapper,
+                toggle: createToggle,
+                body: createBody
+              } = createAction;
+
+              const description =
+                el(
+                  'p',
+                  'Tạo hồ sơ giải đấu trước. Sau đó các trận có thể được gắn vào giải ngay từ màn hình Trận đấu.',
+                  'notice'
+                );
+
+              const message =
+                el(
+                  'div'
+                );
+
+              message.hidden =
+                true;
+
+              message.setAttribute(
+                'role',
+                'alert'
+              );
+
+              const form =
+                el(
+                  'form'
+                );
+
+              const grid =
+                el(
+                  'div',
+                  null,
+                  'form-grid'
+                );
+
+              const makeInput = (
+                id,
+                labelText,
+                type = 'text'
+              ) => {
+                const group =
+                  el(
+                    'div',
+                    null,
+                    'form-group'
+                  );
+
+                const label =
+                  el(
+                    'label',
+                    labelText
+                  );
+
+                label.htmlFor =
+                  id;
+
+                const input =
+                  el(
+                    'input',
+                    null,
+                    'field'
+                  );
+
+                input.id =
+                  id;
+
+                input.type =
+                  type;
+
+                group.append(
+                  label,
+                  input
+                );
+
+                return {
+                  group,
+                  input
+                };
+              };
+
+              const nameField =
+                makeInput(
+                  'tournament-create-name',
+                  'Tên giải'
+                );
+
+              nameField.input.required =
+                true;
+
+              nameField.input.maxLength =
+                200;
+
+              nameField.input.placeholder =
+                'Ví dụ: Pickleball Open 2026';
+
+              const codeField =
+                makeInput(
+                  'tournament-create-code',
+                  'Mã giải'
+                );
+
+              codeField.input.maxLength =
+                100;
+
+              codeField.input.placeholder =
+                'Ví dụ: OPEN-2026';
+
+              const startField =
+                makeInput(
+                  'tournament-create-start',
+                  'Ngày bắt đầu',
+                  'date'
+                );
+
+              startField.input.required =
+                true;
+
+              const today =
+                new Date();
+
+              const localToday =
+                new Date(
+                  today.getTime() -
+                    today.getTimezoneOffset() *
+                    60000
+                )
+                  .toISOString()
+                  .slice(
+                    0,
+                    10
+                  );
+
+              startField.input.value =
+                localToday;
+
+              const endField =
+                makeInput(
+                  'tournament-create-end',
+                  'Ngày kết thúc',
+                  'date'
+                );
+
+              const locationField =
+                makeInput(
+                  'tournament-create-location',
+                  'Địa điểm'
+                );
+
+              locationField.input.maxLength =
+                300;
+
+              const categoryField =
+                makeInput(
+                  'tournament-create-category',
+                  'Loại sự kiện'
+                );
+
+              categoryField.input.maxLength =
+                150;
+
+              categoryField.input.placeholder =
+                'Ví dụ: Giải nội bộ CLB';
+
+              const formatField =
+                makeInput(
+                  'tournament-create-format',
+                  'Thể thức'
+                );
+
+              formatField.input.maxLength =
+                150;
+
+              formatField.input.placeholder =
+                'Ví dụ: Đôi nam nữ';
+
+              const feeField =
+                makeInput(
+                  'tournament-create-fee',
+                  'Phí đăng ký',
+                  'number'
+                );
+
+              feeField.input.min =
+                '0';
+
+              feeField.input.step =
+                '1000';
+
+              feeField.input.value =
+                '0';
+
+              feeField.input.required =
+                true;
+
+              grid.append(
+                nameField.group,
+                codeField.group,
+                startField.group,
+                endField.group,
+                locationField.group,
+                categoryField.group,
+                formatField.group,
+                feeField.group
+              );
+
+              const notesGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group mt-3'
+                );
+
+              const notesLabel =
+                el(
+                  'label',
+                  'Ghi chú'
+                );
+
+              notesLabel.htmlFor =
+                'tournament-create-notes';
+
+              const notes =
+                el(
+                  'textarea',
+                  null,
+                  'field'
+                );
+
+              notes.id =
+                'tournament-create-notes';
+
+              notes.maxLength =
+                2000;
+
+              notes.placeholder =
+                'Thông tin thêm về giải đấu';
+
+              notesGroup.append(
+                notesLabel,
+                notes
+              );
+
+              const actions =
+                el(
+                  'div',
+                  null,
+                  'form-actions'
+                );
+
+              const submit =
+                el(
+                  'button',
+                  'Tạo giải',
+                  'btn primary'
+                );
+
+              submit.type =
+                'submit';
+
+              const reset =
+                button(
+                  'Đặt lại',
+                  () => {
+                    form.reset();
+
+                    startField.input.value =
+                      localToday;
+
+                    feeField.input.value =
+                      '0';
+
+                    notice(
+                      message,
+                      '',
+                      false
+                    );
+                  }
+                );
+
+              reset.type =
+                'button';
+
+              actions.append(
+                submit,
+                reset
+              );
+
+              form.append(
+                grid,
+                notesGroup,
+                actions
+              );
+
+              form.addEventListener(
+                'submit',
+                async event => {
+                  event.preventDefault();
+
+                  if (
+                    state.writeBusy ||
+                    !canManageTournaments()
+                  ) {
+                    return;
+                  }
+
+                  const tournamentName =
+                    nameField.input.value.trim();
+
+                  if (!tournamentName) {
+                    notice(
+                      message,
+                      'Vui lòng nhập tên giải.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const startDate =
+                    startField.input.value;
+
+                  const endDate =
+                    endField.input.value ||
+                    null;
+
+                  if (!startDate) {
+                    notice(
+                      message,
+                      'Vui lòng chọn ngày bắt đầu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (
+                    endDate &&
+                    endDate <
+                      startDate
+                  ) {
+                    notice(
+                      message,
+                      'Ngày kết thúc không được trước ngày bắt đầu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const fee =
+                    Number(
+                      feeField.input.value
+                    );
+
+                  if (
+                    !Number.isFinite(
+                      fee
+                    ) ||
+                    fee < 0
+                  ) {
+                    notice(
+                      message,
+                      'Phí đăng ký phải là số không âm.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  submit.disabled =
+                    true;
+
+                  reset.disabled =
+                    true;
+
+                  submit.textContent =
+                    'Đang tạo…';
+
+                  try {
+                    const {
+                      data,
+                      error
+                    } =
+                      await client.rpc(
+                        'create_tournament',
+                        {
+                          p_name:
+                            tournamentName,
+                          p_code:
+                            codeField.input.value.trim() ||
+                            null,
+                          p_start_date:
+                            startDate,
+                          p_end_date:
+                            endDate,
+                          p_location:
+                            locationField.input.value.trim() ||
+                            null,
+                          p_event_category:
+                            categoryField.input.value.trim() ||
+                            null,
+                          p_format:
+                            formatField.input.value.trim() ||
+                            null,
+                          p_registration_fee:
+                            fee,
+                          p_notes:
+                            notes.value.trim() ||
+                            null
+                        }
+                      );
+
+                    if (error) {
+                      throw error;
+                    }
+
+                    if (
+                      data &&
+                      data.success ===
+                        false
+                    ) {
+                      throw new Error(
+                        'Máy chủ không xác nhận tạo giải.'
+                      );
+                    }
+
+                    await load();
+
+                    state.page =
+                      'tournaments';
+
+                    render();
+
+                    notice(
+                      $('global-message'),
+                      'Đã tạo giải đấu thành công. 🏆',
+                      false,
+                      true
+                    );
+                  } catch (error) {
+                    let text =
+                      explain(
+                        error
+                      );
+
+                    if (
+                      error?.message
+                    ) {
+                      text =
+                        'Không tạo được giải. ' +
+                        String(
+                          error.message
+                        ).slice(
+                          0,
+                          300
+                        );
+                    }
+
+                    notice(
+                      message,
+                      text,
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    submit.disabled =
+                      false;
+
+                    reset.disabled =
+                      false;
+
+                    submit.textContent =
+                      'Tạo giải';
+                  }
+                }
+              );
+
+              createBody.append(
+                description,
+                message,
+                form
+              );
+
+              // TOURNAMENT EDIT UI V1B
+              const editAction = actionAccordion({
+                title: 'Sửa thông tin giải',
+                semantic: 'info',
+                icon: '✎',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: editWrapper,
+                toggle: editToggle,
+                body: editBody
+              } = editAction;
+
+              const editDescription =
+                el(
+                  'p',
+                  'Chỉ sửa thông tin hồ sơ giải. Trạng thái giải được quản lý riêng để tránh thay đổi vòng đời ngoài ý muốn.',
+                  'notice'
+                );
+
+              const editMessage =
+                el(
+                  'div'
+                );
+
+              editMessage.hidden =
+                true;
+
+              editMessage.setAttribute(
+                'role',
+                'alert'
+              );
+
+              const editForm =
+                el(
+                  'form'
+                );
+
+              const selectorGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group mb-3'
+                );
+
+              const selectorLabel =
+                el(
+                  'label',
+                  'Chọn giải cần sửa'
+                );
+
+              selectorLabel.htmlFor =
+                'tournament-edit-select';
+
+              const tournamentSelect =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              tournamentSelect.id =
+                'tournament-edit-select';
+
+              tournamentSelect.required =
+                true;
+
+              tournamentSelect.append(
+                new Option(
+                  '— Chọn giải đấu —',
+                  ''
+                )
+              );
+
+              rows(
+                'tournaments'
+              )
+                .slice()
+                .sort(
+                  (a, b) =>
+                    String(
+                      b.start_date ||
+                      ''
+                    ).localeCompare(
+                      String(
+                        a.start_date ||
+                        ''
+                      )
+                    )
+                )
+                .forEach(
+                  tournament => {
+                    const statusLabels = {
+                      DU_KIEN:
+                        'Dự kiến',
+                      MO_DANG_KY:
+                        'Mở đăng ký',
+                      DANG_DIEN_RA:
+                        'Đang diễn ra',
+                      DA_KET_THUC:
+                        'Đã kết thúc',
+                      DA_QUYET_TOAN:
+                        'Đã quyết toán',
+                      HUY:
+                        'Đã hủy'
+                    };
+
+                    const status =
+                      upper(
+                        tournament.status
+                      );
+
+                    const label =
+                      raw(
+                        tournament.name
+                      ) +
+                      (
+                        tournament.code
+                          ? ' · ' +
+                            raw(
+                              tournament.code
+                            )
+                          : ''
+                      ) +
+                      ' · ' +
+                      (
+                        statusLabels[
+                          status
+                        ] ||
+                        raw(
+                          tournament.status
+                        )
+                      );
+
+                    tournamentSelect.append(
+                      new Option(
+                        label,
+                        tournament.id
+                      )
+                    );
+                  }
+                );
+
+              selectorGroup.append(
+                selectorLabel,
+                tournamentSelect
+              );
+
+              const editGrid =
+                el(
+                  'div',
+                  null,
+                  'form-grid'
+                );
+
+              const makeEditInput = (
+                id,
+                labelText,
+                type = 'text'
+              ) => {
+                const group =
+                  el(
+                    'div',
+                    null,
+                    'form-group'
+                  );
+
+                const label =
+                  el(
+                    'label',
+                    labelText
+                  );
+
+                label.htmlFor =
+                  id;
+
+                const input =
+                  el(
+                    'input',
+                    null,
+                    'field'
+                  );
+
+                input.id =
+                  id;
+
+                input.type =
+                  type;
+
+                group.append(
+                  label,
+                  input
+                );
+
+                return {
+                  group,
+                  input
+                };
+              };
+
+              const editName =
+                makeEditInput(
+                  'tournament-edit-name',
+                  'Tên giải'
+                );
+
+              editName.input.required =
+                true;
+
+              editName.input.maxLength =
+                200;
+
+              const editCode =
+                makeEditInput(
+                  'tournament-edit-code',
+                  'Mã giải'
+                );
+
+              editCode.input.maxLength =
+                100;
+
+              const editStart =
+                makeEditInput(
+                  'tournament-edit-start',
+                  'Ngày bắt đầu',
+                  'date'
+                );
+
+              editStart.input.required =
+                true;
+
+              const editEnd =
+                makeEditInput(
+                  'tournament-edit-end',
+                  'Ngày kết thúc',
+                  'date'
+                );
+
+              const editLocation =
+                makeEditInput(
+                  'tournament-edit-location',
+                  'Địa điểm'
+                );
+
+              editLocation.input.maxLength =
+                300;
+
+              const editCategory =
+                makeEditInput(
+                  'tournament-edit-category',
+                  'Loại sự kiện'
+                );
+
+              editCategory.input.maxLength =
+                150;
+
+              const editFormat =
+                makeEditInput(
+                  'tournament-edit-format',
+                  'Thể thức'
+                );
+
+              editFormat.input.maxLength =
+                150;
+
+              const editFee =
+                makeEditInput(
+                  'tournament-edit-fee',
+                  'Phí đăng ký',
+                  'number'
+                );
+
+              editFee.input.min =
+                '0';
+
+              editFee.input.step =
+                '1000';
+
+              editFee.input.required =
+                true;
+
+              editGrid.append(
+                editName.group,
+                editCode.group,
+                editStart.group,
+                editEnd.group,
+                editLocation.group,
+                editCategory.group,
+                editFormat.group,
+                editFee.group
+              );
+
+              const editNotesGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group mt-3'
+                );
+
+              const editNotesLabel =
+                el(
+                  'label',
+                  'Ghi chú'
+                );
+
+              editNotesLabel.htmlFor =
+                'tournament-edit-notes';
+
+              const editNotes =
+                el(
+                  'textarea',
+                  null,
+                  'field'
+                );
+
+              editNotes.id =
+                'tournament-edit-notes';
+
+              editNotes.maxLength =
+                2000;
+
+              editNotesGroup.append(
+                editNotesLabel,
+                editNotes
+              );
+
+              const selectedStatus =
+                el(
+                  'p',
+                  'Chưa chọn giải.',
+                  'muted mt-3'
+                );
+
+              const clearEditFields =
+                () => {
+                  editName.input.value =
+                    '';
+
+                  editCode.input.value =
+                    '';
+
+                  editStart.input.value =
+                    '';
+
+                  editEnd.input.value =
+                    '';
+
+                  editLocation.input.value =
+                    '';
+
+                  editCategory.input.value =
+                    '';
+
+                  editFormat.input.value =
+                    '';
+
+                  editFee.input.value =
+                    '0';
+
+                  editNotes.value =
+                    '';
+
+                  selectedStatus.textContent =
+                    'Chưa chọn giải.';
+                };
+
+              const loadSelectedTournament =
+                () => {
+                  const tournament =
+                    rows(
+                      'tournaments'
+                    ).find(
+                      item =>
+                        item.id ===
+                        tournamentSelect.value
+                    );
+
+                  if (!tournament) {
+                    clearEditFields();
+
+                    return;
+                  }
+
+                  editName.input.value =
+                    raw(
+                      tournament.name
+                    );
+
+                  editCode.input.value =
+                    raw(
+                      tournament.code
+                    );
+
+                  editStart.input.value =
+                    tournament.start_date ||
+                    '';
+
+                  editEnd.input.value =
+                    tournament.end_date ||
+                    '';
+
+                  editLocation.input.value =
+                    raw(
+                      tournament.location
+                    );
+
+                  editCategory.input.value =
+                    raw(
+                      tournament.event_category
+                    );
+
+                  editFormat.input.value =
+                    raw(
+                      tournament.format
+                    );
+
+                  editFee.input.value =
+                    String(
+                      Number(
+                        tournament.registration_fee ||
+                        0
+                      )
+                    );
+
+                  editNotes.value =
+                    raw(
+                      tournament.notes
+                    );
+
+                  const statusLabels = {
+                    DU_KIEN:
+                      '🗓️ Dự kiến',
+                    MO_DANG_KY:
+                      '📝 Mở đăng ký',
+                    DANG_DIEN_RA:
+                      '🔥 Đang diễn ra',
+                    DA_KET_THUC:
+                      '🏁 Đã kết thúc',
+                    DA_QUYET_TOAN:
+                      '✅ Đã quyết toán',
+                    HUY:
+                      '⛔ Đã hủy'
+                  };
+
+                  const status =
+                    upper(
+                      tournament.status
+                    );
+
+                  selectedStatus.textContent =
+                    'Trạng thái hiện tại: ' +
+                    (
+                      statusLabels[
+                        status
+                      ] ||
+                      raw(
+                        tournament.status
+                      )
+                    ) +
+                    '. Trạng thái không được thay đổi tại đây.';
+                };
+
+              tournamentSelect.addEventListener(
+                'change',
+                () => {
+                  notice(
+                    editMessage,
+                    '',
+                    false
+                  );
+
+                  loadSelectedTournament();
+                }
+              );
+
+              const editActions =
+                el(
+                  'div',
+                  null,
+                  'form-actions'
+                );
+
+              const editSubmit =
+                el(
+                  'button',
+                  'Lưu thay đổi',
+                  'btn primary'
+                );
+
+              editSubmit.type =
+                'submit';
+
+              const editReset =
+                button(
+                  'Khôi phục dữ liệu',
+                  () => {
+                    if (
+                      !tournamentSelect.value
+                    ) {
+                      clearEditFields();
+
+                      return;
+                    }
+
+                    loadSelectedTournament();
+
+                    notice(
+                      editMessage,
+                      '',
+                      false
+                    );
+                  }
+                );
+
+              editReset.type =
+                'button';
+
+              editActions.append(
+                editSubmit,
+                editReset
+              );
+
+              editForm.append(
+                selectorGroup,
+                editGrid,
+                editNotesGroup,
+                selectedStatus,
+                editActions
+              );
+
+              editForm.addEventListener(
+                'submit',
+                async event => {
+                  event.preventDefault();
+
+                  if (
+                    state.writeBusy ||
+                    !canManageTournaments()
+                  ) {
+                    return;
+                  }
+
+                  const tournamentId =
+                    tournamentSelect.value;
+
+                  if (!tournamentId) {
+                    notice(
+                      editMessage,
+                      'Vui lòng chọn giải cần sửa.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const tournamentName =
+                    editName.input.value.trim();
+
+                  if (!tournamentName) {
+                    notice(
+                      editMessage,
+                      'Vui lòng nhập tên giải.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const startDate =
+                    editStart.input.value;
+
+                  const endDate =
+                    editEnd.input.value ||
+                    null;
+
+                  if (!startDate) {
+                    notice(
+                      editMessage,
+                      'Vui lòng chọn ngày bắt đầu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (
+                    endDate &&
+                    endDate <
+                      startDate
+                  ) {
+                    notice(
+                      editMessage,
+                      'Ngày kết thúc không được trước ngày bắt đầu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const fee =
+                    Number(
+                      editFee.input.value
+                    );
+
+                  if (
+                    !Number.isFinite(
+                      fee
+                    ) ||
+                    fee < 0
+                  ) {
+                    notice(
+                      editMessage,
+                      'Phí đăng ký phải là số không âm.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  editSubmit.disabled =
+                    true;
+
+                  editReset.disabled =
+                    true;
+
+                  tournamentSelect.disabled =
+                    true;
+
+                  editSubmit.textContent =
+                    'Đang lưu…';
+
+                  try {
+                    const {
+                      data,
+                      error
+                    } =
+                      await client.rpc(
+                        'update_tournament',
+                        {
+                          p_tournament_id:
+                            tournamentId,
+                          p_name:
+                            tournamentName,
+                          p_code:
+                            editCode.input.value.trim() ||
+                            null,
+                          p_start_date:
+                            startDate,
+                          p_end_date:
+                            endDate,
+                          p_location:
+                            editLocation.input.value.trim() ||
+                            null,
+                          p_event_category:
+                            editCategory.input.value.trim() ||
+                            null,
+                          p_format:
+                            editFormat.input.value.trim() ||
+                            null,
+                          p_registration_fee:
+                            fee,
+                          p_notes:
+                            editNotes.value.trim() ||
+                            null
+                        }
+                      );
+
+                    if (error) {
+                      throw error;
+                    }
+
+                    if (
+                      data &&
+                      data.success ===
+                        false
+                    ) {
+                      throw new Error(
+                        'Máy chủ không xác nhận cập nhật giải.'
+                      );
+                    }
+
+                    await load();
+
+                    state.page =
+                      'tournaments';
+
+                    render();
+
+                    notice(
+                      $('global-message'),
+                      'Đã cập nhật thông tin giải đấu thành công. ✎',
+                      false,
+                      true
+                    );
+                  } catch (error) {
+                    let text =
+                      explain(
+                        error
+                      );
+
+                    if (
+                      error?.message
+                    ) {
+                      text =
+                        'Không cập nhật được giải. ' +
+                        String(
+                          error.message
+                        ).slice(
+                          0,
+                          300
+                        );
+                    }
+
+                    notice(
+                      editMessage,
+                      text,
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    editSubmit.disabled =
+                      false;
+
+                    editReset.disabled =
+                      false;
+
+                    tournamentSelect.disabled =
+                      false;
+
+                    editSubmit.textContent =
+                      'Lưu thay đổi';
+                  }
+                }
+              );
+
+              editBody.append(
+                editDescription,
+                editMessage,
+                editForm
+              );
+
+              // TOURNAMENT LIFECYCLE UI V1C
+              const lifecycleAction = actionAccordion({
+                title: 'Chuyển trạng thái giải',
+                semantic: 'neutral',
+                icon: '⇄',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: lifecycleWrapper,
+                toggle: lifecycleToggle,
+                body: lifecycleBody
+              } = lifecycleAction;
+
+              const lifecycleDescription =
+                el(
+                  'p',
+                  'Trạng thái giải được chuyển tuần tự. Hệ thống không cho nhảy cóc hoặc quay ngược lifecycle.',
+                  'notice'
+                );
+
+              const lifecycleMessage =
+                el(
+                  'div'
+                );
+
+              lifecycleMessage.hidden =
+                true;
+
+              lifecycleMessage.setAttribute(
+                'role',
+                'alert'
+              );
+
+              const lifecycleForm =
+                el(
+                  'form'
+                );
+
+              const lifecycleGrid =
+                el(
+                  'div',
+                  null,
+                  'form-grid'
+                );
+
+              const tournamentGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const tournamentLabel =
+                el(
+                  'label',
+                  'Chọn giải đấu'
+                );
+
+              tournamentLabel.htmlFor =
+                'tournament-lifecycle-select';
+
+              const lifecycleTournament =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              lifecycleTournament.id =
+                'tournament-lifecycle-select';
+
+              lifecycleTournament.required =
+                true;
+
+              lifecycleTournament.append(
+                new Option(
+                  '— Chọn giải đấu —',
+                  ''
+                )
+              );
+
+              const lifecycleStatusLabels = {
+                DU_KIEN:
+                  '🗓️ Dự kiến',
+                MO_DANG_KY:
+                  '📝 Mở đăng ký',
+                DANG_DIEN_RA:
+                  '🔥 Đang diễn ra',
+                DA_KET_THUC:
+                  '🏁 Đã kết thúc',
+                DA_QUYET_TOAN:
+                  '✅ Đã quyết toán',
+                HUY:
+                  '⛔ Đã hủy'
+              };
+
+              const lifecycleTransitions = {
+                DU_KIEN: [
+                  'MO_DANG_KY',
+                  'HUY'
+                ],
+                MO_DANG_KY: [
+                  'DANG_DIEN_RA',
+                  'HUY'
+                ],
+                DANG_DIEN_RA: [
+                  'DA_KET_THUC'
+                ],
+                DA_KET_THUC: [
+                  'DA_QUYET_TOAN'
+                ],
+                DA_QUYET_TOAN: [],
+                HUY: []
+              };
+
+              rows(
+                'tournaments'
+              )
+                .slice()
+                .sort(
+                  (a, b) =>
+                    String(
+                      b.start_date ||
+                      ''
+                    ).localeCompare(
+                      String(
+                        a.start_date ||
+                        ''
+                      )
+                    )
+                )
+                .forEach(
+                  tournament => {
+                    const status =
+                      upper(
+                        tournament.status
+                      );
+
+                    const label =
+                      raw(
+                        tournament.name
+                      ) +
+                      (
+                        tournament.code
+                          ? ' · ' +
+                            raw(
+                              tournament.code
+                            )
+                          : ''
+                      ) +
+                      ' · ' +
+                      (
+                        lifecycleStatusLabels[
+                          status
+                        ] ||
+                        raw(
+                          tournament.status
+                        )
+                      );
+
+                    lifecycleTournament.append(
+                      new Option(
+                        label,
+                        tournament.id
+                      )
+                    );
+                  }
+                );
+
+              tournamentGroup.append(
+                tournamentLabel,
+                lifecycleTournament
+              );
+
+              const targetGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const targetLabel =
+                el(
+                  'label',
+                  'Chuyển sang'
+                );
+
+              targetLabel.htmlFor =
+                'tournament-lifecycle-target';
+
+              const lifecycleTarget =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              lifecycleTarget.id =
+                'tournament-lifecycle-target';
+
+              lifecycleTarget.required =
+                true;
+
+              lifecycleTarget.disabled =
+                true;
+
+              targetGroup.append(
+                targetLabel,
+                lifecycleTarget
+              );
+
+              lifecycleGrid.append(
+                tournamentGroup,
+                targetGroup
+              );
+
+              const lifecycleCurrent =
+                el(
+                  'p',
+                  'Chưa chọn giải.',
+                  'muted mt-3'
+                );
+
+              const reasonGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group mt-3'
+                );
+
+              const reasonLabel =
+                el(
+                  'label',
+                  'Lý do / ghi chú chuyển trạng thái'
+                );
+
+              reasonLabel.htmlFor =
+                'tournament-lifecycle-reason';
+
+              const lifecycleReason =
+                el(
+                  'textarea',
+                  null,
+                  'field'
+                );
+
+              lifecycleReason.id =
+                'tournament-lifecycle-reason';
+
+              lifecycleReason.maxLength =
+                1000;
+
+              lifecycleReason.placeholder =
+                'Có thể để trống. Hệ thống vẫn ghi audit tự động.';
+
+              reasonGroup.append(
+                reasonLabel,
+                lifecycleReason
+              );
+
+              const lifecycleActions =
+                el(
+                  'div',
+                  null,
+                  'form-actions'
+                );
+
+              const lifecycleSubmit =
+                el(
+                  'button',
+                  'Xác nhận chuyển trạng thái',
+                  'btn primary'
+                );
+
+              lifecycleSubmit.type =
+                'submit';
+
+              lifecycleSubmit.disabled =
+                true;
+
+              lifecycleActions.append(
+                lifecycleSubmit
+              );
+
+              const refreshLifecycleTarget =
+                () => {
+                  lifecycleTarget.innerHTML =
+                    '';
+
+                  lifecycleTarget.append(
+                    new Option(
+                      '— Chọn trạng thái mới —',
+                      ''
+                    )
+                  );
+
+                  const tournament =
+                    rows(
+                      'tournaments'
+                    ).find(
+                      item =>
+                        item.id ===
+                        lifecycleTournament.value
+                    );
+
+                  if (!tournament) {
+                    lifecycleCurrent.textContent =
+                      'Chưa chọn giải.';
+
+                    lifecycleTarget.disabled =
+                      true;
+
+                    lifecycleSubmit.disabled =
+                      true;
+
+                    return;
+                  }
+
+                  const currentStatus =
+                    upper(
+                      tournament.status
+                    );
+
+                  const allowed =
+                    lifecycleTransitions[
+                      currentStatus
+                    ] ||
+                    [];
+
+                  lifecycleCurrent.textContent =
+                    'Trạng thái hiện tại: ' +
+                    (
+                      lifecycleStatusLabels[
+                        currentStatus
+                      ] ||
+                      raw(
+                        tournament.status
+                      )
+                    );
+
+                  if (!allowed.length) {
+                    lifecycleTarget.disabled =
+                      true;
+
+                    lifecycleSubmit.disabled =
+                      true;
+
+                    lifecycleCurrent.textContent +=
+                      currentStatus ===
+                        'HUY'
+                        ? ' · Giải đã hủy, lifecycle đã kết thúc.'
+                        : ' · Đây là trạng thái cuối, không còn bước chuyển tiếp.';
+
+                    return;
+                  }
+
+                  allowed.forEach(
+                    status => {
+                      lifecycleTarget.append(
+                        new Option(
+                          lifecycleStatusLabels[
+                            status
+                          ] ||
+                            status,
+                          status
+                        )
+                      );
+                    }
+                  );
+
+                  lifecycleTarget.disabled =
+                    false;
+
+                  lifecycleSubmit.disabled =
+                    true;
+                };
+
+              lifecycleTournament.addEventListener(
+                'change',
+                () => {
+                  notice(
+                    lifecycleMessage,
+                    '',
+                    false
+                  );
+
+                  lifecycleReason.value =
+                    '';
+
+                  refreshLifecycleTarget();
+                }
+              );
+
+              lifecycleTarget.addEventListener(
+                'change',
+                () => {
+                  lifecycleSubmit.disabled =
+                    !lifecycleTarget.value ||
+                    state.writeBusy;
+                }
+              );
+
+              lifecycleForm.append(
+                lifecycleGrid,
+                lifecycleCurrent,
+                reasonGroup,
+                lifecycleActions
+              );
+
+              lifecycleForm.addEventListener(
+                'submit',
+                async event => {
+                  event.preventDefault();
+
+                  if (
+                    state.writeBusy ||
+                    !canManageTournaments()
+                  ) {
+                    return;
+                  }
+
+                  const tournamentId =
+                    lifecycleTournament.value;
+
+                  const newStatus =
+                    lifecycleTarget.value;
+
+                  if (
+                    !tournamentId ||
+                    !newStatus
+                  ) {
+                    notice(
+                      lifecycleMessage,
+                      'Vui lòng chọn giải và trạng thái chuyển tiếp.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const tournament =
+                    rows(
+                      'tournaments'
+                    ).find(
+                      item =>
+                        item.id ===
+                        tournamentId
+                    );
+
+                  if (!tournament) {
+                    notice(
+                      lifecycleMessage,
+                      'Không tìm thấy giải đấu đã chọn.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const currentStatus =
+                    upper(
+                      tournament.status
+                    );
+
+                  const allowed =
+                    lifecycleTransitions[
+                      currentStatus
+                    ] ||
+                    [];
+
+                  if (
+                    !allowed.includes(
+                      newStatus
+                    )
+                  ) {
+                    notice(
+                      lifecycleMessage,
+                      'Chuyển trạng thái này không hợp lệ.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  lifecycleSubmit.disabled =
+                    true;
+
+                  lifecycleTournament.disabled =
+                    true;
+
+                  lifecycleTarget.disabled =
+                    true;
+
+                  lifecycleSubmit.textContent =
+                    'Đang chuyển…';
+
+                  try {
+                    const {
+                      data,
+                      error
+                    } =
+                      await client.rpc(
+                        'change_tournament_status',
+                        {
+                          p_tournament_id:
+                            tournamentId,
+                          p_new_status:
+                            newStatus,
+                          p_reason:
+                            lifecycleReason.value.trim() ||
+                            null
+                        }
+                      );
+
+                    if (error) {
+                      throw error;
+                    }
+
+                    if (
+                      data &&
+                      data.success ===
+                        false
+                    ) {
+                      throw new Error(
+                        'Máy chủ không xác nhận chuyển trạng thái.'
+                      );
+                    }
+
+                    await load();
+
+                    state.page =
+                      'tournaments';
+
+                    render();
+
+                    notice(
+                      $('global-message'),
+                      'Đã chuyển trạng thái giải đấu thành công. ⇄',
+                      false,
+                      true
+                    );
+                  } catch (error) {
+                    let text =
+                      explain(
+                        error
+                      );
+
+                    if (
+                      error?.message
+                    ) {
+                      text =
+                        'Không chuyển được trạng thái giải. ' +
+                        String(
+                          error.message
+                        ).slice(
+                          0,
+                          300
+                        );
+                    }
+
+                    notice(
+                      lifecycleMessage,
+                      text,
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    lifecycleSubmit.disabled =
+                      false;
+
+                    lifecycleTournament.disabled =
+                      false;
+
+                    lifecycleTarget.disabled =
+                      false;
+
+                    lifecycleSubmit.textContent =
+                      'Xác nhận chuyển trạng thái';
+                  }
+                }
+              );
+
+              lifecycleBody.append(
+                lifecycleDescription,
+                lifecycleMessage,
+                lifecycleForm
+              );
+
+
+              // TOURNAMENT REGISTRATION UI V1F.1
+              const registrationAction = actionAccordion({
+                title: 'Đăng ký VĐV',
+                semantic: 'create',
+                icon: '👥',
+                group: tournamentAdminActionGroup,
+                onOpen: closeTournamentDetail,
+                className: 'mb-4'
+              });
+              const {
+                wrapper: registrationWrapper,
+                toggle: registrationToggle,
+                body: registrationBody
+              } = registrationAction;
+
+              const registrationDescription =
+                el(
+                  'p',
+                  'Đăng ký VĐV vào nội dung thi đấu. Phí phải thu được chụp lại tại thời điểm đăng ký.',
+                  'notice'
+                );
+
+              const registrationMessage =
+                el(
+                  'div'
+                );
+
+              registrationMessage.hidden =
+                true;
+
+              registrationMessage.setAttribute(
+                'role',
+                'alert'
+              );
+
+              const registrationForm =
+                el(
+                  'form'
+                );
+
+              const registrationGrid =
+                el(
+                  'div',
+                  null,
+                  'form-grid'
+                );
+
+              const registrationTournamentGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const registrationTournamentLabel =
+                el(
+                  'label',
+                  'Giải đấu'
+                );
+
+              registrationTournamentLabel.htmlFor =
+                'tournament-registration-tournament';
+
+              const registrationTournament =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              registrationTournament.id =
+                'tournament-registration-tournament';
+
+              registrationTournament.required =
+                true;
+
+              registrationTournament.append(
+                new Option(
+                  '— Chọn giải đang nhận đăng ký —',
+                  ''
+                )
+              );
+
+              rows(
+                'tournaments'
+              )
+                .filter(
+                  tournament =>
+                    [
+                      'DU_KIEN',
+                      'MO_DANG_KY'
+                    ].includes(
+                      upper(
+                        tournament.status
+                      )
+                    )
+                )
+                .slice()
+                .sort(
+                  (a, b) =>
+                    String(
+                      b.start_date ||
+                      ''
+                    ).localeCompare(
+                      String(
+                        a.start_date ||
+                        ''
+                      )
+                    )
+                )
+                .forEach(
+                  tournament => {
+                    const status =
+                      upper(
+                        tournament.status
+                      );
+
+                    const statusLabel =
+                      status ===
+                        'DU_KIEN'
+                        ? 'Dự kiến'
+                        : 'Mở đăng ký';
+
+                    const label =
+                      raw(
+                        tournament.name
+                      ) +
+                      (
+                        tournament.code
+                          ? ' · ' +
+                            raw(
+                              tournament.code
+                            )
+                          : ''
+                      ) +
+                      ' · ' +
+                      statusLabel;
+
+                    registrationTournament.append(
+                      new Option(
+                        label,
+                        tournament.id
+                      )
+                    );
+                  }
+                );
+
+              registrationTournamentGroup.append(
+                registrationTournamentLabel,
+                registrationTournament
+              );
+
+              const registrationEventGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const registrationEventLabel =
+                el(
+                  'label',
+                  'Nội dung thi đấu'
+                );
+
+              registrationEventLabel.htmlFor =
+                'tournament-registration-event';
+
+              const registrationEvent =
+                el(
+                  'input',
+                  null,
+                  'field'
+                );
+
+              registrationEvent.id =
+                'tournament-registration-event';
+
+              registrationEvent.type =
+                'text';
+
+              registrationEvent.required =
+                true;
+
+              registrationEvent.maxLength =
+                200;
+
+              registrationEvent.placeholder =
+                'Ví dụ: Đôi nam nữ';
+
+              registrationEventGroup.append(
+                registrationEventLabel,
+                registrationEvent
+              );
+
+              const registrationPlayers =
+                rows(
+                  'players'
+                )
+                  .filter(
+                    player =>
+                      upper(
+                        player.status
+                      ) ===
+                      'ACTIVE'
+                  )
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      raw(
+                        a.full_name
+                      ).localeCompare(
+                        raw(
+                          b.full_name
+                        ),
+                        'vi'
+                      )
+                  );
+
+              const registrationPlayerGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const registrationPlayerLabel =
+                el(
+                  'label',
+                  'VĐV chính'
+                );
+
+              registrationPlayerLabel.htmlFor =
+                'tournament-registration-player';
+
+              const registrationPlayer =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              registrationPlayer.id =
+                'tournament-registration-player';
+
+              registrationPlayer.required =
+                true;
+
+              registrationPlayerGroup.append(
+                registrationPlayerLabel,
+                registrationPlayer
+              );
+
+              const registrationPartnerGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const registrationPartnerLabel =
+                el(
+                  'label',
+                  'Partner'
+                );
+
+              registrationPartnerLabel.htmlFor =
+                'tournament-registration-partner';
+
+              const registrationPartner =
+                el(
+                  'select',
+                  null,
+                  'field'
+                );
+
+              registrationPartner.id =
+                'tournament-registration-partner';
+
+              registrationPartnerGroup.append(
+                registrationPartnerLabel,
+                registrationPartner
+              );
+
+              const refreshRegistrationPlayers =
+                () => {
+                  const selectedPlayer =
+                    registrationPlayer.value;
+
+                  const selectedPartner =
+                    registrationPartner.value;
+
+                  registrationPlayer.replaceChildren(
+                    new Option(
+                      '— Chọn VĐV —',
+                      ''
+                    )
+                  );
+
+                  registrationPlayers.forEach(
+                    player => {
+                      registrationPlayer.append(
+                        new Option(
+                          raw(
+                            player.full_name
+                          ) ||
+                            player.id,
+                          player.id
+                        )
+                      );
+                    }
+                  );
+
+                  if (
+                    selectedPlayer &&
+                    registrationPlayers.some(
+                      player =>
+                        player.id ===
+                        selectedPlayer
+                    )
+                  ) {
+                    registrationPlayer.value =
+                      selectedPlayer;
+                  }
+
+                  registrationPartner.replaceChildren(
+                    new Option(
+                      '— Không có / chọn sau —',
+                      ''
+                    )
+                  );
+
+                  registrationPlayers
+                    .filter(
+                      player =>
+                        player.id !==
+                        registrationPlayer.value
+                    )
+                    .forEach(
+                      player => {
+                        registrationPartner.append(
+                          new Option(
+                            raw(
+                              player.full_name
+                            ) ||
+                              player.id,
+                            player.id
+                          )
+                        );
+                      }
+                    );
+
+                  if (
+                    selectedPartner &&
+                    selectedPartner !==
+                      registrationPlayer.value &&
+                    registrationPlayers.some(
+                      player =>
+                        player.id ===
+                        selectedPartner
+                    )
+                  ) {
+                    registrationPartner.value =
+                      selectedPartner;
+                  }
+                };
+
+              refreshRegistrationPlayers();
+
+              registrationPlayer.addEventListener(
+                'change',
+                () => {
+                  refreshRegistrationPlayers();
+                }
+              );
+
+              const registrationFeeGroup =
+                el(
+                  'div',
+                  null,
+                  'form-group'
+                );
+
+              const registrationFeeLabel =
+                el(
+                  'label',
+                  'Phí phải thu'
+                );
+
+              registrationFeeLabel.htmlFor =
+                'tournament-registration-fee';
+
+              const registrationFee =
+                el(
+                  'input',
+                  null,
+                  'field'
+                );
+
+              registrationFee.id =
+                'tournament-registration-fee';
+
+              registrationFee.type =
+                'number';
+
+              registrationFee.min =
+                '0';
+
+              registrationFee.step =
+                '1000';
+
+              registrationFee.required =
+                true;
+
+              registrationFee.value =
+                '0';
+
+              registrationFeeGroup.append(
+                registrationFeeLabel,
+                registrationFee
+              );
+
+              registrationGrid.append(
+                registrationTournamentGroup,
+                registrationEventGroup,
+                registrationPlayerGroup,
+                registrationPartnerGroup,
+                registrationFeeGroup
+              );
+
+              const registrationHint =
+                el(
+                  'p',
+                  'Chọn giải để lấy phí mặc định và gợi ý thể thức.',
+                  'muted mt-3'
+                );
+
+              const refreshRegistrationTournament =
+                () => {
+                  const tournament =
+                    rows(
+                      'tournaments'
+                    ).find(
+                      item =>
+                        item.id ===
+                        registrationTournament.value
+                    );
+
+                  if (!tournament) {
+                    registrationFee.value =
+                      '0';
+
+                    registrationHint.textContent =
+                      'Chọn giải để lấy phí mặc định và gợi ý thể thức.';
+
+                    return;
+                  }
+
+                  registrationFee.value =
+                    String(
+                      Number(
+                        tournament.registration_fee ||
+                        0
+                      )
+                    );
+
+                  if (
+                    !registrationEvent.value.trim() &&
+                    tournament.format
+                  ) {
+                    registrationEvent.value =
+                      raw(
+                        tournament.format
+                      );
+                  }
+
+                  registrationHint.textContent =
+                    'Phí mặc định: ' +
+                    Number(
+                      tournament.registration_fee ||
+                      0
+                    ).toLocaleString(
+                      'vi-VN'
+                    ) +
+                    'đ · Có thể điều chỉnh riêng cho registration này.';
+                };
+
+              registrationTournament.addEventListener(
+                'change',
+                () => {
+                  notice(
+                    registrationMessage,
+                    '',
+                    false
+                  );
+
+                  refreshRegistrationTournament();
+                }
+              );
+
+              const registrationActions =
+                el(
+                  'div',
+                  null,
+                  'form-actions'
+                );
+
+              const registrationSubmit =
+                el(
+                  'button',
+                  'Đăng ký VĐV',
+                  'btn primary'
+                );
+
+              registrationSubmit.type =
+                'submit';
+
+              const registrationReset =
+                button(
+                  'Đặt lại',
+                  () => {
+                    registrationForm.reset();
+
+                    registrationFee.value =
+                      '0';
+
+                    refreshRegistrationPlayers();
+
+                    registrationHint.textContent =
+                      'Chọn giải để lấy phí mặc định và gợi ý thể thức.';
+
+                    notice(
+                      registrationMessage,
+                      '',
+                      false
+                    );
+                  }
+                );
+
+              registrationReset.type =
+                'button';
+
+              registrationActions.append(
+                registrationSubmit,
+                registrationReset
+              );
+
+              registrationForm.append(
+                registrationGrid,
+                registrationHint,
+                registrationActions
+              );
+
+              registrationForm.addEventListener(
+                'submit',
+                async event => {
+                  event.preventDefault();
+
+                  if (
+                    state.writeBusy ||
+                    !canManageTournaments()
+                  ) {
+                    return;
+                  }
+
+                  const tournamentId =
+                    registrationTournament.value;
+
+                  const playerId =
+                    registrationPlayer.value;
+
+                  const partnerId =
+                    registrationPartner.value ||
+                    null;
+
+                  const eventName =
+                    registrationEvent.value.trim();
+
+                  if (!tournamentId) {
+                    notice(
+                      registrationMessage,
+                      'Vui lòng chọn giải đấu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (!eventName) {
+                    notice(
+                      registrationMessage,
+                      'Vui lòng nhập nội dung thi đấu.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (!playerId) {
+                    notice(
+                      registrationMessage,
+                      'Vui lòng chọn VĐV.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  if (
+                    partnerId &&
+                    partnerId ===
+                      playerId
+                  ) {
+                    notice(
+                      registrationMessage,
+                      'VĐV và partner không được trùng nhau.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  const feeDue =
+                    Number(
+                      registrationFee.value
+                    );
+
+                  if (
+                    !Number.isFinite(
+                      feeDue
+                    ) ||
+                    feeDue < 0
+                  ) {
+                    notice(
+                      registrationMessage,
+                      'Phí phải thu phải là số không âm.',
+                      true
+                    );
+
+                    return;
+                  }
+
+                  state.writeBusy =
+                    true;
+
+                  registrationSubmit.disabled =
+                    true;
+
+                  registrationReset.disabled =
+                    true;
+
+                  registrationTournament.disabled =
+                    true;
+
+                  registrationPlayer.disabled =
+                    true;
+
+                  registrationPartner.disabled =
+                    true;
+
+                  registrationSubmit.textContent =
+                    'Đang đăng ký…';
+
+                  try {
+                    const {
+                      data,
+                      error
+                    } =
+                      await client.rpc(
+                        'create_tournament_registration',
+                        {
+                          p_tournament_id:
+                            tournamentId,
+                          p_player_id:
+                            playerId,
+                          p_event_name:
+                            eventName,
+                          p_partner_player_id:
+                            partnerId,
+                          p_fee_due:
+                            feeDue
+                        }
+                      );
+
+                    if (error) {
+                      throw error;
+                    }
+
+                    if (
+                      data &&
+                      data.success ===
+                        false
+                    ) {
+                      throw new Error(
+                        'Máy chủ không xác nhận đăng ký VĐV.'
+                      );
+                    }
+
+                    await load();
+
+                    state.page =
+                      'tournaments';
+
+                    render();
+
+                    notice(
+                      $('global-message'),
+                      'Đã đăng ký VĐV vào giải thành công. 👥',
+                      false,
+                      true
+                    );
+                  } catch (error) {
+                    const code =
+                      String(
+                        error?.message ||
+                        ''
+                      );
+
+                    const friendly = {
+                      PLAYER_ALREADY_REGISTERED_FOR_EVENT:
+                        'VĐV này đã có đăng ký đang hoạt động trong nội dung.',
+                      PARTNER_ALREADY_REGISTERED_FOR_EVENT:
+                        'Partner này đã có đăng ký đang hoạt động trong nội dung.',
+                      PARTNER_CANNOT_BE_SELF:
+                        'VĐV và partner không được trùng nhau.',
+                      PLAYER_INACTIVE:
+                        'VĐV hiện không còn hoạt động.',
+                      PARTNER_INACTIVE:
+                        'Partner hiện không còn hoạt động.',
+                      TOURNAMENT_NOT_OPEN_FOR_REGISTRATION:
+                        'Giải hiện không còn nhận đăng ký.'
+                    };
+
+                    let text =
+                      explain(
+                        error
+                      );
+
+                    Object.entries(
+                      friendly
+                    ).some(
+                      ([key, value]) => {
+                        if (
+                          code.includes(
+                            key
+                          )
+                        ) {
+                          text =
+                            value;
+
+                          return true;
+                        }
+
+                        return false;
+                      }
+                    );
+
+                    notice(
+                      registrationMessage,
+                      text,
+                      true
+                    );
+                  } finally {
+                    state.writeBusy =
+                      false;
+
+                    registrationSubmit.disabled =
+                      false;
+
+                    registrationReset.disabled =
+                      false;
+
+                    registrationTournament.disabled =
+                      false;
+
+                    registrationPlayer.disabled =
+                      false;
+
+                    registrationPartner.disabled =
+                      false;
+
+                    registrationSubmit.textContent =
+                      'Đăng ký VĐV';
+                  }
+                }
+              );
+
+              registrationBody.append(
+                registrationDescription,
+                registrationMessage,
+                registrationForm
+              );
+
+              // Shared group keeps only one ADMIN tournament action open.
+              closeTournamentAdminActions =
+                () => {
+                  tournamentAdminActionGroup.forEach(
+                    action => action.setExpanded(false)
+                  );
+                };
+
+              tournamentActionRoot.append(
+                createWrapper,
+                editWrapper,
+                lifecycleWrapper,
+                registrationWrapper
+              );
+            }
+
+            // MEMBER SELF TOURNAMENT REGISTRATION UI V1M
+        if (memberCanRegister) {
+          const myRegistrationAction = actionAccordion({
+            title: 'Đăng ký giải của tôi',
+            semantic: 'create',
+            icon: '📝',
+            onOpen: closeTournamentDetail,
+            className: 'mb-4'
+          });
+          const {
+            wrapper: myRegistrationWrapper,
+            toggle: myRegistrationToggle,
+            body: myRegistrationBody
+          } = myRegistrationAction;
+
+          const myRegistrationDescription =
+            el(
+              'p',
+              'Đăng ký chính bạn tham gia giải. Hệ thống tự xác định VĐV từ tài khoản đăng nhập.',
+              'notice'
+            );
+
+          const myRegistrationMessage =
+            el(
+              'div'
+            );
+
+          myRegistrationMessage.hidden =
+            true;
+
+          myRegistrationMessage.setAttribute(
+            'role',
+            'alert'
+          );
+
+          const myRegistrationForm =
+            el(
+              'form'
+            );
+
+          const myRegistrationGrid =
+            el(
+              'div',
+              null,
+              'form-grid'
+            );
+
+          const myPlayer =
+            rows(
+              'players'
+            ).find(
+              player =>
+                player.id ===
+                state.profile?.player_id
+            );
+
+          const myPlayerGroup =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const myPlayerLabel =
+            el(
+              'label',
+              'VĐV đăng ký'
+            );
+
+          const myPlayerValue =
+            el(
+              'div',
+              myPlayer
+                ? raw(
+                    myPlayer.full_name
+                  )
+                : 'Chưa liên kết tài khoản với VĐV.',
+              'field'
+            );
+
+          myPlayerGroup.append(
+            myPlayerLabel,
+            myPlayerValue
+          );
+
+          const myTournamentGroup =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const myTournamentLabel =
+            el(
+              'label',
+              'Giải đấu'
+            );
+
+          myTournamentLabel.htmlFor =
+            'my-tournament-registration-tournament';
+
+          const myTournament =
+            el(
+              'select',
+              null,
+              'field'
+            );
+
+          myTournament.id =
+            'my-tournament-registration-tournament';
+
+          myTournament.required =
+            true;
+
+          myTournament.append(
+            new Option(
+              '— Chọn giải đang mở đăng ký —',
+              ''
+            )
+          );
+
+          rows(
+            'tournaments'
+          )
+            .filter(
+              tournament =>
+                upper(
+                  tournament.status
+                ) ===
+                'MO_DANG_KY'
+            )
+            .slice()
+            .sort(
+              (a, b) =>
+                String(
+                  b.start_date ||
+                  ''
+                ).localeCompare(
+                  String(
+                    a.start_date ||
+                    ''
+                  )
+                )
+            )
+            .forEach(
+              tournament => {
+                myTournament.append(
+                  new Option(
+                    raw(
+                      tournament.name
+                    ) +
+                      (
+                        tournament.code
+                          ? ' · ' +
+                            raw(
+                              tournament.code
+                            )
+                          : ''
+                      ),
+                    tournament.id
+                  )
+                );
+              }
+            );
+
+          myTournamentGroup.append(
+            myTournamentLabel,
+            myTournament
+          );
+
+          const myEventGroup =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const myEventLabel =
+            el(
+              'label',
+              'Nội dung thi đấu'
+            );
+
+          myEventLabel.htmlFor =
+            'my-tournament-registration-event';
+
+          const myEvent =
+            el(
+              'input',
+              null,
+              'field'
+            );
+
+          myEvent.id =
+            'my-tournament-registration-event';
+
+          myEvent.type =
+            'text';
+
+          myEvent.required =
+            true;
+
+          myEvent.maxLength =
+            200;
+
+          myEvent.placeholder =
+            'Ví dụ: Đôi';
+
+          myEventGroup.append(
+            myEventLabel,
+            myEvent
+          );
+
+          const myPartnerGroup =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const myPartnerLabel =
+            el(
+              'label',
+              'Partner'
+            );
+
+          myPartnerLabel.htmlFor =
+            'my-tournament-registration-partner';
+
+          const myPartner =
+            el(
+              'select',
+              null,
+              'field'
+            );
+
+          myPartner.id =
+            'my-tournament-registration-partner';
+
+          myPartner.append(
+            new Option(
+              '— Không có / chọn sau —',
+              ''
+            )
+          );
+
+          rows(
+            'players'
+          )
+            .filter(
+              player =>
+                upper(
+                  player.status
+                ) ===
+                  'ACTIVE' &&
+                player.id !==
+                  state.profile?.player_id
+            )
+            .slice()
+            .sort(
+              (a, b) =>
+                raw(
+                  a.full_name
+                ).localeCompare(
+                  raw(
+                    b.full_name
+                  ),
+                  'vi'
+                )
+            )
+            .forEach(
+              player => {
+                myPartner.append(
+                  new Option(
+                    raw(
+                      player.full_name
+                    ),
+                    player.id
+                  )
+                );
+              }
+            );
+
+          myPartnerGroup.append(
+            myPartnerLabel,
+            myPartner
+          );
+
+          const myFeeGroup =
+            el(
+              'div',
+              null,
+              'form-group'
+            );
+
+          const myFeeLabel =
+            el(
+              'label',
+              'Phí đăng ký'
+            );
+
+          const myFeeValue =
+            el(
+              'div',
+              '—',
+              'field'
+            );
+
+          myFeeGroup.append(
+            myFeeLabel,
+            myFeeValue
+          );
+
+          const refreshMyTournament =
+            () => {
+              const tournament =
+                rows(
+                  'tournaments'
+                ).find(
+                  item =>
+                    item.id ===
+                    myTournament.value
+                );
+
+              if (!tournament) {
+                myFeeValue.textContent =
+                  '—';
+
+                return;
+              }
+
+              myFeeValue.textContent =
+                Number(
+                  tournament.registration_fee ||
+                  0
+                ).toLocaleString(
+                  'vi-VN'
+                ) +
+                'đ';
+
+              if (
+                !myEvent.value.trim() &&
+                tournament.format
+              ) {
+                myEvent.value =
+                  raw(
+                    tournament.format
+                  );
+              }
+            };
+
+          myTournament.addEventListener(
+            'change',
+            () => {
+              notice(
+                myRegistrationMessage,
+                '',
+                false
+              );
+
+              refreshMyTournament();
+            }
+          );
+
+          const myRegistrationActions =
+            el(
+              'div',
+              null,
+              'form-actions'
+            );
+
+          const myRegistrationSubmit =
+            el(
+              'button',
+              'Đăng ký tham gia',
+              'btn primary'
+            );
+
+          myRegistrationSubmit.type =
+            'submit';
+
+          myRegistrationSubmit.disabled =
+            !state.profile?.player_id;
+
+          myRegistrationActions.append(
+            myRegistrationSubmit
+          );
+
+          myRegistrationGrid.append(
+            myPlayerGroup,
+            myTournamentGroup,
+            myEventGroup,
+            myPartnerGroup,
+            myFeeGroup
+          );
+
+          myRegistrationForm.append(
+            myRegistrationGrid,
+            myRegistrationActions
+          );
+
+          myRegistrationForm.addEventListener(
+            'submit',
+            async event => {
+              event.preventDefault();
+
+              if (
+                state.writeBusy
+              ) {
+                return;
+              }
+
+              const tournamentId =
+                myTournament.value;
+
+              const eventName =
+                myEvent.value.trim();
+
+              const partnerId =
+                myPartner.value ||
+                null;
+
+              if (!tournamentId) {
+                notice(
+                  myRegistrationMessage,
+                  'Vui lòng chọn giải đấu.',
+                  true
+                );
+
+                return;
+              }
+
+              if (!eventName) {
+                notice(
+                  myRegistrationMessage,
+                  'Vui lòng nhập nội dung thi đấu.',
+                  true
+                );
+
+                return;
+              }
+
+              state.writeBusy =
+                true;
+
+              myRegistrationSubmit.disabled =
+                true;
+
+              myTournament.disabled =
+                true;
+
+              myEvent.disabled =
+                true;
+
+              myPartner.disabled =
+                true;
+
+              myRegistrationSubmit.textContent =
+                'Đang đăng ký…';
+
+              try {
+                const {
+                  data,
+                  error
+                } =
+                  await client.rpc(
+                    'create_my_tournament_registration',
+                    {
+                      p_tournament_id:
+                        tournamentId,
+                      p_event_name:
+                        eventName,
+                      p_partner_player_id:
+                        partnerId
+                    }
+                  );
+
+                if (error) {
+                  throw error;
+                }
+
+                if (
+                  data &&
+                  data.success ===
+                    false
+                ) {
+                  throw new Error(
+                    'Máy chủ không xác nhận đăng ký.'
+                  );
+                }
+
+                await load();
+
+                state.page =
+                  'tournaments';
+
+                render();
+
+                notice(
+                  $('global-message'),
+                  'Đã đăng ký tham gia giải thành công. 📝',
+                  false,
+                  true
+                );
+              } catch (error) {
+                const code =
+                  String(
+                    error?.message ||
+                    ''
+                  );
+
+                const friendly = {
+                  PLAYER_LINK_REQUIRED:
+                    'Tài khoản chưa được liên kết với VĐV.',
+                  MEMBER_ROLE_REQUIRED:
+                    'Tài khoản này không phải thành viên.',
+                  CLUB_PLAYER_REQUIRED:
+                    'VĐV của tài khoản phải là thành viên CLUB.',
+                  PLAYER_INACTIVE:
+                    'VĐV hiện không còn hoạt động.',
+                  PLAYER_ALREADY_REGISTERED_FOR_EVENT:
+                    'Bạn đã có đăng ký đang hoạt động trong nội dung này.',
+                  PARTNER_ALREADY_REGISTERED_FOR_EVENT:
+                    'Partner này đã có đăng ký đang hoạt động trong nội dung.',
+                  PARTNER_CANNOT_BE_SELF:
+                    'Bạn không thể chọn chính mình làm partner.',
+                  PARTNER_NOT_FOUND:
+                    'Không tìm thấy partner đã chọn.',
+                  PARTNER_INACTIVE:
+                    'Partner hiện không còn hoạt động.',
+                  TOURNAMENT_NOT_OPEN_FOR_MEMBER_REGISTRATION:
+                    'Giải hiện không mở đăng ký cho thành viên.'
+                };
+
+                let text =
+                  explain(
+                    error
+                  );
+
+                Object.entries(
+                  friendly
+                ).some(
+                  ([key, value]) => {
+                    if (
+                      code.includes(
+                        key
+                      )
+                    ) {
+                      text =
+                        value;
+
+                      return true;
+                    }
+
+                    return false;
+                  }
+                );
+
+                notice(
+                  myRegistrationMessage,
+                  text,
+                  true
+                );
+              } finally {
+                state.writeBusy =
+                  false;
+
+                myRegistrationSubmit.disabled =
+                  !state.profile?.player_id;
+
+                myTournament.disabled =
+                  false;
+
+                myEvent.disabled =
+                  false;
+
+                myPartner.disabled =
+                  false;
+
+                myRegistrationSubmit.textContent =
+                  'Đăng ký tham gia';
+              }
+            }
+          );
+
+          myRegistrationBody.append(
+            myRegistrationDescription,
+            myRegistrationMessage,
+            myRegistrationForm
+          );
+
+          tournamentActionRoot.append(
+            myRegistrationWrapper
+          );
+        }
+        if (tournamentNeedsRoot) {
+          root.append(tournamentNeedsRoot);
+        }
+        if (
+          tournamentActionRoot &&
+          tournamentActionRoot.children.length > 1
+        ) {
+          root.append(tournamentActionRoot);
+        }
+        // TOURNAMENT DETAIL UI V1D
+            const tournamentRows =
+              rows(
+                'tournaments'
+              )
+                .slice()
+                .sort(
+                  (a, b) =>
+                    String(
+                      b.start_date ||
+                      ''
+                    ).localeCompare(
+                      String(
+                        a.start_date ||
+                        ''
+                      )
+                    )
+                );
+
+            if (
+              !tournamentRows.length
+            ) {
+              root.append(
+                el(
+                  'p',
+                  canManageTournaments()
+                    ? '🏆 Chưa có giải đấu. Mở “Tạo giải đấu” để khởi động giải đầu tiên.'
+                    : '🏆 Chưa có giải đấu nào được tạo.',
+                  'notice'
+                )
+              );
+
+              break;
+            }
+
+            const tournamentMatches =
+              rows(
+                'matches'
+              );
+
+            const tournamentMatchPlayers =
+              rows(
+                'match_players'
+              );
+
+            const tournamentStatusLabels = {
+              DU_KIEN:
+                '🗓️ Dự kiến',
+              MO_DANG_KY:
+                '📝 Mở đăng ký',
+              DANG_DIEN_RA:
+                '🔥 Đang diễn ra',
+              DA_KET_THUC:
+                '🏁 Đã kết thúc',
+              DA_QUYET_TOAN:
+                '✅ Đã quyết toán',
+              HUY:
+                '⛔ Đã hủy'
+            };
+
+            const tournamentStatusClasses = {
+              DU_KIEN:
+                'planned',
+              MO_DANG_KY:
+                'registration',
+              DANG_DIEN_RA:
+                'live',
+              DA_KET_THUC:
+                'finished',
+              DA_QUYET_TOAN:
+                'settled',
+              HUY:
+                'cancelled'
+            };
+
+            const tournamentMatchStatusLabels = {
+              PENDING:
+                'Chờ duyệt',
+              APPROVED:
+                'Đã duyệt',
+              INVALID:
+                'Không hợp lệ',
+              VOIDED:
+                'Đã hủy'
+            };
+
+            const tournamentDateText =
+              value => {
+                if (!value) {
+                  return '—';
+                }
+
+                const text =
+                  String(
+                    value
+                  ).slice(
+                    0,
+                    10
+                  );
+
+                const parts =
+                  text.split(
+                    '-'
+                  );
+
+                if (
+                  parts.length !==
+                  3
+                ) {
+                  return text;
+                }
+
+                return (
+                  parts[2] +
+                  '/' +
+                  parts[1] +
+                  '/' +
+                  parts[0]
+                );
+              };
+
+            const tournamentList =
+              el(
+                'section',
+                null,
+                'tournament-list'
+              );
+
+            const tournamentHeading =
+              el(
+                'div',
+                null,
+                'tournament-list-heading'
+              );
+
+            tournamentHeading.append(
+              el(
+                'h3',
+                '🏆 Các giải đấu'
+              ),
+              el(
+                'p',
+                tournamentRows.length +
+                  ' giải đấu · Bấm “Xem chi tiết” để mở thông tin và các trận.',
+                'muted'
+              )
+            );
+
+            tournamentList.append(
+              tournamentHeading
+            );
+
+            closeTournamentCard =
+              tournamentId => {
+                const entry =
+                  tournamentCards.get(
+                    tournamentId
+                  );
+
+                if (!entry) {
+                  return;
+                }
+
+                entry.body.hidden =
+                  true;
+
+                entry.card.classList.remove(
+                  'tournament-card-open'
+                );
+
+                entry.toggle.textContent =
+                  'Xem chi tiết';
+              };
+
+            closeTournamentDetail =
+              () => {
+                if (!openedTournamentId) {
+                  return;
+                }
+
+                closeTournamentCard(
+                  openedTournamentId
+                );
+
+                openedTournamentId =
+                  null;
+              };
+
+            tournamentRows.forEach(
+              tournament => {
+                const status =
+                  upper(
+                    tournament.status
+                  );
+
+                const statusLabel =
+                  tournamentStatusLabels[
+                    status
+                  ] ||
+                  raw(
+                    tournament.status
+                  ) ||
+                  '—';
+
+                const statusClass =
+                  tournamentStatusClasses[
+                    status
+                  ] ||
+                  'planned';
+
+                const matchesForTournament =
+                  tournamentMatches
+                    .filter(
+                      match =>
+                        match.tournament_id ===
+                        tournament.id
+                    )
+                    .slice()
+                    .sort(
+                      (a, b) => {
+                        const dateCompare =
+                          String(
+                            b.played_at ||
+                            ''
+                          ).localeCompare(
+                            String(
+                              a.played_at ||
+                              ''
+                            )
+                          );
+
+                        if (
+                          dateCompare !==
+                          0
+                        ) {
+                          return dateCompare;
+                        }
+
+                        return (
+                          Number(
+                            b.match_number ||
+                            0
+                          ) -
+                          Number(
+                            a.match_number ||
+                            0
+                          )
+                        );
+                      }
+                    );
+
+                const matchIds =
+                  new Set(
+                    matchesForTournament.map(
+                      match =>
+                        match.id
+                    )
+                  );
+
+                const linksForTournament =
+                  tournamentMatchPlayers.filter(
+                    link =>
+                      matchIds.has(
+                        link.match_id
+                      )
+                  );
+
+                const participantIds =
+                  new Set(
+                    linksForTournament
+                      .map(
+                        link =>
+                          link.player_id
+                      )
+                      .filter(
+                        Boolean
+                      )
+                  );
+
+                const statusCounts = {
+                  PENDING: 0,
+                  APPROVED: 0,
+                  INVALID: 0,
+                  VOIDED: 0
+                };
+
+                matchesForTournament.forEach(
+                  match => {
+                    const matchStatus =
+                      upper(
+                        match.status
+                      );
+
+                    if (
+                      Object.prototype.hasOwnProperty.call(
+                        statusCounts,
+                        matchStatus
+                      )
+                    ) {
+                      statusCounts[
+                        matchStatus
+                      ] += 1;
+                    }
+                  }
+                );
+
+                const card =
+                  el(
+                    'article',
+                    null,
+                    'tournament-card tournament-card-' +
+                      statusClass
+                  );
+
+                const cardHeader =
+                  el(
+                    'div',
+                    null,
+                    'tournament-card-header'
+                  );
+
+                const titleArea =
+                  el(
+                    'div',
+                    null,
+                    'tournament-card-title'
+                  );
+
+                titleArea.append(
+                  el(
+                    'h4',
+                    raw(
+                      tournament.name
+                    ) ||
+                      'Giải đấu'
+                  )
+                );
+
+                if (
+                  tournament.code
+                ) {
+                  titleArea.append(
+                    el(
+                      'span',
+                      raw(
+                        tournament.code
+                      ),
+                      'tournament-code'
+                    )
+                  );
+                }
+
+                const statusBadge =
+                  el(
+                    'span',
+                    statusLabel,
+                    'tournament-status tournament-status-' +
+                      statusClass
+                  );
+
+                cardHeader.append(
+                  titleArea,
+                  statusBadge
+                );
+                // TOURNAMENT SUMMARY REGISTRATION V1E
+                const summaryActiveRegistrations =
+                  rows(
+                    'tournament_registrations'
+                  ).filter(
+                    registration =>
+                      registration.tournament_id ===
+                        tournament.id &&
+                      upper(
+                        registration.status
+                      ) !==
+                        'HUY'
+                  );
+
+                const summaryRegisteredPlayerIds =
+                  new Set();
+
+                summaryActiveRegistrations.forEach(
+                  registration => {
+                    if (
+                      registration.player_id
+                    ) {
+                      summaryRegisteredPlayerIds.add(
+                        registration.player_id
+                      );
+                    }
+
+                    if (
+                      registration.partner_player_id
+                    ) {
+                      summaryRegisteredPlayerIds.add(
+                        registration.partner_player_id
+                      );
+                    }
+                  }
+                );
+
+
+                const summary =
+                  el(
+                    'div',
+                    null,
+                    'tournament-summary-grid'
+                  );
+
+                const summaryItem =
+                  (
+                    icon,
+                    label,
+                    value
+                  ) => {
+                    const item =
+                      el(
+                        'div',
+                        null,
+                        'tournament-summary-item'
+                      );
+
+                    item.append(
+                      el(
+                        'span',
+                        icon,
+                        'tournament-summary-icon'
+                      ),
+                      el(
+                        'span',
+                        label,
+                        'tournament-summary-label'
+                      ),
+                      el(
+                        'strong',
+                        value,
+                        'tournament-summary-value'
+                      )
+                    );
+
+                    return item;
+                  };
+
+                const dateRange =
+                  tournamentDateText(
+                    tournament.start_date
+                  ) +
+                  (
+                    tournament.end_date &&
+                    tournament.end_date !==
+                      tournament.start_date
+                      ? ' → ' +
+                        tournamentDateText(
+                          tournament.end_date
+                        )
+                      : ''
+                  );
+
+                summary.append(
+                  summaryItem(
+                    '📅',
+                    'Thời gian',
+                    dateRange
+                  ),
+                  summaryItem(
+                    '📍',
+                    'Địa điểm',
+                    raw(
+                      tournament.location
+                    ) ||
+                      '—'
+                  ),
+                  summaryItem(
+                    '🏓',
+                    'Trận đấu',
+                    String(
+                      matchesForTournament.length
+                    )
+                  ),
+                  summaryItem(
+                    '👥',
+                    'Đã đăng ký',
+                    String(
+                      summaryRegisteredPlayerIds.size
+                    )
+                  ),
+                  summaryItem(
+                    '🎾',
+                    'Đã thi đấu',
+                    String(
+                      participantIds.size
+                    )
+                  )
+                );
+
+                const toggleRow =
+                  el(
+                    'div',
+                    null,
+                    'tournament-card-actions'
+                  );
+
+                const detailToggle =
+                  button(
+                    'Xem chi tiết',
+                    () => {
+                      const opening =
+                        detailBody.hidden;
+
+                      if (
+                        openedTournamentId &&
+                        openedTournamentId !==
+                          tournament.id
+                      ) {
+                        closeTournamentCard(
+                          openedTournamentId
+                        );
+                      }
+
+                      if (opening) {
+                        closeTournamentAdminActions();
+
+                        detailBody.hidden =
+                          false;
+
+                        card.classList.add(
+                          'tournament-card-open'
+                        );
+
+                        detailToggle.textContent =
+                          'Thu gọn';
+
+                        openedTournamentId =
+                          tournament.id;
+                      } else {
+                        closeTournamentCard(
+                          tournament.id
+                        );
+
+                        openedTournamentId =
+                          null;
+                      }
+                    },
+                    'tournament-detail-toggle'
+                  );
+
+                detailToggle.type =
+                  'button';
+
+                toggleRow.append(
+                  detailToggle
+                );
+
+                const detailBody =
+                  el(
+                    'div',
+                    null,
+                    'tournament-detail-body'
+                  );
+
+                detailBody.hidden =
+                  true;
+
+                const infoGrid =
+                  el(
+                    'div',
+                    null,
+                    'tournament-detail-info'
+                  );
+
+                const detailItem =
+                  (
+                    label,
+                    value
+                  ) => {
+                    const item =
+                      el(
+                        'div',
+                        null,
+                        'tournament-detail-item'
+                      );
+
+                    item.append(
+                      el(
+                        'span',
+                        label,
+                        'muted'
+                      ),
+                      el(
+                        'strong',
+                        value
+                      )
+                    );
+
+                    return item;
+                  };
+
+                infoGrid.append(
+                  detailItem(
+                    'Loại sự kiện',
+                    raw(
+                      tournament.event_category
+                    ) ||
+                      '—'
+                  ),
+                  detailItem(
+                    'Thể thức',
+                    raw(
+                      tournament.format
+                    ) ||
+                      '—'
+                  ),
+                  detailItem(
+                    'Phí đăng ký',
+                    Number(
+                      tournament.registration_fee ||
+                      0
+                    ).toLocaleString(
+                      'vi-VN'
+                    ) +
+                      'đ'
+                  ),
+                  detailItem(
+                    'Trạng thái',
+                    statusLabel
+                  )
+                );
+
+                if (
+                  tournament.notes
+                ) {
+                  infoGrid.append(
+                    detailItem(
+                      'Ghi chú',
+                      raw(
+                        tournament.notes
+                      )
+                    )
+                  );
+                }
+
+                const matchStats =
+                  el(
+                    'div',
+                    null,
+                    'tournament-match-stats'
+                  );
+
+                matchStats.append(
+                  el(
+                    'span',
+                    '✅ Đã duyệt: ' +
+                      statusCounts.APPROVED,
+                    'tournament-match-stat'
+                  ),
+                  el(
+                    'span',
+                    '⏳ Chờ duyệt: ' +
+                      statusCounts.PENDING,
+                    'tournament-match-stat'
+                  ),
+                  el(
+                    'span',
+                    '⚠️ Không hợp lệ: ' +
+                      statusCounts.INVALID,
+                    'tournament-match-stat'
+                  ),
+                  el(
+                    'span',
+                    '🚫 Đã hủy: ' +
+                      statusCounts.VOIDED,
+                    'tournament-match-stat'
+                  )
+                );
+                // TOURNAMENT REGISTRATION LIST V1G
+                const registrationsForTournament =
+                  rows(
+                    'tournament_registrations'
+                  )
+                    .filter(
+                      registration =>
+                        registration.tournament_id ===
+                        tournament.id
+                    )
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        String(
+                          a.created_at ||
+                          ''
+                        ).localeCompare(
+                          String(
+                            b.created_at ||
+                            ''
+                          )
+                        )
+                    );
+
+                const activeRegistrations =
+                  registrationsForTournament.filter(
+                    registration =>
+                      upper(
+                        registration.status
+                      ) !==
+                      'HUY'
+                  );
+
+                const registeredPlayerIds =
+                  new Set();
+
+                activeRegistrations.forEach(
+                  registration => {
+                    if (
+                      registration.player_id
+                    ) {
+                      registeredPlayerIds.add(
+                        registration.player_id
+                      );
+                    }
+
+                    if (
+                      registration.partner_player_id
+                    ) {
+                      registeredPlayerIds.add(
+                        registration.partner_player_id
+                      );
+                    }
+                  }
+                );
+
+                const registrationSection =
+                  el(
+                    'section',
+                    null,
+                    'tournament-registration-list'
+                  );
+
+                const registrationListBody =
+                  el(
+                    'div',
+                    null,
+                    'tournament-registration-list-body'
+                  );
+
+                registrationListBody.hidden =
+                  true;
+
+                const registrationListToggle =
+                  button(
+                    '👥 Đăng ký: ' +
+                      activeRegistrations.length +
+                      ' cặp / ' +
+                      registeredPlayerIds.size +
+                      ' VĐV',
+                    () => {
+                      const opening =
+                        registrationListBody.hidden;
+
+                      registrationListBody.hidden =
+                        !opening;
+
+                      registrationListToggle.textContent =
+                        opening
+                          ? '− Thu gọn danh sách đăng ký'
+                          : '👥 Đăng ký: ' +
+                            activeRegistrations.length +
+                            ' cặp / ' +
+                            registeredPlayerIds.size +
+                            ' VĐV';
+                    },
+                    'tournament-detail-toggle'
+                  );
+
+                registrationListToggle.type =
+                  'button';
+
+                registrationSection.append(
+                  registrationListToggle,
+                  registrationListBody
+                );
+
+                if (
+                  !registrationsForTournament.length
+                ) {
+                  registrationListBody.append(
+                    el(
+                      'p',
+                      'Chưa có VĐV đăng ký giải này.',
+                      'notice'
+                    )
+                  );
+                } else {
+                  const registrationStatusLabels = {
+                    DANG_KY:
+                      'Đã đăng ký',
+                    DA_XAC_NHAN:
+                      'Đã xác nhận',
+                    HUY:
+                      'Đã hủy'
+                  };
+
+                  registrationsForTournament.forEach(
+                    registration => {
+                      const registrationStatus =
+                        upper(
+                          registration.status
+                        );
+
+                      const registrationRow =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-row'
+                        );
+
+                      const registrationTop =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-top'
+                        );
+
+                      registrationTop.append(
+                        el(
+                          'strong',
+                          raw(
+                            registration.event_name
+                          ) ||
+                            'Nội dung thi đấu'
+                        ),
+                        el(
+                          'span',
+                          registrationStatusLabels[
+                            registrationStatus
+                          ] ||
+                            raw(
+                              registration.status
+                            ) ||
+                            '—',
+                          'tournament-match-status'
+                        )
+                      );
+
+                      const registrationPlayersRow =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-teams'
+                        );
+
+                      const mainPlayerName =
+                        playerName(
+                          registration.player_id
+                        );
+
+                      const partnerName =
+                        registration.partner_player_id
+                          ? playerName(
+                              registration.partner_player_id
+                            )
+                          : 'Chưa có partner';
+
+                      registrationPlayersRow.append(
+                        el(
+                          'span',
+                          mainPlayerName
+                        ),
+                        el(
+                          'strong',
+                          '+',
+                          'tournament-match-score'
+                        ),
+                        el(
+                          'span',
+                          partnerName
+                        )
+                      );
+
+                      const registrationMeta =
+                        el(
+                          'div',
+                          null,
+                          'muted mt-2'
+                        );
+
+                      // TOURNAMENT PAYMENT SUMMARY V1I.4
+                      const registrationPayments =
+                        rows(
+                          'tournament_payments'
+                        ).filter(
+                          payment =>
+                            payment.registration_id ===
+                              registration.id
+                        );
+
+                      const registrationFeeDue =
+                        Number(
+                          registration.fee_due ||
+                          0
+                        );
+
+                      const registrationPaid =
+                        registrationPayments.reduce(
+                          (
+                            total,
+                            payment
+                          ) =>
+                            total +
+                            Number(
+                              payment.amount ||
+                              0
+                            ),
+                          0
+                        );
+
+                      const registrationRemaining =
+                        Math.max(
+                          registrationFeeDue -
+                            registrationPaid,
+                          0
+                        );
+
+                      const registrationPaidInFull =
+                        registrationFeeDue > 0 &&
+                        registrationRemaining <= 0;
+
+                      registrationMeta.textContent =
+                        '';
+
+                      const paymentSummary =
+                        el(
+                          'div',
+                          null,
+                          'tournament-payment-summary'
+                        );
+
+                      const paymentSummaryLine =
+                        (
+                          label,
+                          amount,
+                          className
+                        ) => {
+                          const line =
+                            el(
+                              'div',
+                              null,
+                              'tournament-payment-summary-line' +
+                                (
+                                  className
+                                    ? ' ' +
+                                      className
+                                    : ''
+                                )
+                            );
+
+                          line.append(
+                            el(
+                              'span',
+                              label
+                            ),
+                            el(
+                              'strong',
+                              Number(
+                                amount ||
+                                0
+                              ).toLocaleString(
+                                'vi-VN'
+                              ) +
+                                'đ'
+                            )
+                          );
+
+                          return line;
+                        };
+
+                                            // TOURNAMENT CANCELLED PAYMENT UI V1I.5
+                      if (
+                        registrationStatus ===
+                        'HUY'
+                      ) {
+                        paymentSummary.append(
+                          paymentSummaryLine(
+                            'Phí đăng ký lịch sử',
+                            registrationFeeDue
+                          ),
+                          paymentSummaryLine(
+                            'Đã thu',
+                            registrationPaid,
+                            registrationPaid > 0
+                              ? 'is-paid'
+                              : ''
+                          ),
+                          el(
+                            'div',
+                            '🚫 Đăng ký đã hủy — không còn phải thu',
+                            'tournament-payment-cancelled-note'
+                          )
+                        );
+                      } else {
+                        paymentSummary.append(
+                          paymentSummaryLine(
+                            'Phải thu',
+                            registrationFeeDue
+                          ),
+                          paymentSummaryLine(
+                            'Đã thu',
+                            registrationPaid,
+                            registrationPaid > 0
+                              ? 'is-paid'
+                              : ''
+                          ),
+                          paymentSummaryLine(
+                            'Còn thiếu',
+                            registrationRemaining,
+                            registrationPaidInFull
+                              ? 'is-complete'
+                              : 'is-remaining'
+                          )
+                        );
+
+                        if (
+                          registrationPaidInFull
+                        ) {
+                          paymentSummary.append(
+                            el(
+                              'div',
+                              '✓ Đã thu đủ',
+                              'tournament-payment-paid-badge'
+                            )
+                          );
+                        }
+                      }
+
+                      registrationMeta.append(
+                        paymentSummary
+                      );
+                      // TOURNAMENT REGISTRATION ACTIONS V1H.1
+                      const registrationActions =
+                        el(
+                          'div',
+                          null,
+                          'tournament-card-actions'
+                        );
+
+                      const changeRegistrationStatus =
+                        async (
+                          newStatus,
+                          reason
+                        ) => {
+                          if (
+                            state.writeBusy ||
+                            !canManageTournaments()
+                          ) {
+                            return;
+                          }
+
+                          state.writeBusy =
+                            true;
+
+                          const actionButtons =
+                            Array.from(
+                              registrationActions.querySelectorAll(
+                                'button'
+                              )
+                            );
+
+                          actionButtons.forEach(
+                            actionButton => {
+                              actionButton.disabled =
+                                true;
+                            }
+                          );
+
+                          notice(
+                            $('global-message'),
+                            'Đang cập nhật đăng ký...',
+                            false
+                          );
+
+                          try {
+                            const {
+                              data,
+                              error
+                            } =
+                              await client.rpc(
+                                'change_tournament_registration_status',
+                                {
+                                  p_registration_id:
+                                    registration.id,
+                                  p_new_status:
+                                    newStatus,
+                                  p_reason:
+                                    reason
+                                }
+                              );
+
+                            if (error) {
+                              throw error;
+                            }
+
+                            if (
+                              !data ||
+                              data.ok !== true
+                            ) {
+                              throw new Error(
+                                'Máy chủ không xác nhận thay đổi trạng thái đăng ký.'
+                              );
+                            }
+
+                            await load();
+
+                            state.page =
+                              'tournaments';
+
+                            render();
+
+                            notice(
+                              $('global-message'),
+                              newStatus ===
+                                'DA_XAC_NHAN'
+                                ? 'Đã xác nhận đăng ký thành công. ✓'
+                                : 'Đã hủy đăng ký thành công.',
+                              false,
+                              true
+                            );
+                          } catch (error) {
+                            const code =
+                              String(
+                                error?.message ||
+                                ''
+                              );
+
+                            const friendly = {
+                              AUTH_REQUIRED:
+                                'Phiên đăng nhập không hợp lệ.',
+                              PROFILE_NOT_FOUND:
+                                'Không tìm thấy hồ sơ người dùng.',
+                              PROFILE_INACTIVE:
+                                'Tài khoản hiện không hoạt động.',
+                              ADMIN_REQUIRED:
+                                'Chỉ quản trị viên được thay đổi đăng ký.',
+                              REGISTRATION_NOT_FOUND:
+                                'Không tìm thấy đăng ký này.',
+                              REGISTRATION_ALREADY_CANCELLED:
+                                'Đăng ký này đã bị hủy.',
+                              REGISTRATION_STATUS_UNCHANGED:
+                                'Trạng thái đăng ký không thay đổi.',
+                              INVALID_REGISTRATION_STATUS_TRANSITION:
+                                'Không thể chuyển sang trạng thái này.',
+                              INVALID_CURRENT_REGISTRATION_STATUS:
+                                'Trạng thái đăng ký hiện tại không hợp lệ.',
+                              TOURNAMENT_REGISTRATION_CLOSED:
+                                'Giải đã đóng quản lý đăng ký.',
+                              REGISTRATION_HAS_PAYMENT:
+                                'Đăng ký đã có khoản thanh toán nên chưa thể hủy trực tiếp.'
+                            };
+
+                            let message =
+                              explain(
+                                error
+                              );
+
+                            Object.entries(
+                              friendly
+                            ).some(
+                              ([
+                                key,
+                                value
+                              ]) => {
+                                if (
+                                  code.includes(
+                                    key
+                                  )
+                                ) {
+                                  message =
+                                    value;
+                                  return true;
+                                }
+
+                                return false;
+                              }
+                            );
+
+                            notice(
+                              $('global-message'),
+                              message,
+                              true
+                            );
+                          } finally {
+                            state.writeBusy =
+                              false;
+
+                            actionButtons.forEach(
+                              actionButton => {
+                                actionButton.disabled =
+                                  false;
+                              }
+                            );
+                          }
+                        };
+
+                      if (
+                        canManageTournaments() &&
+                        registrationStatus ===
+                        'DANG_KY'
+                      ) {
+                        const confirmButton =
+                          button(
+                            '✓ Xác nhận',
+                            async () => {
+                              const accepted =
+                                confirm(
+                                  'Xác nhận đăng ký cho ' +
+                                    mainPlayerName +
+                                    (
+                                      registration.partner_player_id
+                                        ? ' / ' +
+                                          partnerName
+                                        : ''
+                                    ) +
+                                    '?'
+                                );
+
+                              if (
+                                !accepted
+                              ) {
+                                return;
+                              }
+
+                              await changeRegistrationStatus(
+                                'DA_XAC_NHAN',
+                                'Xác nhận đăng ký tham gia giải'
+                              );
+                            },
+                            'success'
+                          );
+
+                        confirmButton.type =
+                          'button';
+
+                        registrationActions.append(
+                          confirmButton
+                        );
+                      }
+
+                      if (
+                        canManageTournaments() &&
+                        (
+                          registrationStatus ===
+                            'DANG_KY' ||
+                          registrationStatus ===
+                            'DA_XAC_NHAN'
+                        )
+                      ) {
+                        const cancelButton =
+                          button(
+                            'Hủy đăng ký',
+                            async () => {
+                              const reason =
+                                prompt(
+                                  'Lý do hủy đăng ký:'
+                                );
+
+                              if (
+                                reason ===
+                                null
+                              ) {
+                                return;
+                              }
+
+                              const cleanReason =
+                                String(
+                                  reason
+                                ).trim();
+
+                              if (
+                                !cleanReason
+                              ) {
+                                alert(
+                                  'Vui lòng nhập lý do hủy đăng ký.'
+                                );
+                                return;
+                              }
+
+                              const accepted =
+                                confirm(
+                                  'Hủy đăng ký của ' +
+                                    mainPlayerName +
+                                    (
+                                      registration.partner_player_id
+                                        ? ' / ' +
+                                          partnerName
+                                        : ''
+                                    ) +
+                                    '?'
+                                );
+
+                              if (
+                                !accepted
+                              ) {
+                                return;
+                              }
+
+                              await changeRegistrationStatus(
+                                'HUY',
+                                cleanReason
+                              );
+                            },
+                            'danger'
+                          );
+
+                        cancelButton.type =
+                          'button';
+
+                        registrationActions.append(
+                          cancelButton
+                        );
+                      }
+                      // TOURNAMENT PAYMENT ACTION V1I.6
+                      const paymentActionArea =
+                        el(
+                          'div',
+                          null,
+                          'tournament-payment-action-area'
+                        );
+
+                      if (
+                        canCollectTournamentFee() &&
+                        registrationStatus !==
+                          'HUY' &&
+                        registrationRemaining > 0 &&
+                        registrationFeeDue > 0
+                      ) {
+                        const paymentToggle =
+                          button(
+                            '💰 Thu phí',
+                            () => {
+                              const opening =
+                                paymentForm.hidden;
+
+                              paymentForm.hidden =
+                                !opening;
+
+                              paymentToggle.textContent =
+                                opening
+                                  ? 'Thu gọn'
+                                  : '💰 Thu phí';
+
+                              if (opening) {
+                                amountInput.focus();
+                              }
+                            },
+                            'success'
+                          );
+
+                        paymentToggle.type =
+                          'button';
+
+                        const paymentForm =
+                          el(
+                            'div',
+                            null,
+                            'tournament-payment-form'
+                          );
+
+                        paymentForm.hidden =
+                          true;
+
+                        const amountLabel =
+                          el(
+                            'label',
+                            'Số tiền thu',
+                            'field'
+                          );
+
+                        const amountInput =
+                          document.createElement(
+                            'input'
+                          );
+
+                        amountInput.type =
+                          'number';
+
+                        amountInput.min =
+                          '1';
+
+                        amountInput.step =
+                          '1000';
+
+                        amountInput.value =
+                          String(
+                            registrationRemaining
+                          );
+
+                        amountInput.max =
+                          String(
+                            registrationRemaining
+                          );
+
+                        amountInput.inputMode =
+                          'numeric';
+
+                        amountLabel.append(
+                          amountInput
+                        );
+
+                        const noteLabel =
+                          el(
+                            'label',
+                            'Ghi chú',
+                            'field'
+                          );
+
+                        const noteInput =
+                          document.createElement(
+                            'input'
+                          );
+
+                        noteInput.type =
+                          'text';
+
+                        noteInput.placeholder =
+                          'Ví dụ: Thu tiền mặt';
+
+                        noteLabel.append(
+                          noteInput
+                        );
+
+                        const paymentHint =
+                          el(
+                            'div',
+                            'Còn thiếu: ' +
+                              Number(
+                                registrationRemaining
+                              ).toLocaleString(
+                                'vi-VN'
+                              ) +
+                              'đ',
+                            'muted'
+                          );
+
+                        const paymentSubmit =
+                          button(
+                            '✓ Xác nhận thu',
+                            async () => {
+                              if (
+                                state.writeBusy ||
+                                !canCollectTournamentFee()
+                              ) {
+                                return;
+                              }
+
+                              const amount =
+                                Number(
+                                  amountInput.value
+                                );
+
+                              if (
+                                !Number.isFinite(
+                                  amount
+                                ) ||
+                                amount <= 0
+                              ) {
+                                notice(
+                                  $('global-message'),
+                                  'Số tiền thu phải lớn hơn 0.',
+                                  true
+                                );
+                                return;
+                              }
+
+                              if (
+                                amount >
+                                registrationRemaining
+                              ) {
+                                notice(
+                                  $('global-message'),
+                                  'Số tiền thu không được vượt quá số còn thiếu.',
+                                  true
+                                );
+                                return;
+                              }
+
+                              const accepted =
+                                confirm(
+                                  'Xác nhận thu ' +
+                                    amount.toLocaleString(
+                                      'vi-VN'
+                                    ) +
+                                    'đ cho ' +
+                                    mainPlayerName +
+                                    '?'
+                                );
+
+                              if (
+                                !accepted
+                              ) {
+                                return;
+                              }
+
+                              state.writeBusy =
+                                true;
+
+                              paymentToggle.disabled =
+                                true;
+
+                              paymentSubmit.disabled =
+                                true;
+
+                              amountInput.disabled =
+                                true;
+
+                              noteInput.disabled =
+                                true;
+
+                              notice(
+                                $('global-message'),
+                                'Đang ghi nhận khoản thu...',
+                                false
+                              );
+
+                              try {
+                                const {
+                                  data,
+                                  error
+                                } =
+                                  await client.rpc(
+                                    'create_tournament_payment',
+                                    {
+                                      p_registration_id:
+                                        registration.id,
+                                      p_amount:
+                                        amount,
+                                      p_paid_at:
+                                        new Date().toISOString(),
+                                      p_note:
+                                        String(
+                                          noteInput.value ||
+                                          ''
+                                        ).trim() ||
+                                        null
+                                    }
+                                  );
+
+                                if (error) {
+                                  throw error;
+                                }
+
+                                if (
+                                  !data ||
+                                  data.ok !== true
+                                ) {
+                                  throw new Error(
+                                    'Máy chủ không xác nhận khoản thu.'
+                                  );
+                                }
+
+                                await load();
+
+                                state.page =
+                                  'tournaments';
+
+                                render();
+
+                                notice(
+                                  $('global-message'),
+                                  data.paid_in_full
+                                    ? 'Đã thu đủ phí đăng ký. ✓'
+                                    : 'Đã ghi nhận khoản thu ' +
+                                        Number(
+                                          data.amount ||
+                                          amount
+                                        ).toLocaleString(
+                                          'vi-VN'
+                                        ) +
+                                        'đ. Còn thiếu ' +
+                                        Number(
+                                          data.remaining_after ||
+                                          0
+                                        ).toLocaleString(
+                                          'vi-VN'
+                                        ) +
+                                        'đ.',
+                                  false,
+                                  true
+                                );
+                              } catch (error) {
+                                const code =
+                                  String(
+                                    error?.message ||
+                                    ''
+                                  );
+
+                                const friendly = {
+                                  AUTH_REQUIRED:
+                                    'Phiên đăng nhập không hợp lệ.',
+                                  PROFILE_NOT_FOUND:
+                                    'Không tìm thấy hồ sơ người dùng.',
+                                  PROFILE_INACTIVE:
+                                    'Tài khoản hiện không hoạt động.',
+                                  TREASURER_PERMISSION_REQUIRED:
+                                    'Tài khoản này không có quyền thu phí đăng ký giải.',
+                                  REGISTRATION_NOT_FOUND:
+                                    'Không tìm thấy đăng ký này.',
+                                  REGISTRATION_CANCELLED:
+                                    'Đăng ký đã bị hủy nên không thể thu phí.',
+                                  REGISTRATION_NOT_PAYABLE:
+                                    'Đăng ký hiện không thể thu phí.',
+                                  TOURNAMENT_NOT_FOUND:
+                                    'Không tìm thấy giải đấu.',
+                                  TOURNAMENT_CANCELLED:
+                                    'Giải đấu đã bị hủy.',
+                                  TOURNAMENT_ALREADY_SETTLED:
+                                    'Giải đấu đã quyết toán nên không thể ghi thêm khoản thu.',
+                                  PAYMENT_AMOUNT_REQUIRED:
+                                    'Vui lòng nhập số tiền thu.',
+                                  PAYMENT_AMOUNT_MUST_BE_POSITIVE:
+                                    'Số tiền thu phải lớn hơn 0.',
+                                  PAID_AT_REQUIRED:
+                                    'Thiếu thời điểm thanh toán.',
+                                  REGISTRATION_HAS_NO_FEE_DUE:
+                                    'Đăng ký này không có phí phải thu.',
+                                  REGISTRATION_ALREADY_PAID_IN_FULL:
+                                    'Đăng ký này đã thu đủ phí.',
+                                  PAYMENT_EXCEEDS_REMAINING_BALANCE:
+                                    'Số tiền thu vượt quá số còn thiếu.'
+                                };
+
+                                let message =
+                                  explain(
+                                    error
+                                  );
+
+                                Object.entries(
+                                  friendly
+                                ).some(
+                                  ([
+                                    key,
+                                    value
+                                  ]) => {
+                                    if (
+                                      code.includes(
+                                        key
+                                      )
+                                    ) {
+                                      message =
+                                        value;
+                                      return true;
+                                    }
+
+                                    return false;
+                                  }
+                                );
+
+                                notice(
+                                  $('global-message'),
+                                  message,
+                                  true
+                                );
+                              } finally {
+                                state.writeBusy =
+                                  false;
+
+                                paymentToggle.disabled =
+                                  false;
+
+                                paymentSubmit.disabled =
+                                  false;
+
+                                amountInput.disabled =
+                                  false;
+
+                                noteInput.disabled =
+                                  false;
+                              }
+                            },
+                            'success'
+                          );
+
+                        paymentSubmit.type =
+                          'button';
+
+                        const paymentCancel =
+                          button(
+                            'Đóng',
+                            () => {
+                              paymentForm.hidden =
+                                true;
+
+                              paymentToggle.textContent =
+                                '💰 Thu phí';
+                            }
+                          );
+
+                        paymentCancel.type =
+                          'button';
+
+                        const paymentButtons =
+                          el(
+                            'div',
+                            null,
+                            'tournament-card-actions'
+                          );
+
+                        paymentButtons.append(
+                          paymentSubmit,
+                          paymentCancel
+                        );
+
+                        paymentForm.append(
+                          amountLabel,
+                          noteLabel,
+                          paymentHint,
+                          paymentButtons
+                        );
+
+                        paymentActionArea.append(
+                          paymentToggle,
+                          paymentForm
+                        );
+                      }
+
+
+                      registrationRow.append(
+                        registrationTop,
+                        registrationPlayersRow,
+                        registrationMeta,
+                        registrationActions,
+                        paymentActionArea
+                      );
+
+                      registrationListBody.append(
+                        registrationRow
+                      );
+                    }
+                  );
+                }
+
+
+                const matchesSection =
+                  el(
+                    'section',
+                    null,
+                    'tournament-matches'
+                  );
+
+                matchesSection.append(
+                  el(
+                    'h5',
+                    'Các trận thuộc giải'
+                  )
+                );
+
+                if (
+                  !matchesForTournament.length
+                ) {
+                  matchesSection.append(
+                    el(
+                      'p',
+                      'Chưa có trận nào được gắn vào giải này.',
+                      'notice'
+                    )
+                  );
+                } else {
+                  matchesForTournament.forEach(
+                    match => {
+                      const matchRow =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-row'
+                        );
+
+                      const matchLinks =
+                        linksForTournament.filter(
+                          link =>
+                            link.match_id ===
+                            match.id
+                        );
+
+                      const teamA =
+                        matchLinks
+                          .filter(
+                            link =>
+                              upper(
+                                link.team
+                              ) ===
+                              'A'
+                          )
+                          .map(
+                            link =>
+                              playerName(
+                                link.player_id
+                              )
+                          )
+                          .join(
+                            ' / '
+                          ) ||
+                        'Đội A';
+
+                      const teamB =
+                        matchLinks
+                          .filter(
+                            link =>
+                              upper(
+                                link.team
+                              ) ===
+                              'B'
+                          )
+                          .map(
+                            link =>
+                              playerName(
+                                link.player_id
+                              )
+                          )
+                          .join(
+                            ' / '
+                          ) ||
+                        'Đội B';
+
+                      const matchStatus =
+                        upper(
+                          match.status
+                        );
+
+                      const score =
+                        String(
+                          match.team_a_score ??
+                          0
+                        ) +
+                        ' - ' +
+                        String(
+                          match.team_b_score ??
+                          0
+                        );
+
+                      const matchTop =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-top'
+                        );
+
+                      matchTop.append(
+                        el(
+                          'strong',
+                          matchCode(
+                            match
+                          )
+                        ),
+                        el(
+                          'span',
+                          tournamentMatchStatusLabels[
+                            matchStatus
+                          ] ||
+                            raw(
+                              match.status
+                            ),
+                          'tournament-match-status'
+                        )
+                      );
+
+                      const teams =
+                        el(
+                          'div',
+                          null,
+                          'tournament-match-teams'
+                        );
+
+                      teams.append(
+                        el(
+                          'span',
+                          teamA
+                        ),
+                        el(
+                          'strong',
+                          score,
+                          'tournament-match-score'
+                        ),
+                        el(
+                          'span',
+                          teamB
+                        )
+                      );
+
+                      matchRow.append(
+                        matchTop,
+                        teams
+                      );
+
+                      matchesSection.append(
+                        matchRow
+                      );
+                    }
+                  );
+                }
+
+                detailBody.append(
+                  infoGrid,
+                  matchStats,
+                  registrationSection,
+                  matchesSection
+                );
+
+                card.append(
+                  cardHeader,
+                  summary,
+                  toggleRow,
+                  detailBody
+                );
+
+                tournamentCards.set(
+                  tournament.id,
+                  {
+                    card,
+                    body:
+                      detailBody,
+                    toggle:
+                      detailToggle
+                  }
+                );
+
+                tournamentList.append(
+                  card
+                );
+              }
+            );
+
+            root.append(
+              tournamentList
+            );
+            break;
+          }
+
+          case 'admin':
+            accountPage();
+            break;
+        }
+      }
+
+      function explain(e) {
+        if (
+          e?.name ===
+          'AbortError'
+        ) {
+          return 'Yêu cầu đã hết thời gian hoặc bị hủy. Hãy thử lại.';
+        }
+
+        if (
+          e?.code ===
+            '42501' ||
+          e?.status === 403
+        ) {
+          return 'Tài khoản chưa có quyền thực hiện thao tác này.';
+        }
+
+        if (
+          e?.status ===
+          401
+        ) {
+          return 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.';
+        }
+
+        if (
+          e?.code ===
+            '42P01' ||
+          e?.code ===
+            'PGRST205'
+        ) {
+          return 'Chưa tìm thấy bảng dữ liệu trên máy chủ.';
+        }
+
+        return (
+          'Không thực hiện được yêu cầu. Kiểm tra kết nối hoặc liên hệ quản trị viên' +
+          (
+            e?.code
+              ? ' (mã ' +
+                String(
+                  e.code
+                ).slice(
+                  0,
+                  40
+                ) +
+                ').'
+              : '.'
+          )
+        );
+      }
+
+      async function query(
+        q,
+        signal
+      ) {
+        const local =
+          new AbortController();
+
+        const cancel = () =>
+          local.abort();
+
+        if (signal?.aborted) {
+          local.abort();
+        } else {
+          signal?.addEventListener(
+            'abort',
+            cancel,
+            {
+              once: true
+            }
+          );
+        }
+
+        const timer =
+          setTimeout(
+            cancel,
+            20000
+          );
+
+        try {
+          const result =
+            await q.abortSignal(
+              local.signal
+            );
+
+          if (
+            local.signal
+              .aborted
+          ) {
+            throw new DOMException(
+              'Aborted',
+              'AbortError'
+            );
+          }
+
+          if (result.error) {
+            throw result.error;
+          }
+
+          return result;
+        } finally {
+          clearTimeout(
+            timer
+          );
+
+          signal?.removeEventListener(
+            'abort',
+            cancel
+          );
+        }
+      }
+
+      // Own-data cache is shared by initial sync and the Fund portal; retries fetch only these three RPCs.
+      async function readMemberFund(signal = state.controller?.signal) {
+        const generation=state.generation, owner=state.session?.user.id;
+        const r2=!canManageFund()&&!canCollectFund();
+        const reader=r2?window.PickFundR2:window.PickFundPersonal;
+        const data=await reader.read({rpc:(name,args)=>query(client.rpc(name,args),signal)});
+        if (generation!==state.generation || owner!==state.session?.user.id) throw new Error('STALE_SESSION');
+        state.memberFundObligations=data.obligations||[];state.memberFundPaymentHistory=data.payments||[];state.memberFundR2=data.own||null;state.memberFundOverview=data.summary;
+        delete state.errors.fund_transactions;
+        return data;
+      }
+
+      async function readTable(
+        t,
+        signal
+      ) {
+        // Normal MEMBER does not fetch raw Fund datasets. Authoritative own RPCs supply the portal.
+        if (!isAdmin() && !canManageFund() && !canCollectFund() &&
+            ['fund_contributions','fund_payments','fund_rules','fund_obligation_campaigns'].includes(t)) return {data:[],partial:false};
+        if (
+          !tables.includes(
+            t
+          )
+        ) {
+          throw new Error(
+            'Nguồn dữ liệu không được phép.'
+          );
+        }
+
+        if (
+          t === 'matches' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                canApproveMatches()
+                  ? 'get_match_management_matches'
+                  : 'get_member_matches'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'match_players' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                canApproveMatches()
+                  ? 'get_match_management_players'
+                  : 'get_member_match_players'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'tournament_registrations' &&
+          !isAdmin() &&
+          (
+            canManageTournaments() ||
+            canCollectTournamentFee()
+          )
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                'get_tournament_management_registrations'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'tournament_payments' &&
+          !isAdmin() &&
+          (
+            canManageTournaments() ||
+            canCollectTournamentFee()
+          )
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                'get_tournament_management_payments'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'rating_events' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                'get_member_rating_events'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'fund_contributions' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                (
+                  canManageFund() ||
+                  canCollectFund()
+                )
+                  ? 'get_fund_management_contributions'
+                  : 'get_my_fund_contributions'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'fund_payments' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                (
+                  canManageFund() ||
+                  canCollectFund()
+                )
+                  ? 'get_fund_management_payments'
+                  : 'get_my_fund_payments'
+              ),
+              signal
+            );
+
+          return {
+            data: [...(result.data || [])],
+            partial: false
+          };
+        }
+
+        // FUND04: collection preview uses the same authoritative read model for all collectors.
+        if (t === 'fund_transactions' && (isAdmin() || canManageFund() || canCollectFund())) {
+          const balances = await query(client.rpc('get_fund_collection_balances'), signal);
+          if (!Array.isArray(balances.data)) throw new Error('FUND_BALANCE_RESPONSE_INVALID');
+          // query throws on RPC error/abort; never publish a failed/stale response as ready.
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          state.fundCollectionBalances = [...balances.data];
+          state.fundCollectionBalancesReady = true;
+        }
+
+        // MP01 MEMBER FUND LOAD V1
+        if (
+          t === 'fund_transactions' &&
+          !isAdmin()
+        ) {
+          await readMemberFund(signal);
+
+          // Delegated fund managers retain MEMBER self-service and club summary.
+          if (canManageFund()) {
+            const result = await query(
+              client.rpc('get_fund_management_transactions'),
+              signal
+            );
+            return { data: [...(result.data || [])], partial: false };
+          }
+          // MEMBER no longer needs raw fund ledger rows.
+          return {
+            data: [],
+            partial: false
+          };
+        }
+
+        if (
+          t === 'players' &&
+          !isAdmin()
+        ) {
+          const result =
+            await query(
+              client.rpc(
+                (canManagePlayers() || canManagePlayerLifecycle())
+                  ? 'get_member_management_players'
+                  : 'get_player_directory'
+              ),
+              signal
+            );
+
+          // IAM04-B: directory rows may omit private contact fields.
+          const directory = [...(result.data || [])];
+          const ownPlayerId = state.profile?.player_id;
+          if (upper(state.profile?.role) === 'MEMBER' && ownPlayerId) {
+            const own = await query(
+              client.from('players')
+                .select('id,full_name,phone,date_of_birth')
+                .eq('id', ownPlayerId)
+                .maybeSingle(),
+              signal
+            );
+            if (own.data && String(own.data.id) === String(ownPlayerId)) {
+              const index = directory.findIndex(item => String(item.id) === String(ownPlayerId));
+              if (index >= 0) {
+                directory[index] = { ...directory[index], ...own.data };
+              } else {
+                directory.push(own.data);
+              }
+            }
+          }
+          return { data: directory, partial: false };
+        }
+
+        const first =
+          await query(
+            client
+              .from(t)
+              .select('*')
+              .limit(1),
+            signal
+          );
+
+        if (
+          !first.data
+            ?.length
+        ) {
+          return {
+            data: [],
+            partial: false
+          };
+        }
+
+        const sample =
+          first.data[0];
+
+        const keys =
+          'id' in sample
+            ? ['id']
+            : Object.keys(
+                sample
+              )
+                .filter(
+                  k =>
+                    sample[k] ===
+                      null ||
+                    [
+                      'string',
+                      'number',
+                      'boolean'
+                    ].includes(
+                      typeof sample[
+                        k
+                      ]
+                    )
+                )
+                .sort();
+
+        if (!keys.length) {
+          throw new Error(
+            'Không có cột sắp xếp.'
+          );
+        }
+
+        const data = [];
+        let expected = null;
+
+        while (
+          data.length <
+          10000
+        ) {
+          let q =
+            client
+              .from(t)
+              .select(
+                '*',
+                {
+                  count:
+                    'exact'
+                }
+              );
+
+          for (
+            const k of keys
+          ) {
+            q =
+              q.order(
+                k,
+                {
+                  ascending:
+                    true,
+                  nullsFirst:
+                    true
+                }
+              );
+          }
+
+          const result =
+            await query(
+              q.range(
+                data.length,
+                data.length +
+                  499
+              ),
+              signal
+            );
+
+          if (
+            expected ===
+            null
+          ) {
+            expected =
+              result.count;
+          } else if (
+            expected !==
+            result.count
+          ) {
+            throw new Error(
+              'Dữ liệu đang thay đổi.'
+            );
+          }
+
+          const batch =
+            result.data ||
+            [];
+
+          data.push(
+            ...batch
+          );
+
+          if (
+            !batch.length ||
+            (
+              data.length >=
+                result.count &&
+              result.count !==
+                null
+            )
+          ) {
+            break;
+          }
+        }
+
+        return {
+          data,
+          partial:
+            expected ===
+            null
+              ? data.length >=
+                10000
+              : data.length <
+                expected
+        };
+      }
+
+      async function load() {
+        fundUiDispose?.();
+        fundUiDispose = null;
+        memberAnalyticsDispose?.();
+        memberAnalyticsDispose = null;
+        if (
+          !state.session
+        ) {
+          return;
+        }
+
+        const gen =
+          ++state.generation;
+
+        state.controller?.abort();
+
+        state.controller =
+          new AbortController();
+
+        const signal =
+          state.controller.signal;
+
+        state.busy = true;
+        state.profile = null;
+        state.data = {};
+        state.errors = {};
+        state.partial = {};
+        state.memberFundOverview = null;
+        state.memberFundR2 = null;
+        state.memberFundObligations = [];
+        state.memberFundPaymentHistory = [];
+        state.fundCollectionBalances = [];
+        state.fundCollectionBalancesReady = false;
+
+        $('user-name').textContent =
+          state.session.user
+            .email ||
+          'Tài khoản';
+
+        $('user-role').textContent =
+          '';
+
+        $('refresh').disabled =
+          true;
+
+        notice(
+          $('global-message'),
+          ''
+        );
+
+        $('sync-status').textContent =
+          'Đang kết nối…';
+
+        render();
+
+        try {
+          const result =
+            await query(
+              client
+                .from(
+                  'profiles'
+                )
+                .select(
+                  'id, full_name, login_name, role, is_active, membership_status, can_collect_tournament_fee, can_approve_matches, can_manage_tournaments, can_manage_fund, can_manage_members, can_manage_players, can_manage_player_lifecycle, can_adjust_rating, can_collect_fund, can_view_audit, player_id, must_change_password'
+                )
+                .eq(
+                  'id',
+                  state.session
+                    .user.id
+                )
+                .maybeSingle(),
+              signal
+            );
+
+          if (
+            gen !==
+            state.generation
+          ) {
+            return;
+          }
+
+          if (
+            !result.data
+          ) {
+            throw new Error(
+              'PROFILE_MISSING'
+            );
+          }
+
+          state.profile =
+            result.data;
+
+          $('user-name').textContent =
+            result.data
+              .full_name ||
+            state.session.user
+              .email ||
+            'Thành viên';
+
+          $('user-role').textContent =
+            badge(
+              result.data.role
+            ).textContent;
+
+          if (result.data.membership_status !== 'APPROVED') return;
+
+          if (
+            result.data
+              .is_active !==
+            true
+          ) {
+            return;
+          }
+
+          if (
+            result.data
+              .must_change_password ===
+            true
+          ) {
+            return;
+          }
+
+          let next = 0;
+
+          await Promise.all(
+            Array.from(
+              {
+                length: 4
+              },
+              async () => {
+                while (
+                  next <
+                  tables.length
+                ) {
+                  const t =
+                    tables[
+                      next++
+                    ];
+
+                  if (
+                    gen !==
+                    state.generation
+                  ) {
+                    return;
+                  }
+
+                  try {
+                    const result =
+                      await readTable(
+                        t,
+                        signal
+                      );
+
+                    if (
+                      gen ===
+                      state.generation
+                    ) {
+                      state.data[
+                        t
+                      ] =
+                        result.data;
+
+                      state.partial[
+                        t
+                      ] =
+                        result.partial;
+                    }
+                  } catch (e) {
+                    if (
+                      gen ===
+                      state.generation
+                    ) {
+                      state.errors[
+                        t
+                      ] =
+                        explain(e);
+                    }
+                  }
+                }
+              }
+            )
+          );
+        } catch (e) {
+          if (
+            gen ===
+            state.generation
+          ) {
+            notice(
+              $('global-message'),
+              e.message ===
+                'PROFILE_MISSING'
+                ? 'Đăng nhập thành công nhưng chưa có hồ sơ được cấp quyền. Liên hệ quản trị viên.'
+                : 'Không đọc được hồ sơ của bạn. ' +
+                  explain(e),
+              true
+            );
+          }
+        } finally {
+          if (
+            gen ===
+            state.generation
+          ) {
+            state.busy =
+              false;
+
+            $('refresh').disabled =
+              false;
+
+            state.updated =
+              new Date();
+
+            const failed =
+              Object.keys(
+                state.errors
+              ).length;
+
+            $('sync-status').textContent =
+              state.profile
+                ?.is_active ===
+              true
+                ? (
+                    failed
+                      ? 'Tải chưa đầy đủ • ' +
+                        failed +
+                        ' nguồn gặp lỗi • '
+                      : 'Đã tải xong • '
+                  ) +
+                  date(
+                    state.updated
+                  )
+                : 'Chưa tải dữ liệu câu lạc bộ';
+
+            render();
+          }
+        }
+      }
+
+      function acceptSession(
+        session
+      ) {
+        const previous =
+          state.session?.user
+            .id;
+
+        if (!session || previous !== session.user.id) {
+          fundUiDispose?.(); fundUiDispose = null;
+          state.individualFundDraft = null; state.individualFundSuccess = null;
+          memberAnalyticsDispose?.();
+          memberAnalyticsDispose = null;
+        }
+        state.session =
+          session;
+
+        if (!session) {
+          state.generation++;
+
+          state.controller?.abort();
+
+          state.data = {};
+          state.errors = {};
+          state.partial = {};
+          state.profile = null;
+          state.busy = false;
+          state.writeBusy = false;
+          state.page =
+            'overview';
+
+          $('content')
+            .replaceChildren();
+
+          $('user-name').textContent =
+            '';
+
+          $('user-role').textContent =
+            '';
+
+          $('app').hidden =
+            true;
+
+          $('login').hidden =
+            false;
+
+          $('boot').hidden =
+            true;
+
+          $('password').value =
+            '';
+
+          return;
+        }
+
+        $('boot').hidden =
+          true;
+
+        $('login').hidden =
+          true;
+
+        $('app').hidden =
+          false;
+
+        if (
+          previous !==
+          session.user.id
+        ) {
+          void load();
+        }
+      }
+      const navRoot =
+        $('nav');
+
+      const primaryMobilePages =
+        new Set([
+          'overview',
+          'matches',
+          'players',
+          'ranking',
+          'fund'
+        ]);
+
+      const secondaryMobilePages =
+        new Set([
+          'contribution',
+          'tournaments',
+          'admin'
+        ]);
+
+      for (
+        const [
+          id,
+          icon,
+          label
+        ] of modules
+      ) {
+        const n = button(
+          '',
+          () =>
+            navigate(id),
+          'nav-item'
+        );
+
+        n.dataset.page =
+          id;
+
+        if (
+          primaryMobilePages.has(
+            id
+          )
+        ) {
+          n.dataset.mobilePrimary =
+            'true';
+        }
+
+        if (
+          secondaryMobilePages.has(
+            id
+          )
+        ) {
+          n.dataset.mobileSecondary =
+            'true';
+        }
+
+        const symbol =
+          el(
+            'span',
+            icon,
+            'nav-icon'
+          );
+
+        symbol.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
+        const visibleLabel =
+          id === 'admin' &&
+          !isAdmin()
+            ? 'Tài khoản'
+            : label;
+
+        n.append(
+          symbol,
+          el(
+            'span',
+            visibleLabel
+          )
+        );
+
+        navRoot.append(n);
+      }
+
+      const moreWrapper =
+        el(
+          'div',
+          null,
+          'nav-more'
+        );
+
+      const moreButton =
+        button(
+          '',
+          () => {
+            const isOpen =
+              moreWrapper.classList
+                .toggle(
+                  'nav-more-open'
+                );
+
+            moreButton.setAttribute(
+              'aria-expanded',
+              isOpen
+                ? 'true'
+                : 'false'
+            );
+          },
+          'nav-item nav-more-button'
+        );
+
+      moreButton.type =
+        'button';
+
+      moreButton.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+
+      moreButton.setAttribute(
+        'aria-haspopup',
+        'menu'
+      );
+
+      const moreIcon =
+        el(
+          'span',
+          '•••',
+          'nav-icon'
+        );
+
+      moreIcon.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+
+      moreButton.append(
+        moreIcon,
+        el(
+          'span',
+          'Thêm'
+        )
+      );
+
+      const moreMenu =
+        el(
+          'div',
+          null,
+          'nav-more-menu'
+        );
+
+      moreMenu.setAttribute(
+        'role',
+        'menu'
+      );
+
+      [
+        [
+          'contribution',
+          '♡',
+          'Cống hiến'
+        ],
+        [
+          'tournaments',
+          '⚑',
+          'Giải đấu'
+        ],
+        [
+          'admin',
+          '⚙',
+          isAdmin()
+            ? 'Quản trị'
+            : 'Tài khoản'
+        ]
+      ].forEach(
+        ([
+          id,
+          icon,
+          label
+        ]) => {
+          const item =
+            button(
+              '',
+              () => {
+                moreWrapper.classList
+                  .remove(
+                    'nav-more-open'
+                  );
+
+                moreButton.setAttribute(
+                  'aria-expanded',
+                  'false'
+                );
+
+                navigate(id);
+              },
+              'nav-more-item'
+            );
+
+          item.type =
+            'button';
+
+          item.dataset.page =
+            id;
+
+          item.setAttribute(
+            'role',
+            'menuitem'
+          );
+
+          item.append(
+            el(
+              'span',
+              icon,
+              'nav-more-item-icon'
+            ),
+            el(
+              'span',
+              label
+            )
+          );
+
+          moreMenu.append(
+            item
+          );
+        }
+      );
+
+      moreWrapper.append(
+        moreButton,
+        moreMenu
+      );
+
+      navRoot.append(
+        moreWrapper
+      );
+
+      $('refresh')
+        .addEventListener(
+          'click',
+          () =>
+            void load()
+        );
+
+      $('recovery-password-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = $('recovery-password-submit');
+        if (!client || submit.disabled || state.writeBusy) return;
+        const password = $('recovery-password').value;
+        const confirm = $('recovery-password-confirm').value;
+        const message = $('recovery-password-message');
+        if (password.length < 8) {
+          notice(message, 'Mật khẩu mới cần ít nhất 8 ký tự.', true);
+          return;
+        }
+        if (password !== confirm) {
+          notice(message, 'Mật khẩu xác nhận không khớp.', true);
+          return;
+        }
+        if (!$('recovery-password-form').reportValidity()) return;
+        state.writeBusy = true;
+        submit.disabled = true;
+        submit.textContent = 'Đang cập nhật…';
+        notice(message, '');
+        try {
+          const { data: sessionData, error: sessionError } = await client.auth.getSession();
+          if (sessionError || !sessionData?.session) throw new Error('RECOVERY_SESSION_MISSING');
+          await changeMyPassword(password, sessionData.session.user.id);
+
+          $('recovery-password').value = '';
+          $('recovery-password-confirm').value = '';
+          notice(message, 'Đã cập nhật mật khẩu. Đang mở lại ứng dụng…', false, true);
+          // Remove recovery flags/tokens and reinitialize normal auth routing.
+          window.location.replace(window.location.pathname);
+        } catch (error) {
+          const text = error?.code === 'weak_password'
+            ? 'Mật khẩu chưa đáp ứng yêu cầu bảo mật. Hãy chọn mật khẩu dài và khó đoán hơn.'
+            : error?.code === 'same_password'
+              ? 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+              : error?.status === 429
+                ? 'Đã vượt giới hạn yêu cầu. Vui lòng chờ rồi thử lại.'
+                : 'Chưa xác nhận hoàn tất. Hãy thử lại với một mật khẩu mới khác; nếu phiên hết hạn, đăng nhập bằng mật khẩu vừa đặt hoặc yêu cầu liên kết mới.';
+          notice(message, text, true);
+        } finally {
+          state.writeBusy = false;
+          submit.disabled = false;
+          submit.textContent = 'Cập nhật mật khẩu';
+        }
+      });
+      $('forgot-password-open')
+        .addEventListener(
+          'click',
+          () => {
+            $('forgot-password-panel').hidden =
+              false;
+
+            $('auth-actions').hidden =
+              true;
+
+            $('login-form').hidden =
+              true;
+
+            $('signup-panel').hidden =
+              true;
+
+            notice(
+              $('forgot-password-message'),
+              ''
+            );
+          }
+        );
+
+      $('forgot-password-cancel')
+        .addEventListener(
+          'click',
+          () => {
+            $('forgot-password-panel').hidden =
+              true;
+
+            $('auth-actions').hidden =
+              false;
+
+            $('login-form').hidden =
+              false;
+
+            $('forgot-password-form').reset();
+
+            notice(
+              $('forgot-password-message'),
+              ''
+            );
+          }
+        );
+
+      $('forgot-password-form')
+        .addEventListener(
+          'submit',
+          async e => {
+            e.preventDefault();
+
+            if (!client) {
+              return;
+            }
+
+            const b =
+              $('forgot-password-submit');
+
+            const email =
+              $('forgot-password-email')
+                .value
+                .trim();
+
+            notice(
+              $('forgot-password-message'),
+              ''
+            );
+
+            b.disabled =
+              true;
+
+            b.textContent =
+              'Đang gửi…';
+
+            try {
+              const {
+                error
+              } =
+                await client.auth
+                  .resetPasswordForEmail(
+                    email,
+                    {
+                      redirectTo:
+                        new URL(
+                          '?recovery=1',
+                          window.location.href
+                        ).href
+                    }
+                  );
+
+              if (error) {
+                throw error;
+              }
+
+              notice(
+                $('forgot-password-message'),
+                'Đã gửi liên kết đặt lại mật khẩu. Hãy kiểm tra email của bạn.',
+                false,
+                true
+              );
+            } catch (e) {
+              notice(
+                $('forgot-password-message'),
+                e.code ===
+                  'over_email_send_rate_limit'
+                  ? 'Hệ thống đang giới hạn gửi email. Vui lòng thử lại sau.'
+                  : 'Không thể gửi liên kết đặt lại mật khẩu. Hãy kiểm tra email và thử lại.',
+                true
+              );
+            } finally {
+              b.disabled =
+                false;
+
+              b.textContent =
+                'Gửi liên kết đặt lại mật khẩu';
+            }
+          }
+        );
+      let signupRatingConfig =
+        null;
+
+      const loadSignupRatingConfig =
+        async () => {
+          const {
+            data,
+            error
+          } =
+            await client.rpc(
+              'get_signup_rating_config'
+            );
+
+          if (error) {
+            throw error;
+          }
+
+          const initialRating =
+            Number(
+              data?.initial_rating
+            );
+
+          const minRating =
+            Number(
+              data?.min_rating
+            );
+
+          const maxRating =
+            Number(
+              data?.max_rating
+            );
+
+          if (
+            !Number.isFinite(initialRating) ||
+            !Number.isFinite(minRating) ||
+            !Number.isFinite(maxRating) ||
+            minRating >= maxRating ||
+            initialRating < minRating ||
+            initialRating > maxRating
+          ) {
+            throw new Error(
+              'Cấu hình Rating đăng ký không hợp lệ.'
+            );
+          }
+
+          signupRatingConfig = {
+            initialRating,
+            minRating,
+            maxRating
+          };
+
+          const input =
+            $('signup-initial-rating');
+
+          input.min =
+            String(minRating);
+
+          input.max =
+            String(maxRating);
+
+          input.value =
+            initialRating.toFixed(3);
+
+          return signupRatingConfig;
+        };
+
+      $('signup-open')
+        .addEventListener(
+          'click',
+          async () => {
+            $('signup-panel').hidden =
+              false;
+
+            $('auth-actions').hidden =
+              true;
+
+            $('login-form').hidden =
+              true;
+
+            notice(
+              $('signup-message'),
+              ''
+            );
+
+            try {
+              await loadSignupRatingConfig();
+
+            } catch (error) {
+              signupRatingConfig =
+                null;
+
+              $('signup-submit').disabled =
+                true;
+
+              notice(
+                $('signup-message'),
+                'Không tải được cấu hình Rating đăng ký. ' +
+                  explain(error),
+                true
+              );
+
+              return;
+            }
+
+            $('signup-submit').disabled =
+              false;
+          }
+        );
+
+      $('signup-cancel')
+        .addEventListener(
+          'click',
+          () => {
+            $('signup-panel').hidden =
+              true;
+
+            $('auth-actions').hidden =
+              false;
+
+            $('login-form').hidden =
+              false;
+
+            $('signup-form').reset();
+
+            $('signup-initial-rating').value =
+              signupRatingConfig
+                ? signupRatingConfig
+                    .initialRating
+                    .toFixed(3)
+                : '';
+
+            notice(
+              $('signup-message'),
+              ''
+            );
+          }
+        );
+
+      $('signup-form')
+        .addEventListener(
+          'submit',
+          async e => {
+            e.preventDefault();
+
+            if (!client) {
+              return;
+            }
+
+            const b =
+              $('signup-submit');
+
+            const fullName =
+              $('signup-full-name')
+                .value
+                .trim();
+
+            const loginName =
+              $('signup-login-name')
+                .value
+                .trim()
+                .toLowerCase();
+
+            const email =
+              $('signup-email')
+                .value
+                .trim();
+
+            const phone =
+              $('signup-phone')
+                .value
+                .trim();
+
+            const dateOfBirth =
+              $('signup-date-of-birth')
+                .value;
+
+            const rating =
+              Number(
+                $('signup-initial-rating')
+                  .value
+              );
+
+            const password =
+              $('signup-password')
+                .value;
+
+            const passwordConfirm =
+              $('signup-password-confirm')
+                .value;
+
+            notice(
+              $('signup-message'),
+              ''
+            );
+
+            if (
+              loginName.length < 3 ||
+              loginName.length > 32 ||
+              !/^[a-z0-9._-]+$/.test(
+                loginName
+              )
+            ) {
+              notice(
+                $('signup-message'),
+                'Nickname phải dài 3–32 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.',
+                true
+              );
+
+              return;
+            }
+
+            if (!signupRatingConfig) {
+              notice(
+                $('signup-message'),
+                'Chưa tải được cấu hình Rating đăng ký.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              !Number.isFinite(rating) ||
+              rating <
+                signupRatingConfig
+                  .minRating ||
+              rating >
+                signupRatingConfig
+                  .maxRating
+            ) {
+              notice(
+                $('signup-message'),
+                'Rating ban đầu phải nằm trong khoảng ' +
+                  signupRatingConfig
+                    .minRating
+                    .toFixed(3) +
+                  ' đến ' +
+                  signupRatingConfig
+                    .maxRating
+                    .toFixed(3) +
+                  '.',
+                true
+              );
+
+              return;
+            }
+
+            if (
+              password !==
+              passwordConfirm
+            ) {
+              notice(
+                $('signup-message'),
+                'Mật khẩu xác nhận không khớp.',
+                true
+              );
+
+              return;
+            }
+
+            b.disabled =
+              true;
+
+            b.textContent =
+              'Đang tạo tài khoản…';
+
+            try {
+              const {
+                data,
+                error
+              } =
+                await client.auth
+                  .signUp({
+                    email,
+                    password,
+                    options: {
+                      data: {
+                        full_name:
+                          fullName,
+                        login_name:
+                          loginName,
+                        phone:
+                          phone || null,
+                        date_of_birth:
+                          dateOfBirth || null,
+                        initial_rating:
+                          rating.toFixed(3)
+                      }
+                    }
+                  });
+
+              if (error) {
+                throw error;
+              }
+
+              if (data.session) {
+                acceptSession(
+                  data.session
+                );
+
+                return;
+              }
+
+              $('signup-form').reset();
+
+              $('signup-initial-rating').value =
+                signupRatingConfig
+                  ? signupRatingConfig
+                      .initialRating
+                      .toFixed(3)
+                  : '';
+
+              notice(
+                $('signup-message'),
+                'Đăng ký thành công. Hãy xác nhận email và chờ ADMIN duyệt tài khoản. Đây là hai bước riêng biệt.',
+                false,
+                true
+              );
+            } catch (e) {
+              console.error(
+                'SIGNUP_ERROR',
+                {
+                  code: e?.code || null,
+                  status: e?.status || null,
+                  message: e?.message || null
+                }
+              );
+
+              const signupErrorCode =
+                String(
+                  e?.code ||
+                  ''
+                );
+
+              const signupErrorMessage =
+                String(
+                  e?.message ||
+                  ''
+                );
+
+              notice(
+                $('signup-message'),
+                signupErrorMessage.includes(
+                  'LOGIN_NAME_ALREADY_EXISTS'
+                )
+                  ? 'Nickname này đã được sử dụng. Hãy chọn nickname khác.'
+                  : signupErrorMessage.includes(
+                      'INVALID_LOGIN_NAME'
+                    )
+                    ? 'Nickname không hợp lệ.'
+                    : signupErrorCode ===
+                  'user_already_exists'
+                  ? 'Email này đã được đăng ký.'
+                  : signupErrorCode ===
+                      'over_email_send_rate_limit'
+                    ? 'Hệ thống đang giới hạn gửi email. Vui lòng thử lại sau.'
+                    : signupErrorCode ===
+                        'email_address_invalid'
+                      ? 'Địa chỉ email không hợp lệ.'
+                      : 'Không thể tạo tài khoản.' +
+                        (
+                          signupErrorCode
+                            ? ' Mã lỗi: ' +
+                              signupErrorCode +
+                              '.'
+                            : ''
+                        ) +
+                        (
+                          signupErrorMessage
+                            ? ' Chi tiết: ' +
+                              signupErrorMessage.slice(
+                                0,
+                                180
+                              ) +
+                              '.'
+                            : ''
+                        ),
+                true
+              );
+            } finally {
+              $('signup-password').value =
+                '';
+
+              $('signup-password-confirm').value =
+                '';
+
+              b.disabled =
+                false;
+
+              b.textContent =
+                'Tạo tài khoản thành viên';
+            }
+          }
+        );
+      $('login-form')
+        .addEventListener(
+          'submit',
+          async e => {
+            e.preventDefault();
+
+            if (!client) {
+              return;
+            }
+
+            const b =
+              $('login-button');
+
+            b.disabled =
+              true;
+
+            b.textContent =
+              'Đang đăng nhập…';
+
+            notice(
+              $('login-message'),
+              ''
+            );
+
+            try {
+              const loginName =
+                $('login-name')
+                  .value
+                  .trim()
+                  .toLowerCase();
+
+              const password =
+                $('password')
+                  .value;
+
+              const {
+                data,
+                error
+              } =
+                await client.functions.invoke(
+                  'login-by-nickname',
+                  {
+                    body: {
+                      login_name:
+                        loginName,
+                      password
+                    }
+                  }
+                );
+
+              if (error) {
+                throw error;
+              }
+
+              if (
+                data?.ok !== true ||
+                !data?.session
+                  ?.access_token ||
+                !data?.session
+                  ?.refresh_token
+              ) {
+                throw new Error(
+                  'INVALID_LOGIN'
+                );
+              }
+
+              const {
+                data: sessionData,
+                error: sessionError
+              } =
+                await client.auth
+                  .setSession({
+                    access_token:
+                      data.session
+                        .access_token,
+                    refresh_token:
+                      data.session
+                        .refresh_token
+                  });
+
+              if (sessionError) {
+                throw sessionError;
+              }
+
+              if (
+                !sessionData?.session
+              ) {
+                throw new Error(
+                  'SESSION_NOT_CREATED'
+                );
+              }
+
+              acceptSession(
+                sessionData.session
+              );
+            } catch (e) {
+              notice(
+                $('login-message'),
+                e.code ===
+                  'invalid_credentials'
+                  ? 'Nickname hoặc mật khẩu không đúng.'
+                  : e.code ===
+                      'email_not_confirmed'
+                    ? 'Email chưa được xác nhận. Liên hệ quản trị viên.'
+                    : 'Không thể đăng nhập. Kiểm tra kết nối và thông tin tài khoản rồi thử lại.',
+                true
+              );
+            } finally {
+              $('password').value =
+                '';
+
+              b.disabled =
+                false;
+
+              b.textContent =
+                'Đăng nhập';
+            }
+          }
+        );
+
+      $('logout')
+        .addEventListener(
+          'click',
+          async () => {
+            const b =
+              $('logout');
+
+            b.disabled =
+              true;
+
+            try {
+              const {
+                error
+              } =
+                await client.auth
+                  .signOut(
+                    {
+                      scope:
+                        'local'
+                    }
+                  );
+
+              if (error) {
+                throw error;
+              }
+
+              acceptSession(
+                null
+              );
+
+              notice(
+                $('login-message'),
+                'Bạn đã đăng xuất.'
+              );
+            } catch (e) {
+              notice(
+                $('global-message'),
+                'Đăng xuất chưa thành công. Hãy kiểm tra kết nối và thử lại.',
+                true
+              );
+            } finally {
+              b.disabled =
+                false;
+            }
+          }
+        );
+
+      window.addEventListener(
+        'offline',
+        () =>
+          notice(
+            state.session
+              ? $('global-message')
+              : $('login-message'),
+            'Bạn đang ngoại tuyến. Dữ liệu trên màn hình có thể chưa được cập nhật.',
+            true
+          )
+      );
+
+      window.addEventListener(
+        'online',
+        () =>
+          notice(
+            state.session
+              ? $('global-message')
+              : $('login-message'),
+            'Đã có kết nối trở lại. ' +
+              (
+                state.session
+                  ? 'Chọn Làm mới để cập nhật dữ liệu.'
+                  : 'Bạn có thể đăng nhập.'
+              )
+          )
+      );
+
+      async function boot() {
+        try {
+          const config =
+            window.APP_CONFIG ||
+            window.CONFIG ||
+            {};
+          const appName =
+            String(
+              config.APP_NAME ||
+              'PICK'
+            ).trim() ||
+            'PICK';
+
+          const clubName =
+            String(
+              config.CLUB_NAME ||
+              appName
+            ).trim() ||
+            appName;
+
+          const clubTagline =
+            String(
+              config.CLUB_TAGLINE ||
+              'Cùng chơi • Cùng tiến bộ'
+            ).trim();
+
+          const clubLogo =
+            String(
+              config.CLUB_LOGO ||
+              ''
+            ).trim();
+
+          document.title =
+            clubName +
+            ' • Pickleball Club';
+
+          document
+            .querySelectorAll(
+              '.brand'
+            )
+            .forEach(
+              brand => {
+                brand.replaceChildren();
+
+                if (clubLogo) {
+                  const logo =
+                    document.createElement(
+                      'img'
+                    );
+
+                  logo.src =
+                    clubLogo;
+
+                  logo.alt =
+                    clubName;
+
+                  logo.className =
+                    'club-brand-logo';
+
+                  brand.append(
+                    logo
+                  );
+                }
+
+                const name =
+                  document.createElement(
+                    'span'
+                  );
+
+                name.className =
+                  'club-brand-name';
+
+                name.textContent =
+                  clubName;
+
+                brand.append(
+                  name
+                );
+              }
+            );
+
+          const sidebarKicker =
+            document.querySelector(
+              '.sidebar-kicker'
+            );
+
+          if (sidebarKicker) {
+            sidebarKicker.textContent =
+              clubTagline;
+          }
+
+          const mobileBrandTagline =
+            document.querySelector(
+              '.login-mobile-brand p'
+            );
+
+          if (mobileBrandTagline) {
+            mobileBrandTagline.textContent =
+              clubTagline;
+          }
+
+          const storyKicker =
+            document.querySelector(
+              '.login-story-kicker'
+            );
+
+          if (storyKicker) {
+            storyKicker.textContent =
+              clubName.toUpperCase();
+          }
+
+          const url =
+            config.SUPABASE_URL ||
+            (
+              typeof SUPABASE_URL !==
+              'undefined'
+                ? SUPABASE_URL
+                : window.SUPABASE_URL
+            );
+
+          const key =
+            config.SUPABASE_ANON_KEY ||
+            (
+              typeof SUPABASE_ANON_KEY !==
+              'undefined'
+                ? SUPABASE_ANON_KEY
+                : window.SUPABASE_ANON_KEY
+            );
+
+          if (
+            !url ||
+            !key
+          ) {
+            throw new Error(
+              'Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong config.js.'
+            );
+          }
+
+          if (
+            new URL(
+              url
+            ).protocol !==
+            'https:'
+          ) {
+            throw new Error(
+              'SUPABASE_URL phải sử dụng HTTPS.'
+            );
+          }
+
+          if (
+            !window.supabase
+              ?.createClient
+          ) {
+            throw new Error(
+              'Không tải được thư viện đăng nhập. Kiểm tra mạng rồi tải lại trang.'
+            );
+          }
+
+          if (
+            String(
+              key
+            ).startsWith(
+              'sb_secret_'
+            )
+          ) {
+            throw new Error(
+              'config.js chỉ được chứa khóa anon hoặc publishable dành cho trình duyệt.'
+            );
+          }
+
+          try {
+            const payload =
+              JSON.parse(
+                atob(
+                  String(
+                    key
+                  )
+                    .split(
+                      '.'
+                    )[1]
+                    .replace(
+                      /-/g,
+                      '+'
+                    )
+                    .replace(
+                      /_/g,
+                      '/'
+                    )
+                )
+              );
+
+            if (
+              payload.role ===
+              'service_role'
+            ) {
+              throw new Error(
+                'SECRET_KEY'
+              );
+            }
+          } catch (e) {
+            if (
+              e.message ===
+              'SECRET_KEY'
+            ) {
+              throw new Error(
+                'Không sử dụng service_role trong config.js.'
+              );
+            }
+          }
+
+          client =
+            window.supabase
+              .createClient(
+                url,
+                key,
+                {
+                  auth: {
+                    persistSession:
+                      true,
+                    autoRefreshToken:
+                      true,
+                    detectSessionInUrl: true
+                  },
+                  global: {
+                    fetch: async (
+                      input,
+                      init = {}
+                    ) => {
+                      const deadline =
+                        AbortSignal.timeout(
+                          25000
+                        );
+
+                      return fetch(
+                        input,
+                        {
+                          ...init,
+                          signal:
+                            init.signal
+                              ? AbortSignal.any(
+                                  [
+                                    init.signal,
+                                    deadline
+                                  ]
+                                )
+                              : deadline
+                        }
+                      );
+                    }
+                  }
+                }
+              );
+
+          const recoveryRequested =
+            new URLSearchParams(
+              window.location.search
+            ).get('recovery') === '1' ||
+            new URLSearchParams(
+              window.location.hash
+                .replace(/^#/, '')
+            ).get('type') === 'recovery';
+
+          const showRecoveryPassword =
+            () => {
+              $('boot').hidden =
+                true;
+
+              $('login').hidden =
+                false;
+
+              $('app').hidden =
+                true;
+
+              $('login-form').hidden =
+                true;
+
+              $('auth-actions').hidden =
+                true;
+
+              $('signup-panel').hidden =
+                true;
+
+              $('forgot-password-panel').hidden =
+                true;
+
+              $('recovery-password-panel').hidden =
+                false;
+
+              notice(
+                $('recovery-password-message'),
+                'Liên kết khôi phục đã được xác nhận. Hãy đặt mật khẩu mới.',
+                false,
+                true
+              );
+            };
+
+          const {
+            data
+          } =
+            client.auth
+              .onAuthStateChange(
+                (
+                  event,
+                  session
+                ) => {
+                  if (
+                    recoveryRequested ||
+                    event ===
+                      'PASSWORD_RECOVERY'
+                  ) {
+                    setTimeout(
+                      showRecoveryPassword,
+                      0
+                    );
+
+                    return;
+                  }
+
+                  const seq =
+                    ++authSequence;
+
+                  setTimeout(
+                    () => {
+                      if (
+                        seq ===
+                        authSequence
+                      ) {
+                        acceptSession(
+                          session
+                        );
+                      }
+                    },
+                    0
+                  );
+                }
+              );
+
+          subscription =
+            data.subscription;
+
+          const seq =
+            authSequence;
+
+          const {
+            data:
+              sessionData,
+            error
+          } =
+            await client.auth
+              .getSession();
+
+          if (error) {
+            throw new Error(
+              'Không khôi phục được phiên đăng nhập. Hãy tải lại trang.'
+            );
+          }
+
+          if (
+            recoveryRequested
+          ) {
+            if (
+              sessionData.session
+            ) {
+              showRecoveryPassword();
+            } else {
+              notice(
+                $('login-message'),
+                'Liên kết khôi phục không còn phiên hợp lệ. Hãy yêu cầu một liên kết mới.',
+                true
+              );
+            }
+          } else if (
+            seq ===
+            authSequence
+          ) {
+            acceptSession(
+              sessionData.session
+            );
+          }
+        } catch (e) {
+          $('boot').hidden =
+            true;
+
+          $('login').hidden =
+            false;
+
+          $('login-button').disabled =
+            true;
+
+          notice(
+            $('login-message'),
+            e.message ||
+              'Không khởi động được ứng dụng.',
+            { tone: 'error', critical: true }
+          );
+        }
+      }
+
+      window.addEventListener(
+        'pagehide',
+        () => {
+          state.controller?.abort();
+        }
+      );
+
+      window.addEventListener(
+        'pageshow',
+        e => {
+          if (
+            e.persisted &&
+            state.session
+          ) {
+            void load();
+          }
+        }
+      );
+
+      void boot();
+    })();
