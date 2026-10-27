@@ -1,0 +1,46 @@
+{
+  "tag": "iam-match-self-create-r1-20261027-v1",
+  "base_commit": "66f12d829b9dd0b37f1a791c228f4b0098c5bbe9",
+  "files": {
+    "_releases/iam-match-self-create-r1-20261027-v1/account.js": "401a0437d137402761421ef1876a12fcac9bff1c82a0ad773e408b4b4e6804c5",
+    "_releases/iam-match-self-create-r1-20261027-v1/app.css": "4919f4161ec390d37adab457aa91f68c9415250de673ef2b9f9d5f88199a7da9",
+    "_releases/iam-match-self-create-r1-20261027-v1/app.js": "7847b2e738114d68e7519557832cba0b56998b192aa0ae5f357d3ab653f5c258",
+    "_releases/iam-match-self-create-r1-20261027-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/iam-match-self-create-r1-20261027-v1/fund.js": "7a82c6f051c6766764e989d3990808b2b0b173db7aeddce3ef7bc9baac1c3ece",
+    "_releases/iam-match-self-create-r1-20261027-v1/matches.js": "4b9dcddf7405c50075b165f97c7f48004bb3bdc5a4d72f851ca375540102c8fd",
+    "_releases/iam-match-self-create-r1-20261027-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/iam-match-self-create-r1-20261027-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/iam-match-self-create-r1-20261027-v1/member-birthday.js": "2357fcc469e4d9dc3e5bc011e1ef926842fca76b64f409204df6af9c550c4b59",
+    "_releases/iam-match-self-create-r1-20261027-v1/players.js": "7acff952c43b3e77a140402623a77427269f3d73ca43bc61fb9cf17df698b507",
+    "_releases/iam-match-self-create-r1-20261027-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/iam-match-self-create-r1-20261027-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/iam-match-self-create-r1-20261027-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "c10c639df49f491e95ec11f3aea87750e4c97bcf3f456f89a050715bc626013f"
+  },
+  "aggregate_sha256": "8eda56e32e5f19cff005438d4810c6ca5ab1f0f7a4d7c85bbd01ae46f1eeb892",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "rollback_aggregate": "ebaf0c836e502044bada1e0941f89e035d42ca11ca884c36c38b3fa3c00702db",
+  "changed_runtime_files": [
+    "index.html",
+    "app.js",
+    "matches.js"
+  ],
+  "unchanged_assets": [
+    "account.js",
+    "app.css",
+    "config.js",
+    "fund.js",
+    "member-activity.js",
+    "member-analytics.js",
+    "member-birthday.js",
+    "players.js",
+    "preplay.js",
+    "supabase.js",
+    "tailwind-3.4.17.js"
+  ],
+  "migration_sha256": "15000c6d9e28c9e00de91bb53b1e302d783af7e605c2aa06a3fad44a545ac3c8",
+  "native_member_self_create": "ENABLED",
+  "legacy_preplay_create": "DISABLED",
+  "GCP_changed": false,
+  "business_mutation": false
+}
