@@ -1,0 +1,45 @@
+{
+  "tag": "iam-match-create-for-others-p2-20261027-v1",
+  "base_commit": "1cb30207344f08c11a25ffefdd0e753050ee290e",
+  "files": {
+    "_releases/iam-match-create-for-others-p2-20261027-v1/account.js": "401a0437d137402761421ef1876a12fcac9bff1c82a0ad773e408b4b4e6804c5",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/app.css": "2df46670bd83095a5273bd9155864d7ca3539cc6ffdbc7e9d9522b0982c285eb",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/app.js": "972ab2639bf8c7b550c80210337df05269a37e16dccdf62ecb25fea5add7f463",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/fund.js": "7a82c6f051c6766764e989d3990808b2b0b173db7aeddce3ef7bc9baac1c3ece",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/matches.js": "e09895c10519b80d3a96bd9f9074ddf9032080aa666d9c2504fc19d55f091e8e",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/member-birthday.js": "2357fcc469e4d9dc3e5bc011e1ef926842fca76b64f409204df6af9c550c4b59",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/players.js": "7acff952c43b3e77a140402623a77427269f3d73ca43bc61fb9cf17df698b507",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/iam-match-create-for-others-p2-20261027-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "35b0c8b52d73cf2f2bccc502ce7606aee75350de7ba73b6820cd5380607e69c2"
+  },
+  "aggregate_sha256": "fec47f8e341cb9919e3c68a6ecdfd0b0a3549d173c214864d06a2cd00928f237",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "rollback_aggregate": "decf5885363e058306079c67e3c4df84e7aa337aa1a80099d62df22f4d5a4d1b",
+  "changed_runtime_files": [
+    "index.html",
+    "account.js",
+    "app.css",
+    "app.js",
+    "matches.js"
+  ],
+  "unchanged_assets": [
+    "config.js",
+    "fund.js",
+    "member-activity.js",
+    "member-analytics.js",
+    "member-birthday.js",
+    "players.js",
+    "preplay.js",
+    "supabase.js",
+    "tailwind-3.4.17.js"
+  ],
+  "migration_sha256": "52d0d4385bc4e0d06bd3d436f2804b57ecea082b51fd88d54ce55c8d4089ba90",
+  "automatic_capability_assignment": false,
+  "GCP_changed": false,
+  "general_athlete_entry": "CLOSED"
+}
