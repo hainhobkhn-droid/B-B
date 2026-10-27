@@ -1,0 +1,35 @@
+{
+  "tag": "admin-ops-optimization-p2-20261026-v1",
+  "files": {
+    "_releases/admin-ops-optimization-p2-20261026-v1/account.js": "83b5c3e5682bd003c6a0f07187781fca48534b34ca445dc54095077bbaee715c",
+    "_releases/admin-ops-optimization-p2-20261026-v1/app.css": "47c39cf07c257026b64b0bf9389dae91c83de5343976720c873dfe7dfbc4e2ea",
+    "_releases/admin-ops-optimization-p2-20261026-v1/app.js": "a2e94de01585d512d346b249586950b379214c4386a57e612efe9112c5399782",
+    "_releases/admin-ops-optimization-p2-20261026-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/admin-ops-optimization-p2-20261026-v1/fund.js": "7a82c6f051c6766764e989d3990808b2b0b173db7aeddce3ef7bc9baac1c3ece",
+    "_releases/admin-ops-optimization-p2-20261026-v1/matches.js": "e9efb4bd65d6055d56d2b9cb7cde9951779030d19b315ebece5d381fcef4b1f8",
+    "_releases/admin-ops-optimization-p2-20261026-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/admin-ops-optimization-p2-20261026-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/admin-ops-optimization-p2-20261026-v1/players.js": "92978ed4b89d00d08ee40aa1c8adf1296e51cbc32c9d7ff6bcbcc6edf8f1e12a",
+    "_releases/admin-ops-optimization-p2-20261026-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/admin-ops-optimization-p2-20261026-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/admin-ops-optimization-p2-20261026-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "5955e104ab1f4be33a105f81d05ae1c77ac238e5a9376906b4c1a65c1538587e"
+  },
+  "aggregate_sha256": "b4bb4fe0436a38ce3330ed2a90dacb9484e16b517656e827670a5ae6a9e5fba3",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "base_commit": "66d839633907c9d0b4a512ddf6bd294f8c3486e3",
+  "rollback_aggregate": "5132f7a4ff4d572fc47a20e5eab309aba48ccbdebf00bd552ebd00ff0b9698ef",
+  "changed_runtime_files": [
+    "index.html",
+    "app.js",
+    "app.css",
+    "account.js",
+    "matches.js",
+    "fund.js"
+  ],
+  "unchanged_assets": 7,
+  "backend_changed": false,
+  "new_rpc": false,
+  "business_mutation": false,
+  "GCP_changed": false
+}
