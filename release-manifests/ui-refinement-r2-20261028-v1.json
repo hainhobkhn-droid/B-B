@@ -1,0 +1,47 @@
+{
+  "tag": "ui-refinement-r2-20261028-v1",
+  "base_commit": "27a93b28f460f12cbc56678e2d24315ca1fc8720",
+  "files": {
+    "_releases/ui-refinement-r2-20261028-v1/account.js": "401a0437d137402761421ef1876a12fcac9bff1c82a0ad773e408b4b4e6804c5",
+    "_releases/ui-refinement-r2-20261028-v1/app.css": "22245d2a1eb732474388940aa4ff94b9d9ce17e741616f02b5ea32d28cfd71f2",
+    "_releases/ui-refinement-r2-20261028-v1/app.js": "275fa9a6d4916f0373272231ffb73be0c2c6fbef9c5f128dc148daf56f7c36b1",
+    "_releases/ui-refinement-r2-20261028-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/ui-refinement-r2-20261028-v1/fund.js": "7a82c6f051c6766764e989d3990808b2b0b173db7aeddce3ef7bc9baac1c3ece",
+    "_releases/ui-refinement-r2-20261028-v1/matches.js": "4b9dcddf7405c50075b165f97c7f48004bb3bdc5a4d72f851ca375540102c8fd",
+    "_releases/ui-refinement-r2-20261028-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/ui-refinement-r2-20261028-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/ui-refinement-r2-20261028-v1/member-birthday.js": "2357fcc469e4d9dc3e5bc011e1ef926842fca76b64f409204df6af9c550c4b59",
+    "_releases/ui-refinement-r2-20261028-v1/member-leaderboards.js": "1d2ca488809b09b3780803e4b7b8e7eb51b1ecd7c507b4b521a8bd84c6a935bf",
+    "_releases/ui-refinement-r2-20261028-v1/players.js": "7acff952c43b3e77a140402623a77427269f3d73ca43bc61fb9cf17df698b507",
+    "_releases/ui-refinement-r2-20261028-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/ui-refinement-r2-20261028-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/ui-refinement-r2-20261028-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "08d9237030d34d163f6542bcb87cd2b46eb0eb2b118bd932393f7fcc2eb53adb"
+  },
+  "aggregate_sha256": "6596e9d0f1e945c7de9d5d06055b3b7b9e1b7205bee59b4a9986951e36a1d1f7",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "rollback_aggregate": "b502ca43a8eb021288da83f28233ce7ea2d65c559da15699d4f920f0f3dd6ed8",
+  "changed_runtime_files": [
+    "index.html",
+    "app.css",
+    "app.js",
+    "member-leaderboards.js"
+  ],
+  "unchanged_assets": [
+    "account.js",
+    "config.js",
+    "fund.js",
+    "matches.js",
+    "member-activity.js",
+    "member-analytics.js",
+    "member-birthday.js",
+    "players.js",
+    "preplay.js",
+    "supabase.js",
+    "tailwind-3.4.17.js"
+  ],
+  "backend_changed": false,
+  "extra_backend_query": false,
+  "business_mutation": false,
+  "GCP_changed": false
+}

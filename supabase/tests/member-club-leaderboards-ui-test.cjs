@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert/strict');
-const D=__dirname,ROOT=path.resolve(D,'../..'),release=process.env.PICK_TEST_RELEASE||'system-review-r1-20261028-v1',runtime=path.join(ROOT,'_releases',release),checks=[];const check=(name,value)=>{assert(value,name);checks.push(name);};
+const D=__dirname,ROOT=path.resolve(D,'../..'),release=process.env.PICK_TEST_RELEASE||'ui-refinement-r2-20261028-v1',runtime=path.join(ROOT,'_releases',release),checks=[];const check=(name,value)=>{assert(value,name);checks.push(name);};
 class El {
  constructor(tag,text='',className=''){Object.assign(this,{tag,textContent:text||'',className,children:[],events:{},attributes:{},dataset:{},value:'',isConnected:true});this.classList={add:(...n)=>this.className+=' '+n.join(' ')};}
  append(...n){this.children.push(...n);}replaceChildren(...n){this.children=[...n];}
