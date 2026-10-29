@@ -1,0 +1,47 @@
+{
+  "tag": "safari-ui-admin-parity-r2-20261029-v1",
+  "base_commit": "96301d0c57263f2ca443b85e0e55eb28c8ac541c",
+  "files": {
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/account.js": "401a0437d137402761421ef1876a12fcac9bff1c82a0ad773e408b4b4e6804c5",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/app.css": "c42c7c769c02d48d0ad9b96eaf2a5583e8bce89690a738e4812ad8146377540e",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/app.js": "275fa9a6d4916f0373272231ffb73be0c2c6fbef9c5f128dc148daf56f7c36b1",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/config.js": "988c795d1ff7f8c6a86646c47c144376431de0ac7042c6ed6a1b014b205265b3",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/fund.js": "7a82c6f051c6766764e989d3990808b2b0b173db7aeddce3ef7bc9baac1c3ece",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/matches.js": "4b9dcddf7405c50075b165f97c7f48004bb3bdc5a4d72f851ca375540102c8fd",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/member-activity.js": "b42319a9a1ca128a39c39ede5822003551eb4358ab24bcbe4cb92e7602ddaa4a",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/member-analytics.js": "31d3ce713082916334ebc7dd4f04e63c771b229a253fb190732c5cb48082f61d",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/member-birthday.js": "2357fcc469e4d9dc3e5bc011e1ef926842fca76b64f409204df6af9c550c4b59",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/member-leaderboards.js": "a52725b4c80fddf1c4145839e0333c1689c90f73be786357b0ef2217132c1ccb",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/players.js": "7acff952c43b3e77a140402623a77427269f3d73ca43bc61fb9cf17df698b507",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/preplay.js": "d74d4f7514958bc83b33db8905f1f7dac69f388612ea93a9f89e1c4cda0c5e36",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/supabase.js": "d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3",
+    "_releases/safari-ui-admin-parity-r2-20261029-v1/tailwind-3.4.17.js": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15",
+    "index.html": "42d8aeb7c9506be64467efbe6a5cf4368e52afba641ea4ccc00fc0ee9ba6a0b7"
+  },
+  "aggregate_sha256": "dafeb59039aa9cb73333d75e368cc98fedb15e40a91bd8c3f20a5d09a91cac62",
+  "algorithm": "SHA256(UTF8(sorted compact JSON relative-path:SHA256(bytes)))",
+  "rollback_aggregate": "137af13770532bd2833b65c9da9d6cbe15ea954656790bbc33359146157a67bb",
+  "changed_runtime_files": [
+    "index.html",
+    "app.css",
+    "member-leaderboards.js"
+  ],
+  "unchanged_assets": [
+    "account.js",
+    "app.js",
+    "config.js",
+    "fund.js",
+    "matches.js",
+    "member-activity.js",
+    "member-analytics.js",
+    "member-birthday.js",
+    "players.js",
+    "preplay.js",
+    "supabase.js",
+    "tailwind-3.4.17.js"
+  ],
+  "backend_changed": false,
+  "business_mutation": false,
+  "GCP_changed": false,
+  "read_request_change": "Contribution overview uses3 bounded existing read RPC calls,one per board; expanding reuses first page."
+}
