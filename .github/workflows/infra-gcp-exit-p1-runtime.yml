@@ -1,129 +1,29 @@
-name: INFRA GCP EXIT P1 - synthetic runtime proof only
-
+name: INFRA GCP EXIT P1R2 - native synthetic proof only
 on:
   push:
     branches: [codex/infra-gcp-exit-p1-runtime-proof]
-    paths: [.github/workflows/infra-gcp-exit-p1-runtime.yml]
-
+    paths: [.github/workflows/infra-gcp-exit-p1-runtime.yml, infra-native-proof/**]
 permissions:
   contents: read
-
 concurrency:
-  group: infra-gcp-exit-p1-synthetic-runtime
+  group: infra-gcp-exit-p1r2-native-proof
   cancel-in-progress: false
-
 jobs:
-  edge-runtime-proof:
+  native-edge-runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Isolated synthetic-only runtime check
-        shell: python
-        run: |
-          import base64, hashlib, io, json, os, pathlib, subprocess, tarfile, tempfile, time, urllib.request, urllib.error
-          root=pathlib.Path(tempfile.mkdtemp(prefix='infra-synthetic-',dir=os.environ['RUNNER_TEMP']));root.chmod(0o755)
-          result={'synthetic_only':True,'business_context_uploaded':False,'secrets_used':False,'supabase_or_gcp_requests':0,'deployed':False,'image_tag':'supabase/edge-runtime:v1.77.4','network_mode':'private runner bridge; public npm graph resolution allowed; no project bindings or credentials','memory_limit_mb':256,'cpu_soft_ms':2000,'cpu_hard_ms':2000,'checks':[]}
-          name='infra-synthetic-'+os.environ['GITHUB_RUN_ID'];network=name+'-net';created=False;net=False
-          def cmd(args,check=True):
-              p=subprocess.run(args,capture_output=True,text=True,timeout=120)
-              if check and p.returncode:raise RuntimeError('COMMAND_FAILED_'+args[0])
-              return p
-          try:
-              with urllib.request.urlopen('https://registry.npmjs.org/pyodide/-/pyodide-0.29.3.tgz',timeout=45) as r:raw=r.read()
-              assert base64.b64encode(hashlib.sha512(raw).digest()).decode()=='22UBuhOJawj7vKUnS7/F3xK+515LJdjiMAHoCfuS6/PbHiOrSQVnYwDe+2sbVwiOZ3sMMexdXICew6NqOMQGgA=='
-              runtime=root/'runtime';runtime.mkdir()
-              with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
-                  for item in archive.getmembers():
-                      if not item.isfile():continue
-                      short=pathlib.PurePosixPath(item.name).name
-                      if short in ['pyodide.mjs','pyodide.asm.js','pyodide.asm.wasm','python_stdlib.zip','pyodide-lock.json','package.json']:
-                          (runtime/short).write_bytes(archive.extractfile(item).read())
-              for part in ['main','control','probe']:(root/'functions'/part).mkdir(parents=True)
-              (root/'functions/main/index.ts').write_text('''Deno.serve(async (req) => {
-                const name = new URL(req.url).pathname.split('/')[1];
-                if(name==='health')return Response.json({ready:true});
-                if(!['control','probe'].includes(name))return new Response('NOT_FOUND',{status:404});
-                try {
-                  const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:false,envVars:[],staticPatterns:['/proof/runtime/*'],context:{useReadSyncFileAPI:true}});
-                  return await worker.fetch(req);
-                } catch(e) {
-                  const code=e?.name||'Error';console.log('SYNTHETIC_ROUTER_ERROR '+code);
-                  return Response.json({code},{status:code.includes('Cancelled')?546:503});
-                }
-              });''')
-              (root/'functions/control/index.ts').write_text('''Deno.serve((req)=>{
-                if(new URL(req.url).pathname.endsWith('/cpu')){const t=performance.now();while(performance.now()-t<2500){} }
-                return Response.json({control:true});
-              });''')
-              (root/'functions/probe/index.ts').write_text('''import '../../runtime/pyodide.asm.js';
-              import {loadPyodide} from '../../runtime/pyodide.mjs';
-              import {createRequire} from 'node:module';
-              globalThis.require=createRequire(new URL('../../runtime/pyodide.asm.js',import.meta.url));
-              globalThis.__dirname=new URL('../../runtime/',import.meta.url).pathname;
-              globalThis.__filename=new URL('../../runtime/pyodide.asm.js',import.meta.url).pathname;
-              let python;let initMs;
-              Deno.serve(async()=>{
-                try{
-                  if(!python){const t=performance.now();python=await loadPyodide({indexURL:new URL('../../runtime/',import.meta.url).pathname});initMs=performance.now()-t;}
-                  const t=performance.now();const raw=python.runPython(`
-          import json,hashlib
-          from decimal import Decimal
-          assert Decimal('0').exp()==Decimal('1')
-          assert Decimal('0.012').quantize(Decimal('0.001'))==Decimal('0.012')
-          body=json.dumps({'label':'SYNTHETIC ONLY','delta':'+0.012','forecast':'0.5'},sort_keys=True,separators=(',',':'),ensure_ascii=False)
-          json.dumps({'decimal':True,'canonical':body,'sha256':hashlib.sha256(body.encode()).hexdigest()})
-                  `);
-                  return Response.json({ok:true,init_wall_ms:initMs,compute_wall_ms:performance.now()-t,result:JSON.parse(raw)});
-                }catch(e){console.log('SYNTHETIC_PROBE_ERROR '+(e?.name||'Error')+' '+String(e?.message||'').slice(0,500));return Response.json({ok:false,error_class:e?.name||'Error'},{status:500});}
-              });''')
-              cmd(['docker','pull',result['image_tag']])
-              result['image_digest']=cmd(['docker','image','inspect',result['image_tag'],'--format','{{index .RepoDigests 0}}']).stdout.strip()
-              cmd(['docker','network','create',network]);net=True
-              cmd(['docker','run','-d','--name',name,'--network',network,'--cap-drop','ALL','--security-opt','no-new-privileges','-v',str(root)+':/proof:ro','-e','DENO_DIR=/tmp/deno',result['image_tag'],'start','--main-service','/proof/functions/main']);created=True
-              container_ip=cmd(['docker','inspect',name,'--format','{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}']).stdout.strip()
-              assert container_ip.startswith('172.') or container_ip.startswith('192.168.')
-              def request(path):
-                  start=time.monotonic()
-                  try:
-                      with urllib.request.urlopen('http://'+container_ip+':9000/'+path,timeout=40) as response:return response.status,json.load(response),round((time.monotonic()-start)*1000)
-                  except urllib.error.HTTPError as e:
-                      try:body=json.loads(e.read())
-                      except Exception:body={'code':'NON_JSON_ERROR'}
-                      return e.code,body,round((time.monotonic()-start)*1000)
-              ready=False
-              for _ in range(60):
-                  try:
-                      if request('health')[0]==200:ready=True;break
-                  except (OSError,ValueError):pass
-                  time.sleep(.5)
-              if not ready:raise RuntimeError('RUNTIME_NOT_READY')
-              status,body,ms=request('control/ok');result['checks'].append({'name':'control-health','status':status,'pass':status==200,'wall_ms':ms})
-              status,body,ms=request('control/cpu');result['checks'].append({'name':'cpu-budget-enforced','status':status,'pass':status==546,'wall_ms':ms})
-              for attempt in range(3):
-                  status,body,ms=request('probe');expected='{"delta":"+0.012","forecast":"0.5","label":"SYNTHETIC ONLY"}'
-                  ok=status==200 and body.get('ok') is True and body.get('result',{}).get('canonical')==expected and body.get('result',{}).get('sha256')==hashlib.sha256(expected.encode()).hexdigest()
-                  result['checks'].append({'name':'pyodide-cold' if attempt==0 else 'pyodide-revisit-'+str(attempt),'status':status,'pass':ok,'wall_ms':ms,'body':body})
-          except Exception as e:result['harness_error']=type(e).__name__
-          finally:
-              if created:
-                  logs=cmd(['docker','logs',name],check=False);result['runtime_diagnostics']=[line[-700:] for line in (logs.stdout+logs.stderr).splitlines()][-60:]
-                  state=json.loads(cmd(['docker','inspect',name,'--format','{{json .State}}']).stdout);result['container_state']={k:state[k] for k in ['Status','ExitCode','Error']}
-                  cmd(['docker','rm','-f',name],check=False)
-              if net:cmd(['docker','network','rm',network],check=False)
-              result['pass']=len(result['checks'])==5 and all(x['pass'] for x in result['checks'])
-              pathlib.Path('runtime-proof-result.json').write_text(json.dumps(result,indent=2)+'\n')
-              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:summary.write('## Synthetic-only Supabase Edge Runtime proof\n```json\n'+json.dumps(result,indent=2)+'\n```\n')
-              print('SYNTHETIC_RESULT_JSON='+json.dumps(result,separators=(',',':')))
-              import shutil
-              shutil.rmtree(root)
-          if not result['pass']:raise SystemExit(1)
-      - name: Upload synthetic-only result
+      - name: Actual native user-worker proof - synthetic only
+        run: python3 infra-native-proof/run_edge_ci.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: infra-gcp-exit-p1-synthetic-runtime-result
-          path: runtime-proof-result.json
-          retention-days: 7
+          name: native-edge-runtime-proof
+          path: |
+            infra-native-proof/native-runtime-result.json
+            infra-native-proof/native-runtime-container.log
+          if-no-files-found: error
+          retention-days: 14
