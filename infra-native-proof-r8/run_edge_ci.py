@@ -38,7 +38,7 @@ try:
  result['bundles']=[]
  for mode in ['production-on','production-off']:
   assert not list((root/'functions'/mode).rglob('context.json')),'EXTERNAL_CONTEXT_PRESENT'
-  cmd(['docker','run','--rm','--network','none','-v',str(root)+':/proof',IMAGE,'bundle','--entrypoint','/proof/functions/'+mode+'/index.ts','--output','/proof/bundles/'+mode+'.eszip'])
+  cmd(['docker','run','--rm','--network','none','--user',str(os.getuid())+':'+str(os.getgid()),'-v',str(root)+':/proof',IMAGE,'bundle','--entrypoint','/proof/functions/'+mode+'/index.ts','--output','/proof/bundles/'+mode+'.eszip'])
   bundle=root/'bundles'/(mode+'.eszip')
   result['bundles'].append({'mode':mode,'bytes':bundle.stat().st_size,'sha256':__import__('hashlib').sha256(bundle.read_bytes()).hexdigest()})
   shutil.rmtree(root/'functions'/mode)
