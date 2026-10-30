@@ -16,8 +16,8 @@ try:
  (root/'functions/main/index.ts').write_text('''Deno.serve(async(req)=>{
   const name=new URL(req.url).searchParams.get('ci_worker')??new URL(req.url).pathname.split('/')[1];
   if(name==='health')return Response.json({ready:true});
-  if(!['probe','control','production-on','production-off'].includes(name))return new Response('NOT_FOUND',{status:404});
-  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,maybeEszip:name.startsWith('production-')?await Deno.readFile('/proof/bundles/'+name+'.eszip'):undefined,maybeEntrypoint:name.startsWith('production-')?'file:///proof/functions/'+name+'/index.ts':undefined,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-on'?'true':'false'],['B3D_NATIVE_ARTIFACT_SHA256','268af0f676deac886b45187c616232ff94b0dcb6200940e2c26431a959ebb4b0']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json'],context:{useReadSyncFileAPI:true}});return await worker.fetch(req);}
+  if(!['probe','control','production-on','production-off','production-health'].includes(name))return new Response('NOT_FOUND',{status:404});
+  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,maybeEszip:name.startsWith('production-')?await Deno.readFile('/proof/bundles/'+name+'.eszip'):undefined,maybeEntrypoint:name.startsWith('production-')?'file:///proof/functions/'+name+'/index.ts':undefined,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-off'?'false':'true'],['B3D_NATIVE_ARTIFACT_SHA256','268af0f676deac886b45187c616232ff94b0dcb6200940e2c26431a959ebb4b0']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json'],context:{useReadSyncFileAPI:true}});return await worker.fetch(req);}
   catch(e){console.log('NATIVE_ROUTER_ERROR '+(e?.name||'Error')+' '+String(e?.message||'').slice(0,200));return Response.json({error:e?.name||'Error'},{status:String(e?.name).includes('Cancelled')?546:503});}
  });''')
  (root/'functions/control/index.ts').write_text('''Deno.serve(req=>{if(new URL(req.url).pathname.endsWith('/cpu')){const t=performance.now();while(performance.now()-t<2500){}}return Response.json({control:true});});''')
@@ -32,17 +32,20 @@ try:
     throw Error('CI_PRIVATE_OR_UNKNOWN_RPC_FORBIDDEN');
    };
    await import('./candidate/index.ts');""")
+ # Exact production entry: no CI fetch interceptor in this bundle.
+ shutil.copytree(SOURCE/'candidate/supabase/functions/b3d-prepare',root/'functions/production-health')
+ result['exact_unintercepted_entry_bytes']=__import__('hashlib').sha256((root/'functions/production-health/index.ts').read_bytes()).hexdigest()
  # Bundle the exact entry graph, then physically remove all production source.
  (root/'bundles').mkdir()
  cmd(['docker','pull',IMAGE])
  result['bundles']=[]
- for mode in ['production-on','production-off']:
+ for mode in ['production-on','production-off','production-health']:
   assert not list((root/'functions'/mode).rglob('context.json')),'EXTERNAL_CONTEXT_PRESENT'
   cmd(['docker','run','--rm','--network','none','--user',str(os.getuid())+':'+str(os.getgid()),'-v',str(root)+':/proof',IMAGE,'bundle','--entrypoint','/proof/functions/'+mode+'/index.ts','--output','/proof/bundles/'+mode+'.eszip'])
   bundle=root/'bundles'/(mode+'.eszip')
   result['bundles'].append({'mode':mode,'bytes':bundle.stat().st_size,'sha256':__import__('hashlib').sha256(bundle.read_bytes()).hexdigest()})
   shutil.rmtree(root/'functions'/mode)
- assert all(not (root/'functions'/m).exists() for m in ['production-on','production-off'])
+ assert all(not (root/'functions'/m).exists() for m in ['production-on','production-off','production-health'])
  result['external_context_json_count']=len(list(root.rglob('context.json')))
  result['production_source_removed']=True
  for p in root.rglob('*'):p.chmod(0o755 if p.is_dir() else 0o644)
@@ -96,7 +99,7 @@ try:
   result['production_entry_checks'].append({'name':label,'status':code,'expected':expected,'wall_ms':wall,'native_identity':identity,'pass':ok});assert ok,'PRODUCTION_ENTRY_FAILED:'+label+':'+str(code)
  result['production_health_checks']=[]
  for cold in [True,False]:
-  code,body,wall=request('functions/v1/b3d-prepare/health?ci_worker=production-on'+('&cold=1' if cold else ''))
+  code,body,wall=request('functions/v1/b3d-prepare/health?ci_worker=production-health'+('&cold=1' if cold else ''))
   ok=code==200 and body=={'status':'alive'}
   result['production_health_checks'].append({'cold':cold,'status':code,'wall_ms':wall,'pass':ok});assert ok,'EXACT_HEALTH_FAILED'
  result['exact_production_entry_pass']=True
