@@ -1,0 +1,39 @@
+name: INFRA GCP EXIT R8B - exact identity rebind proof
+on:
+  push:
+    branches: [codex/infra-gcp-exit-r8b-identity-rebind]
+    paths: [.github/workflows/infra-gcp-exit-r8b.yml, infra-native-proof-r8b/**]
+permissions:
+  contents: read
+jobs:
+  exact-rebind:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.13.1
+      - name: Reconstruct unchanged R8 candidate from locked public inputs
+        run: python3 infra-native-proof-r8/reconstruct.py
+      - name: Identity and arithmetic JSON parity
+        run: |
+          python3 infra-native-proof-r8/identity_gate.py
+          node infra-native-proof-r8/test_numeric.mjs
+      - name: Exact successor on production-shaped post003 PostgreSQL
+        run: python3 infra-native-proof-r8b/run_db_ci.py
+      - name: Pinned Edge ESZIP runtime regression
+        run: python3 infra-native-proof-r8/run_edge_ci.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: r8b-rebind-results-only
+          path: |
+            infra-native-proof-r8b/rebind-result.json
+            infra-native-proof-r8/identity-result.json
+            infra-native-proof-r8/numeric-results.json
+            infra-native-proof-r8/native-runtime-result.json
+          if-no-files-found: error
+          retention-days: 14

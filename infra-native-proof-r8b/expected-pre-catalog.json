@@ -1,0 +1,1514 @@
+{
+  "tables": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "boundaries",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "boundary_context",
+      "owner": "postgres",
+      "force_rls": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "edit_context",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "edit_receipts",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "environment_protocol",
+      "owner": "postgres",
+      "force_rls": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "events",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "intents",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": false,
+      "name": "native_intents",
+      "owner": "postgres",
+      "force_rls": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "protocol",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "requests",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "scores",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "seals",
+      "owner": "postgres",
+      "force_rls": true
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "submissions",
+      "owner": "postgres",
+      "force_rls": true
+    }
+  ],
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "boundaries",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "boundaries",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "boundaries",
+      "column": "captured_at",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "boundaries",
+      "column": "source_text",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "boundaries",
+      "column": "fingerprint",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "boundaries",
+      "column": "source_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "boundaries",
+      "column": "roster_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "boundary_context",
+      "column": "boundary_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "boundary_context",
+      "column": "baseline_context",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "edit_context",
+      "column": "pid",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "bigint",
+      "table": "edit_context",
+      "column": "xid",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "edit_context",
+      "column": "match_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "edit_context",
+      "column": "actor",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "edit_receipts",
+      "column": "actor",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "edit_receipts",
+      "column": "request_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "edit_receipts",
+      "column": "match_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "edit_receipts",
+      "column": "patch",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "edit_receipts",
+      "column": "response",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "edit_receipts",
+      "column": "received_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "boolean",
+      "table": "environment_protocol",
+      "column": "singleton",
+      "default": "true",
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "environment_protocol",
+      "column": "manifest",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "environment_protocol",
+      "column": "manifest_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "environment_protocol",
+      "column": "worker_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "environment_protocol",
+      "column": "baseline_context",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "events",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "events",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "events",
+      "column": "recorded_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "events",
+      "column": "kind",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "events",
+      "column": "reason",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "intents",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "intents",
+      "column": "request_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "intents",
+      "column": "created_by",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "intents",
+      "column": "created_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "intents",
+      "column": "roster",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "intents",
+      "column": "match_type",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "intents",
+      "column": "score_mode",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "intents",
+      "column": "version",
+      "default": "1",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "intents",
+      "column": "replaces_intent_id",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "type": "uuid",
+      "table": "native_intents",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "native_intents",
+      "column": "attestation_version",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "native_intents",
+      "column": "native_artifact_sha256",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "native_intents",
+      "column": "registered_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "boolean",
+      "table": "protocol",
+      "column": "singleton",
+      "default": "true",
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "protocol",
+      "column": "manifest",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "protocol",
+      "column": "manifest_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "protocol",
+      "column": "worker_hash",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "requests",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "requests",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "requests",
+      "column": "request_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "requests",
+      "column": "submitter",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "requests",
+      "column": "version",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "requests",
+      "column": "match_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "requests",
+      "column": "received_at",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "requests",
+      "column": "body",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "requests",
+      "column": "match_number_at_binding",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "type": "uuid",
+      "table": "scores",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "scores",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "scores",
+      "column": "submission_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "scores",
+      "column": "seal_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "scores",
+      "column": "recorded_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "scores",
+      "column": "payload",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "seals",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "seals",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "seals",
+      "column": "boundary_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "seals",
+      "column": "sealed_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "bytea",
+      "table": "seals",
+      "column": "canonical_payload",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "seals",
+      "column": "payload",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "seals",
+      "column": "payload_hash",
+      "default": "encode(sha256(canonical_payload), 'hex'::text)",
+      "notnull": false
+    },
+    {
+      "type": "uuid",
+      "table": "submissions",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "submissions",
+      "column": "intent_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "submissions",
+      "column": "request_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "submissions",
+      "column": "submitter",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "integer",
+      "table": "submissions",
+      "column": "version",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "uuid",
+      "table": "submissions",
+      "column": "match_id",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "timestamp with time zone",
+      "table": "submissions",
+      "column": "received_at",
+      "default": "clock_timestamp()",
+      "notnull": true
+    },
+    {
+      "type": "jsonb",
+      "table": "submissions",
+      "column": "body",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "type": "text",
+      "table": "submissions",
+      "column": "body_hash",
+      "default": null,
+      "notnull": true
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE INDEX b3b_boundary_intent ON rating_validation_b3b.boundaries USING btree (intent_id, captured_at)",
+      "indexname": "b3b_boundary_intent",
+      "tablename": "boundaries",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE INDEX b3b_event_intent ON rating_validation_b3b.events USING btree (intent_id, recorded_at)",
+      "indexname": "b3b_event_intent",
+      "tablename": "events",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX b3b_one_intent_per_match ON rating_validation_b3b.submissions USING btree (match_id) WHERE (version = 1)",
+      "indexname": "b3b_one_intent_per_match",
+      "tablename": "submissions",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX b3b_request_match_identity ON rating_validation_b3b.requests USING btree (match_id) WHERE (version = 1)",
+      "indexname": "b3b_request_match_identity",
+      "tablename": "requests",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX boundaries_pkey ON rating_validation_b3b.boundaries USING btree (id)",
+      "indexname": "boundaries_pkey",
+      "tablename": "boundaries",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX boundary_context_pkey ON rating_validation_b3b.boundary_context USING btree (boundary_id)",
+      "indexname": "boundary_context_pkey",
+      "tablename": "boundary_context",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX edit_context_pkey ON rating_validation_b3b.edit_context USING btree (pid, xid)",
+      "indexname": "edit_context_pkey",
+      "tablename": "edit_context",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX edit_receipts_pkey ON rating_validation_b3b.edit_receipts USING btree (actor, request_id)",
+      "indexname": "edit_receipts_pkey",
+      "tablename": "edit_receipts",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX environment_protocol_pkey ON rating_validation_b3b.environment_protocol USING btree (singleton)",
+      "indexname": "environment_protocol_pkey",
+      "tablename": "environment_protocol",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX events_pkey ON rating_validation_b3b.events USING btree (id)",
+      "indexname": "events_pkey",
+      "tablename": "events",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX intents_created_by_request_id_key ON rating_validation_b3b.intents USING btree (created_by, request_id)",
+      "indexname": "intents_created_by_request_id_key",
+      "tablename": "intents",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX intents_pkey ON rating_validation_b3b.intents USING btree (id)",
+      "indexname": "intents_pkey",
+      "tablename": "intents",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX intents_replaces_intent_id_key ON rating_validation_b3b.intents USING btree (replaces_intent_id)",
+      "indexname": "intents_replaces_intent_id_key",
+      "tablename": "intents",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX native_intents_pkey ON rating_validation_b3b.native_intents USING btree (intent_id)",
+      "indexname": "native_intents_pkey",
+      "tablename": "native_intents",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX protocol_pkey ON rating_validation_b3b.protocol USING btree (singleton)",
+      "indexname": "protocol_pkey",
+      "tablename": "protocol",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX requests_intent_id_request_id_key ON rating_validation_b3b.requests USING btree (intent_id, request_id)",
+      "indexname": "requests_intent_id_request_id_key",
+      "tablename": "requests",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX requests_intent_id_version_key ON rating_validation_b3b.requests USING btree (intent_id, version)",
+      "indexname": "requests_intent_id_version_key",
+      "tablename": "requests",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX requests_pkey ON rating_validation_b3b.requests USING btree (id)",
+      "indexname": "requests_pkey",
+      "tablename": "requests",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX scores_intent_id_key ON rating_validation_b3b.scores USING btree (intent_id)",
+      "indexname": "scores_intent_id_key",
+      "tablename": "scores",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX scores_pkey ON rating_validation_b3b.scores USING btree (id)",
+      "indexname": "scores_pkey",
+      "tablename": "scores",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX seals_boundary_id_key ON rating_validation_b3b.seals USING btree (boundary_id)",
+      "indexname": "seals_boundary_id_key",
+      "tablename": "seals",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX seals_intent_id_key ON rating_validation_b3b.seals USING btree (intent_id)",
+      "indexname": "seals_intent_id_key",
+      "tablename": "seals",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX seals_pkey ON rating_validation_b3b.seals USING btree (id)",
+      "indexname": "seals_pkey",
+      "tablename": "seals",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX submissions_intent_id_request_id_key ON rating_validation_b3b.submissions USING btree (intent_id, request_id)",
+      "indexname": "submissions_intent_id_request_id_key",
+      "tablename": "submissions",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX submissions_intent_id_version_key ON rating_validation_b3b.submissions USING btree (intent_id, version)",
+      "indexname": "submissions_intent_id_version_key",
+      "tablename": "submissions",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX submissions_pkey ON rating_validation_b3b.submissions USING btree (id)",
+      "indexname": "submissions_pkey",
+      "tablename": "submissions",
+      "schemaname": "rating_validation_b3b",
+      "tablespace": null
+    }
+  ],
+  "policies": [],
+  "triggers": [
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.boundaries",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.boundaries FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.boundaries",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.boundaries FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.boundary_context",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.boundary_context FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.boundary_context",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.boundary_context FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.edit_receipts",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.edit_receipts FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.edit_receipts",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.edit_receipts FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.environment_protocol",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.environment_protocol FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.environment_protocol",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.environment_protocol FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.events",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.events FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.events",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.events FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.intents",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.intents FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.intents",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.intents FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.native_intents FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.native_intents FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.protocol",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.protocol FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.protocol",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.protocol FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.requests",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.requests FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.requests",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.requests FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.scores",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.scores FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.scores",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.scores FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.seals",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.seals FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.seals",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.seals FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_rows",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON rating_validation_b3b.submissions FOR EACH ROW EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    },
+    {
+      "name": "immutable_truncate",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "CREATE TRIGGER immutable_truncate BEFORE TRUNCATE ON rating_validation_b3b.submissions FOR EACH STATEMENT EXECUTE FUNCTION rating_validation_b3b.immutable()"
+    }
+  ],
+  "functions": [
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "hash": "09d4de5e72a5a4336dfed533b031d763925590212a88c10ae0ea23f4327d08ca",
+      "name": "capture_native_rating_validation_snapshot",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "public",
+      "arguments": "p_intent_id uuid",
+      "signature": "capture_native_rating_validation_snapshot(uuid)",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "hash": "f95d41ef1a96a1d1c206cd0d2b5020904c8f1bc38b52477d583f9723577604c1",
+      "name": "capture_rating_validation_snapshot",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "public",
+      "arguments": "p_intent_id uuid",
+      "signature": "capture_rating_validation_snapshot(uuid)",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "hash": "cd2d95e5cae394027a8eca9fb6244b353aec01a32c5aa6f5fe488641fb0db45b",
+      "name": "finalize_native_rating_validation_seal",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "public",
+      "arguments": "p_boundary_id uuid, p_canonical_payload text",
+      "signature": "finalize_native_rating_validation_seal(uuid,text)",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "hash": "e7b453060a3ff3b99c4300d9f0e57caad809bc8db15a176b1c39703f16066a61",
+      "name": "finalize_rating_validation_seal",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "public",
+      "arguments": "p_boundary_id uuid, p_canonical_payload text",
+      "signature": "finalize_rating_validation_seal(uuid,text)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "e44833503753464dbb670c13f2eccdbbe71dae3f8f0420cc4e004c8b4cf831ce",
+      "name": "actor",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.actor()",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "0f301438c9847d2be513c7fd0a5fbf1225245e16ff4ac6c6f73a75f55743cb3c",
+      "name": "assert_attestation",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_boundary_id uuid, v jsonb, p_native boolean",
+      "signature": "rating_validation_b3b.assert_attestation(uuid,jsonb,boolean)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "e236fbfa279886b9e98a598a8337b72c2499f87ab8732737e529ca032c6c017e",
+      "name": "business_approved",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_match uuid",
+      "signature": "rating_validation_b3b.business_approved(uuid)",
+      "volatility": "s"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "98beb07293891e45ba9f57dca0cf62712e60ef7973f6dd2bd01a148dca7b7b80",
+      "name": "capture_snapshot_core",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_intent_id uuid",
+      "signature": "rating_validation_b3b.capture_snapshot_core(uuid)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "ab69f8f0dd563b34cbcf9e1f5d69cd3213b883bbe23e5822fe0a8f0507f85d81",
+      "name": "eligible",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "i rating_validation_b3b.intents",
+      "signature": "rating_validation_b3b.eligible(rating_validation_b3b.intents)",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "f711d118246567ba2d51ee8d57a51851e69d771141b69038e641c31f55c97e2f",
+      "name": "export_evidence_core",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.export_evidence_core()",
+      "volatility": "s"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "61104bca8334cfb79b3a30eccb104be99c60a56e896e64c281361f69c4225b1c",
+      "name": "finalize_legacy_v1",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_boundary_id uuid, p_canonical_payload text",
+      "signature": "rating_validation_b3b.finalize_legacy_v1(uuid,text)",
+      "volatility": "v"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "7c068241e2a4c6571ec8425dc863a6bf44e87d2576b4dc21f7683706f4722c24",
+      "name": "finalize_seal_core",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_boundary_id uuid, p_canonical_payload text",
+      "signature": "rating_validation_b3b.finalize_seal_core(uuid,text)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "9e9dfdee32f210c850b3d5f1682a0f2968e952d5de88980ca94a067798788982",
+      "name": "fingerprint",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_source jsonb",
+      "signature": "rating_validation_b3b.fingerprint(jsonb)",
+      "volatility": "s"
+    },
+    {
+      "sd": true,
+      "acl": "{postgres=X/postgres}",
+      "hash": "7760c4851a459a554a73e90faf50bf9ed904431259f15cbc1e85b57d4f18bc64",
+      "name": "guard_edit_route",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.guard_edit_route()",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "cd5899eb66d732add12c734cc18be0c62c0c4c02373605b2e1f0fc7eadba4b75",
+      "name": "hash_json",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p jsonb",
+      "signature": "rating_validation_b3b.hash_json(jsonb)",
+      "volatility": "s"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "f9844932b0f63c0084ae4d72d54de9b2f636e7daee5e84f321766ce44331a50a",
+      "name": "immutable",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.immutable()",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "e4457ac8993018c6cf007b3e2a01d1d02a651958f914ba107e9b4872e8bed1a1",
+      "name": "match_access",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_match_id uuid, p_edit boolean",
+      "signature": "rating_validation_b3b.match_access(uuid,boolean)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "a0aa05904e11c431b57d81b5a90e63867adcd684f740690dd8810ab6bf31fd75",
+      "name": "owner",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p_intent uuid",
+      "signature": "rating_validation_b3b.owner(uuid)",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "ebe6a0ab305e6477f775b5e906af2dbbabe23ede564aaef4e7759eb31d6cc663",
+      "name": "roster",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "a uuid[], b uuid[]",
+      "signature": "rating_validation_b3b.roster(uuid[],uuid[])",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "6023f6453c782b5b07e5997d790910884eb7315ba013a6ce78a735052d4f8871",
+      "name": "selected_protocol",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.selected_protocol()",
+      "volatility": "s"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "e1177d6eaa0554a966f5b409652303c8fe79e579a274a53775d21fb8d2d81b15",
+      "name": "source",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.source()",
+      "volatility": "v"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "27f7599a8611603d63df0f321053febdf5d7259edc33fbc0f5b7d82889c818e7",
+      "name": "terminal",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "p uuid",
+      "signature": "rating_validation_b3b.terminal(uuid)",
+      "volatility": "s"
+    },
+    {
+      "sd": false,
+      "acl": "{postgres=X/postgres}",
+      "hash": "aaee9b75faf07b995005d7e9cd035efcadbe13d7f3dfeb0fd50ecc5e36ef895e",
+      "name": "worker",
+      "owner": "postgres",
+      "config": [
+        "search_path=pg_catalog",
+        "TimeZone=UTC"
+      ],
+      "schema": "rating_validation_b3b",
+      "arguments": "",
+      "signature": "rating_validation_b3b.worker()",
+      "volatility": "v"
+    }
+  ],
+  "schema_acl": "{postgres=UC/postgres}",
+  "constraints": [
+    {
+      "name": "boundaries_intent_id_fkey",
+      "table": "rating_validation_b3b.boundaries",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "boundaries_pkey",
+      "table": "rating_validation_b3b.boundaries",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "boundary_context_boundary_id_fkey",
+      "table": "rating_validation_b3b.boundary_context",
+      "definition": "FOREIGN KEY (boundary_id) REFERENCES rating_validation_b3b.boundaries(id)"
+    },
+    {
+      "name": "boundary_context_pkey",
+      "table": "rating_validation_b3b.boundary_context",
+      "definition": "PRIMARY KEY (boundary_id)"
+    },
+    {
+      "name": "edit_context_pkey",
+      "table": "rating_validation_b3b.edit_context",
+      "definition": "PRIMARY KEY (pid, xid)"
+    },
+    {
+      "name": "edit_receipts_pkey",
+      "table": "rating_validation_b3b.edit_receipts",
+      "definition": "PRIMARY KEY (actor, request_id)"
+    },
+    {
+      "name": "environment_protocol_pkey",
+      "table": "rating_validation_b3b.environment_protocol",
+      "definition": "PRIMARY KEY (singleton)"
+    },
+    {
+      "name": "protocol_singleton_check",
+      "table": "rating_validation_b3b.environment_protocol",
+      "definition": "CHECK (singleton)"
+    },
+    {
+      "name": "events_intent_id_fkey",
+      "table": "rating_validation_b3b.events",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "events_kind_check",
+      "table": "rating_validation_b3b.events",
+      "definition": "CHECK ((kind = ANY (ARRAY['VOID'::text, 'MISSED'::text, 'ABANDONED'::text, 'ADJUDICATION'::text, 'STARTED'::text])))"
+    },
+    {
+      "name": "events_pkey",
+      "table": "rating_validation_b3b.events",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "intents_created_by_request_id_key",
+      "table": "rating_validation_b3b.intents",
+      "definition": "UNIQUE (created_by, request_id)"
+    },
+    {
+      "name": "intents_match_type_check",
+      "table": "rating_validation_b3b.intents",
+      "definition": "CHECK ((match_type = ANY (ARRAY['CLUB_RATED'::text, 'FRIENDLY_RATED'::text, 'TRAINING'::text])))"
+    },
+    {
+      "name": "intents_pkey",
+      "table": "rating_validation_b3b.intents",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "intents_replaces_intent_id_fkey",
+      "table": "rating_validation_b3b.intents",
+      "definition": "FOREIGN KEY (replaces_intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "intents_replaces_intent_id_key",
+      "table": "rating_validation_b3b.intents",
+      "definition": "UNIQUE (replaces_intent_id)"
+    },
+    {
+      "name": "intents_score_mode_check",
+      "table": "rating_validation_b3b.intents",
+      "definition": "CHECK ((score_mode = ANY (ARRAY['POINTS'::text, 'RESULT'::text])))"
+    },
+    {
+      "name": "intents_version_check",
+      "table": "rating_validation_b3b.intents",
+      "definition": "CHECK ((version > 0))"
+    },
+    {
+      "name": "native_intents_attestation_version_check",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "CHECK ((attestation_version = 2))"
+    },
+    {
+      "name": "native_intents_intent_id_fkey",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "native_intents_native_artifact_sha256_check",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "CHECK ((native_artifact_sha256 = '018674e02538e52d64ecf8fbfe1b0d0b86d5ef3786d81e0397531a6d7997513f'::text))"
+    },
+    {
+      "name": "native_intents_pkey",
+      "table": "rating_validation_b3b.native_intents",
+      "definition": "PRIMARY KEY (intent_id)"
+    },
+    {
+      "name": "protocol_pkey",
+      "table": "rating_validation_b3b.protocol",
+      "definition": "PRIMARY KEY (singleton)"
+    },
+    {
+      "name": "protocol_singleton_check",
+      "table": "rating_validation_b3b.protocol",
+      "definition": "CHECK (singleton)"
+    },
+    {
+      "name": "requests_intent_id_fkey",
+      "table": "rating_validation_b3b.requests",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "requests_intent_id_request_id_key",
+      "table": "rating_validation_b3b.requests",
+      "definition": "UNIQUE (intent_id, request_id)"
+    },
+    {
+      "name": "requests_intent_id_version_key",
+      "table": "rating_validation_b3b.requests",
+      "definition": "UNIQUE (intent_id, version)"
+    },
+    {
+      "name": "requests_pkey",
+      "table": "rating_validation_b3b.requests",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "requests_version_check",
+      "table": "rating_validation_b3b.requests",
+      "definition": "CHECK ((version > 0))"
+    },
+    {
+      "name": "scores_intent_id_fkey",
+      "table": "rating_validation_b3b.scores",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "scores_intent_id_key",
+      "table": "rating_validation_b3b.scores",
+      "definition": "UNIQUE (intent_id)"
+    },
+    {
+      "name": "scores_pkey",
+      "table": "rating_validation_b3b.scores",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "scores_seal_id_fkey",
+      "table": "rating_validation_b3b.scores",
+      "definition": "FOREIGN KEY (seal_id) REFERENCES rating_validation_b3b.seals(id)"
+    },
+    {
+      "name": "scores_submission_id_fkey",
+      "table": "rating_validation_b3b.scores",
+      "definition": "FOREIGN KEY (submission_id) REFERENCES rating_validation_b3b.submissions(id)"
+    },
+    {
+      "name": "seals_boundary_id_fkey",
+      "table": "rating_validation_b3b.seals",
+      "definition": "FOREIGN KEY (boundary_id) REFERENCES rating_validation_b3b.boundaries(id)"
+    },
+    {
+      "name": "seals_boundary_id_key",
+      "table": "rating_validation_b3b.seals",
+      "definition": "UNIQUE (boundary_id)"
+    },
+    {
+      "name": "seals_check",
+      "table": "rating_validation_b3b.seals",
+      "definition": "CHECK (((convert_from(canonical_payload, 'UTF8'::name))::jsonb = payload))"
+    },
+    {
+      "name": "seals_intent_id_fkey",
+      "table": "rating_validation_b3b.seals",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "seals_intent_id_key",
+      "table": "rating_validation_b3b.seals",
+      "definition": "UNIQUE (intent_id)"
+    },
+    {
+      "name": "seals_pkey",
+      "table": "rating_validation_b3b.seals",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "submissions_intent_id_fkey",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "FOREIGN KEY (intent_id) REFERENCES rating_validation_b3b.intents(id)"
+    },
+    {
+      "name": "submissions_intent_id_request_id_key",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "UNIQUE (intent_id, request_id)"
+    },
+    {
+      "name": "submissions_intent_id_version_key",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "UNIQUE (intent_id, version)"
+    },
+    {
+      "name": "submissions_pkey",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "submissions_version_check",
+      "table": "rating_validation_b3b.submissions",
+      "definition": "CHECK ((version > 0))"
+    }
+  ]
+}

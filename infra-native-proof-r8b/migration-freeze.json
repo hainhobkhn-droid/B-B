@@ -1,0 +1,34 @@
+{
+  "filename": "202610300004_b3d_native_attestation_rebind_packaged_runtime.sql",
+  "sha256": "6f7bea30d758a12cfeb878586cfd4eece2f5b5ea8e4808f298386a13975e539b",
+  "target": "bflwaqlvnesuqoyikxar",
+  "old_native_identity": "018674e02538e52d64ecf8fbfe1b0d0b86d5ef3786d81e0397531a6d7997513f",
+  "new_native_identity": "268af0f676deac886b45187c616232ff94b0dcb6200940e2c26431a959ebb4b0",
+  "changed_functions": [
+    {
+      "signature": "rating_validation_b3b.assert_attestation(uuid,jsonb,boolean)",
+      "old_prosrc_sha256": "0f301438c9847d2be513c7fd0a5fbf1225245e16ff4ac6c6f73a75f55743cb3c",
+      "new_prosrc_sha256": "b8ebdb6b8a0e48f8d0c7db0768279d26154d10ecb6e049379c492241069c554e",
+      "old_occurrences": 1
+    },
+    {
+      "signature": "capture_native_rating_validation_snapshot(uuid)",
+      "old_prosrc_sha256": "09d4de5e72a5a4336dfed533b031d763925590212a88c10ae0ea23f4327d08ca",
+      "new_prosrc_sha256": "d7b805c1341beaae6719553f3665db8bc7740789f5bc593820041f4f712a4217",
+      "old_occurrences": 2
+    }
+  ],
+  "changed_constraint": {
+    "name": "native_intents_native_artifact_sha256_check",
+    "table": "rating_validation_b3b.native_intents",
+    "definition": "CHECK ((native_artifact_sha256 = '268af0f676deac886b45187c616232ff94b0dcb6200940e2c26431a959ebb4b0'::text))"
+  },
+  "grants_delta": "NONE",
+  "rls_delta": "NONE",
+  "business_data_mutation": "NONE",
+  "historical_rewrite": "NONE",
+  "production_applied": false,
+  "receipt_tracking": "separate atomic execution wrapper required; raw migration does not self-record receipt",
+  "candidate_sha256": "55c7551c53b9f796fded80e32cf374a196598e09f4fbb9a6edfd20938a264919",
+  "migration003_sha256": "04661eefef340d58b09c2450f1205d4f7d273e9e33da7177c7ea636fa5928b8a"
+}
