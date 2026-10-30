@@ -50,6 +50,8 @@ try:
    assert code==200 and body.get('ok'),mode+':'+c['name']+':'+str(code)
  code,body,wall=request('probe?action=contract');result['contract']={'status':code,'wall_ms':wall,**body}
  assert code==200 and body.get('ok') and body['passed']==35,'CONTRACT_FAILED'
+ code,body,wall=request('probe?action=binding');result['context_binding']={'status':code,'wall_ms':wall,**body}
+ assert code==200 and body.get('ok') and body['passed']==7,'CONTEXT_BINDING_FAILED'
  result['cpu_control_status']=request('control/cpu')[0]
  assert result['cpu_control_status']==546,'CPU_BUDGET_NOT_ENFORCED'
  result['no_unexpected_5xx']=all(c['status']==200 for c in result['checks'])
