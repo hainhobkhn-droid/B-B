@@ -17,7 +17,7 @@ try:
   const name=new URL(req.url).pathname.split('/')[1];
   if(name==='health')return Response.json({ready:true});
   if(!['probe','control','production-on','production-off'].includes(name))return new Response('NOT_FOUND',{status:404});
-  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-on'?'true':'false']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json','/proof/functions/production-on/candidate/context.json','/proof/functions/production-off/candidate/context.json'],context:{useReadSyncFileAPI:true}});if(name.startsWith('production-')){const routed=new URL(req.url);routed.pathname='/functions/v1/b3d-prepare';return await worker.fetch(new Request(routed,req));}return await worker.fetch(req);}
+  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-on'?'true':'false']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json','/proof/functions/production-on/candidate/context.json','/proof/functions/production-off/candidate/context.json'],context:{useReadSyncFileAPI:true}});if(name.startsWith('production-')){const routed=new URL(req.url);routed.pathname='/functions/v1/b3d-prepare';const body=await req.arrayBuffer();return await worker.fetch(new Request(routed,{method:req.method,headers:req.headers,body}));}return await worker.fetch(req);}
   catch(e){console.log('NATIVE_ROUTER_ERROR '+(e?.name||'Error'));return Response.json({error:e?.name||'Error'},{status:String(e?.name).includes('Cancelled')?546:503});}
  });''')
  (root/'functions/control/index.ts').write_text('''Deno.serve(req=>{if(new URL(req.url).pathname.endsWith('/cpu')){const t=performance.now();while(performance.now()-t<2500){}}return Response.json({control:true});});''')
@@ -90,7 +90,7 @@ except Exception as e:result['pass']=False;result['failure']=str(e)
 finally:
  if created:
   log=cmd(['docker','logs',name],False);diagnostic=log.stdout+log.stderr
-  result['runtime_diagnostics']=[re.sub(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}','[UUID]',line)[:500] for line in diagnostic.splitlines() if any(word in line for word in ['Error','error','failed','boot','Uncaught'])][-15:]
+  result['runtime_diagnostics']=[re.sub(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}','[UUID]',line)[:500] for line in diagnostic.splitlines() if 'shutdown signal' not in line and any(word in line for word in ['Error','error','failed','boot','Uncaught','panicked','fatal'])][:25]
   cmd(['docker','rm','-f',name],False)
  if net:cmd(['docker','network','rm',network],False)
  shutil.rmtree(root)
