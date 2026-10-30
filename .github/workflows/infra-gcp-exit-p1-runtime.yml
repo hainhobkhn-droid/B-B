@@ -60,6 +60,10 @@ jobs:
               });''')
               (root/'functions/probe/index.ts').write_text('''import '../../runtime/pyodide.asm.js';
               import {loadPyodide} from '../../runtime/pyodide.mjs';
+              import {createRequire} from 'node:module';
+              globalThis.require=createRequire(new URL('../../runtime/pyodide.asm.js',import.meta.url));
+              globalThis.__dirname=new URL('../../runtime/',import.meta.url).pathname;
+              globalThis.__filename=new URL('../../runtime/pyodide.asm.js',import.meta.url).pathname;
               let python;let initMs;
               Deno.serve(async()=>{
                 try{
