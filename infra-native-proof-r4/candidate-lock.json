@@ -1,0 +1,211 @@
+{
+  "candidate_sha256": "7171b6e9e4aea1b04c5fd52f0dd64c71f53e3605b54404e8036c313cbbf9306b",
+  "runtime_manifest": [
+    {
+      "path": "supabase/config.toml",
+      "sha256": "90977e8632e2a644bca9ba0c142069a4a878736a5780679792b4c6a479743cfa",
+      "role": "Deployment configuration / auth gateway setting / static asset declaration",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/context.json",
+      "sha256": "73b9dc897cf8547575798ad153b2a7cd886cc4616bd860079ff45fe425ebdd84",
+      "role": "Private frozen production context asset; never publish to CI/Pages",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/index.ts",
+      "sha256": "a139f100db41253443de2244a13a7047eb6cf3b2268ff370f3e52c0ea2f62d9a",
+      "role": "Production bootstrap / env binding / activation gate / Deno.serve",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/context.ts",
+      "sha256": "2bbde87cd496190e6ffa6c7c39f71764902c5f99c26544ebcdc894942ef7a76a",
+      "role": "Server context digest/environment validation",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/decimal.ts",
+      "sha256": "e3a1785c441f0154fdad905729c352947543d17aae2f8fab6a83e6886e879486",
+      "role": "Python Decimal compatibility numerical core",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/engine.ts",
+      "sha256": "f3a9eeab3dac951269e38613ac92117fc35e8cdfa17104484d1fedaacb308b8f",
+      "role": "Deterministic B3D validate/replay/forecast/coverage",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/handler.ts",
+      "sha256": "1cdefa9a2a85874cb4df49ffa58f23a35b09df92558182f85f2b34d28b3e5723",
+      "role": "HTTP/auth/orchestration/status/retry/admission contract",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/python-json.ts",
+      "sha256": "cd8c0f22adc688ba44e81e559ad2e1d1870be333206afe8a69eb927d3c29dc7c",
+      "role": "Canonical serialization / JSON token types / SHA256",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/time.ts",
+      "sha256": "276a3b2df7b2e266346b88ad4c8997b0250516dda1881ce4a6ccbaf6d92dc0dd",
+      "role": "UTC microsecond ordering",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/transport.ts",
+      "sha256": "b979f52b1321b743ed29deaa6a51fb6105a577e1bea405c4feedc4fd5d223aca",
+      "role": "Auth verification and private/caller RPC fetch transport",
+      "runtime_required": true
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/vendor/decimal.mjs",
+      "sha256": "45e6ecc0a500fee6439acdf67ee2e9322aab57e6ea0409ef52993dedbba8cf19",
+      "role": "Vendored decimal.js10.6.0 production implementation",
+      "runtime_required": true
+    }
+  ],
+  "native_artifact_hash": "11c86f5e6feb2e65f73d91d440c8c5bf09c67456ecb5f29c8102c1854ae31da0",
+  "all_files": [
+    {
+      "path": "supabase/config.toml",
+      "role": "Deployment configuration / auth gateway setting / static asset declaration",
+      "sha256": "90977e8632e2a644bca9ba0c142069a4a878736a5780679792b4c6a479743cfa",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/context.json",
+      "role": "Private frozen production context asset; never publish to CI/Pages",
+      "sha256": "73b9dc897cf8547575798ad153b2a7cd886cc4616bd860079ff45fe425ebdd84",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "deterministic reconstruction from pinned public inputs"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/index.ts",
+      "role": "Production bootstrap / env binding / activation gate / Deno.serve",
+      "sha256": "a139f100db41253443de2244a13a7047eb6cf3b2268ff370f3e52c0ea2f62d9a",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/context.ts",
+      "role": "Server context digest/environment validation",
+      "sha256": "2bbde87cd496190e6ffa6c7c39f71764902c5f99c26544ebcdc894942ef7a76a",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/decimal.ts",
+      "role": "Python Decimal compatibility numerical core",
+      "sha256": "e3a1785c441f0154fdad905729c352947543d17aae2f8fab6a83e6886e879486",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/engine.ts",
+      "role": "Deterministic B3D validate/replay/forecast/coverage",
+      "sha256": "f3a9eeab3dac951269e38613ac92117fc35e8cdfa17104484d1fedaacb308b8f",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/handler.ts",
+      "role": "HTTP/auth/orchestration/status/retry/admission contract",
+      "sha256": "1cdefa9a2a85874cb4df49ffa58f23a35b09df92558182f85f2b34d28b3e5723",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/python-json.ts",
+      "role": "Canonical serialization / JSON token types / SHA256",
+      "sha256": "cd8c0f22adc688ba44e81e559ad2e1d1870be333206afe8a69eb927d3c29dc7c",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/time.ts",
+      "role": "UTC microsecond ordering",
+      "sha256": "276a3b2df7b2e266346b88ad4c8997b0250516dda1881ce4a6ccbaf6d92dc0dd",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/transport.ts",
+      "role": "Auth verification and private/caller RPC fetch transport",
+      "sha256": "b979f52b1321b743ed29deaa6a51fb6105a577e1bea405c4feedc4fd5d223aca",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/vendor/decimal.d.mts",
+      "role": "Compile-time contract declarations; not executed",
+      "sha256": "e6cfcf171b5f7ec0cb620eee4669739ad2711597d0ff7fdb79298dfc1118e66a",
+      "runtime_required": false,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/vendor/decimal.mjs",
+      "role": "Vendored decimal.js10.6.0 production implementation",
+      "sha256": "45e6ecc0a500fee6439acdf67ee2e9322aab57e6ea0409ef52993dedbba8cf19",
+      "runtime_required": true,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    },
+    {
+      "path": "supabase/functions/b3d-prepare/native/vendor/LICENCE.md",
+      "role": "Third-party license notice; not executed",
+      "sha256": "3108b546bcff5d346923a82f48b2d252ca722f9088076db6d145f6b67757ad6c",
+      "runtime_required": false,
+      "tested_in_ci": false,
+      "included_in_candidate": true,
+      "ci_mode": "exact committed bytes"
+    }
+  ],
+  "public_inputs": [
+    {
+      "path": "analysis/rating-calibration01-a/dataset.json",
+      "git_blob_sha1": "daeef861f3bb82d05cc899c9a26d39858ab5f46d",
+      "sha256": "212b0d8db050b008795b47f3735fd4ab7d1d3a9fe79e0dca8683823599c0eb22"
+    },
+    {
+      "path": "analysis/rating-calibration01-b/frozen_candidates.json",
+      "git_blob_sha1": "c6756ad22a0c3f4d79b2648710061ab29fc6a801",
+      "sha256": "7a257b159a05f319bf0ed62218b78037207be40fbe7e9c36580db8d8a5b521fa"
+    },
+    {
+      "path": "analysis/rating-calibration01-b/checkpoint_protocol_lock.json",
+      "git_blob_sha1": "f161af7497362582e6ba7faaff3c1b10902bfb8c",
+      "sha256": "0fee6528c71969888c772e9589e610d7b590d5b041deaafb98529f335fc1fcfc"
+    }
+  ],
+  "context_sha256": "73b9dc897cf8547575798ad153b2a7cd886cc4616bd860079ff45fe425ebdd84",
+  "context_descriptor_sha256": "43ece782781178e8553d6a9d070264ed37e0fee41e62fc2d9271ee7d615c2162",
+  "identity_semantics": "Native artifact identity is independent CI/deployment receipt metadata; old running-source claim remains unresolved, do not deploy"
+}

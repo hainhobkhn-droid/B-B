@@ -1,0 +1,6 @@
+# Separate deployment/activation approval required. No CLI deployment in P1R2.
+project_id = "bflwaqlvnesuqoyikxar"
+[functions.b3d-prepare]
+verify_jwt = false
+entrypoint = "./functions/b3d-prepare/index.ts"
+static_files = ["./functions/b3d-prepare/context.json"]

@@ -1,0 +1,36 @@
+name: INFRA GCP EXIT P1R4 - provenance closure gate
+on:
+  push:
+    branches: [codex/infra-gcp-exit-p1r4-provenance-proof]
+    paths: [.github/workflows/infra-gcp-exit-p1r4.yml, infra-native-proof-r4/**]
+permissions:
+  contents: read
+jobs:
+  provenance-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.13.1
+      - name: Reconstruct and hash every exact candidate file
+        run: python3 infra-native-proof-r4/reconstruct.py
+      - name: Arithmetic and JSON oracle parity
+        run: node infra-native-proof-r4/test_numeric.mjs
+      - name: Actual Edge Runtime - core and exact production bootstrap
+        run: python3 infra-native-proof-r4/run_edge_ci.py
+      - name: Strict identity closure gate - never waive old execution hash
+        run: python3 infra-native-proof-r4/identity_gate.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-provenance-r4-results-only
+          path: |
+            infra-native-proof-r4/native-runtime-result.json
+            infra-native-proof-r4/numeric-results.json
+            infra-native-proof-r4/identity-result.json
+          if-no-files-found: error
+          retention-days: 14
