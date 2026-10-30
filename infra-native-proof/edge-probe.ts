@@ -10,7 +10,7 @@ Deno.serve(async(req)=>{
  try{
   if(action==='contract'){
    const results=await runContractTests(data.cases.find(c=>c.name==='prefix-2')!);
-   return Response.json({ok:results.every(r=>r.pass),passed:results.filter(r=>r.pass).length,total:results.length,results,wall_ms:performance.now()-start});
+   return Response.json({ok:results.passed===results.total,...results,wall_ms:performance.now()-start});
   }
   const index=Number(url.searchParams.get('index'));if(!Number.isInteger(index)||index<0||index>=data.cases.length)return new Response('BAD_INDEX',{status:400});
   const c=data.cases[index];let ok=false,hash:string|undefined,error:string|undefined;

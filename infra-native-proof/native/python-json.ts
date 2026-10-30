@@ -62,6 +62,6 @@ export function parsePythonJSON(s:string):unknown{
 }
 export async function sha256(text:string|Uint8Array):Promise<string>{
  const bytes=typeof text==='string'?new TextEncoder().encode(text):text;
- return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
+ return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 export const digest=(value:unknown)=>sha256(canonical(value));
