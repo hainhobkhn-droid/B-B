@@ -24,7 +24,7 @@ jobs:
         shell: python
         run: |
           import base64, hashlib, io, json, os, pathlib, subprocess, tarfile, tempfile, time, urllib.request, urllib.error
-          root=pathlib.Path(tempfile.mkdtemp(prefix='infra-synthetic-',dir=os.environ['RUNNER_TEMP']))
+          root=pathlib.Path(tempfile.mkdtemp(prefix='infra-synthetic-',dir=os.environ['RUNNER_TEMP']));root.chmod(0o755)
           result={'synthetic_only':True,'business_context_uploaded':False,'secrets_used':False,'supabase_or_gcp_requests':0,'deployed':False,'image_tag':'supabase/edge-runtime:v1.77.4','memory_limit_mb':256,'cpu_soft_ms':2000,'cpu_hard_ms':2000,'checks':[]}
           name='infra-synthetic-'+os.environ['GITHUB_RUN_ID'];network=name+'-net';created=False;net=False
           def cmd(args,check=True):
@@ -77,20 +77,24 @@ jobs:
               cmd(['docker','pull',result['image_tag']])
               result['image_digest']=cmd(['docker','image','inspect',result['image_tag'],'--format','{{index .RepoDigests 0}}']).stdout.strip()
               cmd(['docker','network','create','--internal',network]);net=True
-              cmd(['docker','run','-d','--name',name,'--network',network,'--cap-drop','ALL','--security-opt','no-new-privileges','-p','127.0.0.1:9000:9000','-v',str(root)+':/proof:ro','-e','DENO_DIR=/tmp/deno',result['image_tag'],'start','--main-service','/proof/functions/main']);created=True
+              cmd(['docker','run','-d','--name',name,'--network',network,'--cap-drop','ALL','--security-opt','no-new-privileges','-v',str(root)+':/proof:ro','-e','DENO_DIR=/tmp/deno',result['image_tag'],'start','--main-service','/proof/functions/main']);created=True
+              container_ip=cmd(['docker','inspect',name,'--format','{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}']).stdout.strip()
+              assert container_ip.startswith('172.') or container_ip.startswith('192.168.')
               def request(path):
                   start=time.monotonic()
                   try:
-                      with urllib.request.urlopen('http://127.0.0.1:9000/'+path,timeout=40) as response:return response.status,json.load(response),round((time.monotonic()-start)*1000)
+                      with urllib.request.urlopen('http://'+container_ip+':9000/'+path,timeout=40) as response:return response.status,json.load(response),round((time.monotonic()-start)*1000)
                   except urllib.error.HTTPError as e:
                       try:body=json.loads(e.read())
                       except Exception:body={'code':'NON_JSON_ERROR'}
                       return e.code,body,round((time.monotonic()-start)*1000)
+              ready=False
               for _ in range(60):
                   try:
-                      if request('health')[0]==200:break
+                      if request('health')[0]==200:ready=True;break
                   except (OSError,ValueError):pass
                   time.sleep(.5)
+              if not ready:raise RuntimeError('RUNTIME_NOT_READY')
               status,body,ms=request('control/ok');result['checks'].append({'name':'control-health','status':status,'pass':status==200,'wall_ms':ms})
               status,body,ms=request('control/cpu');result['checks'].append({'name':'cpu-budget-enforced','status':status,'pass':status==546,'wall_ms':ms})
               for attempt in range(3):
@@ -100,7 +104,8 @@ jobs:
           except Exception as e:result['harness_error']=type(e).__name__
           finally:
               if created:
-                  logs=cmd(['docker','logs',name],check=False);result['runtime_diagnostics']=[line[-700:] for line in (logs.stdout+logs.stderr).splitlines() if any(term in line for term in ['SYNTHETIC_','CPUTime','Memory','cpu time limit','boot failure'])][-30:]
+                  logs=cmd(['docker','logs',name],check=False);result['runtime_diagnostics']=[line[-700:] for line in (logs.stdout+logs.stderr).splitlines()][-60:]
+                  state=json.loads(cmd(['docker','inspect',name,'--format','{{json .State}}']).stdout);result['container_state']={k:state[k] for k in ['Status','ExitCode','Error']}
                   cmd(['docker','rm','-f',name],check=False)
               if net:cmd(['docker','network','rm',network],check=False)
               result['pass']=len(result['checks'])==5 and all(x['pass'] for x in result['checks'])
