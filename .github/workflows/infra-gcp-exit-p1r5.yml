@@ -1,0 +1,39 @@
+name: INFRA GCP EXIT P1R5 - native verifier attestation proof
+on:
+  push:
+    branches: [codex/infra-gcp-exit-p1r5-attestation-proof]
+    paths: [.github/workflows/infra-gcp-exit-p1r5.yml, infra-native-proof-r5/**]
+permissions:
+  contents: read
+jobs:
+  contract-attestation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.13.1
+      - name: Reconstruct exact new candidate
+        run: python3 infra-native-proof-r5/reconstruct.py
+      - name: Arithmetic and JSON oracle parity
+        run: node infra-native-proof-r5/test_numeric.mjs
+      - name: Real PostgreSQL legacy native downgrade proof
+        run: python3 infra-native-proof-r5/run_db_ci.py
+      - name: Actual Supabase Edge Runtime and exact production bootstrap
+        run: python3 infra-native-proof-r5/run_edge_ci.py
+      - name: Independent native attestation identity gate
+        run: python3 infra-native-proof-r5/identity_gate.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: native-attestation-r5-results-only
+          path: |
+            infra-native-proof-r5/native-runtime-result.json
+            infra-native-proof-r5/numeric-results.json
+            infra-native-proof-r5/identity-result.json
+            infra-native-proof-r5/db-result.json
+          if-no-files-found: error
+          retention-days: 14

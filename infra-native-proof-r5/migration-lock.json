@@ -1,0 +1,13 @@
+{
+  "file": "migrations/202610300002_b3d_native_attestation_v2.sql",
+  "sha256": "26dfd8854951e9b74d359b4477af52213847b1d90dfcc35e981d4bed247ad286",
+  "approved_native_artifact_sha256": "018674e02538e52d64ecf8fbfe1b0d0b86d5ef3786d81e0397531a6d7997513f",
+  "legacy_wrapper_prosrc_sha256": "44f0576e0c5881b87afa6ceb404ead70de37e431745fec98d849eff5577653d4",
+  "legacy_core_prosrc_sha256": "7577d93508e8d1bb163af16a2ee8bb11f7addba8daaf37aab2337601a73cc7b9",
+  "production_applied": false,
+  "superseded_design_only": {
+    "file": "migrations/202610300001_b3d_native_attestation_v2.sql",
+    "sha256": "21aca7e1ea3d30551b69c9bd66fd75fa4741f80c332690f86ef9222be97a99d8",
+    "apply_allowed": false
+  }
+}
