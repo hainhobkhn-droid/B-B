@@ -2,7 +2,7 @@
 Never print context or upload it as an artifact. No secret/API/network dependency.
 """
 from pathlib import Path
-import hashlib,json,os
+import hashlib,json,os,subprocess,tomllib
 D=Path(__file__).resolve().parent;REPO=Path(os.environ.get('GITHUB_WORKSPACE',D.parents[3]));lock=json.loads((D/'candidate-lock.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest()
 for row in lock['public_inputs']:
  raw=(REPO/row['path']).read_bytes();assert sha(raw)==row['sha256'], 'PUBLIC_INPUT_HASH_DRIFT'
@@ -15,3 +15,11 @@ for row in lock['all_files']:assert sha((D/'candidate'/row['path']).read_bytes()
 assert sha(''.join(r['sha256']+'  '+r['path']+'\n' for r in lock['all_files']).encode())==lock['candidate_sha256']
 assert sha(json.dumps(lock['runtime_manifest'],sort_keys=True,separators=(',',':'),ensure_ascii=False).encode())==lock['native_artifact_hash']
 print(json.dumps({'reconstruction_pass':True,'candidate_sha256':lock['candidate_sha256'],'native_artifact_hash':lock['native_artifact_hash'],'runtime_files_verified':len(lock['runtime_manifest']),'all_files_verified':len(lock['all_files']),'context_contents_logged':False}))
+
+config=tomllib.loads((D/'candidate/supabase/config.toml').read_text())
+assert config['project_id']=='bflwaqlvnesuqoyikxar'
+f=config['functions']['b3d-prepare'];assert f['verify_jwt'] is False and f['entrypoint']=='./functions/b3d-prepare/index.ts' and f['static_files']==['./functions/b3d-prepare/context.json']
+for row in lock['all_files']:
+ relative='infra-native-proof-r4/candidate/'+row['path'] if not row['path'].endswith('/context.json') else 'infra-native-proof-r4/reconstruct.py'
+ subprocess.run(['git','-C',str(REPO),'ls-files','--error-unmatch','--',relative],check=True,capture_output=True)
+print(json.dumps({'config_contract_pass':True,'all_candidate_inputs_committed_or_reconstructed':True,'runtime_required_outside_commit':0,'runtime_required_outside_candidate':0}))

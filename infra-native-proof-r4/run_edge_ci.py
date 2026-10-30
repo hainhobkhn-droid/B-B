@@ -14,10 +14,10 @@ try:
  probe=root/'functions/probe';shutil.copytree(SOURCE/'native',probe/'native')
  shutil.copyfile(SOURCE/'edge-probe.ts',probe/'index.ts');shutil.copyfile(SOURCE/'synthetic-goldens.json',probe/'synthetic-goldens.json')
  (root/'functions/main/index.ts').write_text('''Deno.serve(async(req)=>{
-  const name=new URL(req.url).pathname.split('/')[1];
+  const name=new URL(req.url).searchParams.get('ci_worker')??new URL(req.url).pathname.split('/')[1];
   if(name==='health')return Response.json({ready:true});
   if(!['probe','control','production-on','production-off'].includes(name))return new Response('NOT_FOUND',{status:404});
-  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-on'?'true':'false']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json','/proof/functions/production-on/candidate/context.json','/proof/functions/production-off/candidate/context.json'],context:{useReadSyncFileAPI:true}});if(name.startsWith('production-')){const routed=new URL(req.url);routed.pathname='/functions/v1/b3d-prepare';const body=await req.arrayBuffer();return await worker.fetch(new Request(routed,{method:req.method,headers:req.headers,body}));}return await worker.fetch(req);}
+  try{const worker=await EdgeRuntime.userWorkers.create({servicePath:'/proof/functions/'+name,memoryLimitMb:256,workerTimeoutMs:150000,cpuTimeSoftLimitMs:2000,cpuTimeHardLimitMs:2000,noModuleCache:false,forceCreate:new URL(req.url).searchParams.get('cold')==='1',envVars:name.startsWith('production-')?[['SUPABASE_URL','https://bflwaqlvnesuqoyikxar.supabase.co'],['SUPABASE_ANON_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['SUPABASE_SERVICE_ROLE_KEY','SYNTHETIC_ONLY_NOT_SECRET'],['B3D_PREPARE_ENABLED',name==='production-on'?'true':'false']]:[],staticPatterns:['/proof/functions/probe/synthetic-goldens.json','/proof/functions/production-on/candidate/context.json','/proof/functions/production-off/candidate/context.json'],context:{useReadSyncFileAPI:true}});return await worker.fetch(req);}
   catch(e){console.log('NATIVE_ROUTER_ERROR '+(e?.name||'Error')+' '+String(e?.message||'').slice(0,200));return Response.json({error:e?.name||'Error'},{status:String(e?.name).includes('Cancelled')?546:503});}
  });''')
  (root/'functions/control/index.ts').write_text('''Deno.serve(req=>{if(new URL(req.url).pathname.endsWith('/cpu')){const t=performance.now();while(performance.now()-t<2500){}}return Response.json({control:true});});''')
@@ -65,7 +65,7 @@ try:
  assert code==200 and body.get('ok') and body['passed']==7,'CONTEXT_BINDING_FAILED'
  result['production_entry_checks']=[]
  def app_request(mode,token='owner',origin='https://hainhobkhn-droid.github.io',cold=False):
-  path=mode+('?cold=1' if cold else '');headers={'Origin':origin,'Content-Type':'application/json'}
+  path='functions/v1/b3d-prepare?ci_worker='+mode+('&cold=1' if cold else '');headers={'Origin':origin,'Content-Type':'application/json'}
   if token is not None:headers['Authorization']='Bearer '+token
   req=urllib.request.Request('http://'+ip+':9000/'+path,data=json.dumps({'intent_id':'abcdef04-0000-4000-8000-000000000001'}).encode(),headers=headers,method='POST');start=time.monotonic()
   try:
@@ -79,7 +79,7 @@ try:
   ('invalid auth','production-on','invalid','https://hainhobkhn-droid.github.io',True,409),
   ('unrelated owner','production-on','unrelated','https://hainhobkhn-droid.github.io',True,409),
   ('wrong origin','production-on','owner','https://wrong.invalid',True,403)]:
-  code,body,wall=app_request(mode,token,origin,cold);ok=code==expected and (code!=200 or set(body)=={'intent_id','created_at','sealed','started','missed_or_void'})
+  code,body,wall=app_request(mode,token,origin,cold);ok=code==expected and (code!=200 or set(body)=={'intent_id','created_at','sealed','started','missed_or_void'}) and (code!=503 or body.get('error')=='PREPARATION_UNAVAILABLE')
   result['production_entry_checks'].append({'name':label,'status':code,'expected':expected,'wall_ms':wall,'pass':ok});assert ok,'PRODUCTION_ENTRY_FAILED:'+label+':'+str(code)
  result['exact_production_entry_pass']=True
  result['cpu_control_status']=request('control/cpu')[0]
