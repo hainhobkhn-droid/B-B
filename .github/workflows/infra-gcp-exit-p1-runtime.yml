@@ -58,7 +58,8 @@ jobs:
                 if(new URL(req.url).pathname.endsWith('/cpu')){const t=performance.now();while(performance.now()-t<2500){} }
                 return Response.json({control:true});
               });''')
-              (root/'functions/probe/index.ts').write_text('''import {loadPyodide} from '../../runtime/pyodide.mjs';
+              (root/'functions/probe/index.ts').write_text('''import '../../runtime/pyodide.asm.js';
+              import {loadPyodide} from '../../runtime/pyodide.mjs';
               let python;let initMs;
               Deno.serve(async()=>{
                 try{
