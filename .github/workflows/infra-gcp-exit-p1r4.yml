@@ -23,6 +23,7 @@ jobs:
       - name: Actual Edge Runtime - core and exact production bootstrap
         run: python3 infra-native-proof-r4/run_edge_ci.py
       - name: Strict identity closure gate - never waive old execution hash
+        if: always()
         run: python3 infra-native-proof-r4/identity_gate.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

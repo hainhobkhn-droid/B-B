@@ -1,5 +1,5 @@
 """Synthetic-only actual Supabase user-worker proof. No credentials or project API access."""
-import json,os,pathlib,shutil,subprocess,tempfile,time,urllib.request,urllib.error
+import json,os,pathlib,shutil,subprocess,tempfile,time,urllib.request,urllib.error,re
 SOURCE=pathlib.Path(__file__).resolve().parent
 IMAGE='supabase/edge-runtime@sha256:ad45164b7548bf5820ed7be714789c17ac2865edce79a09cfb4c3756c3d365a8'
 root=pathlib.Path(tempfile.mkdtemp(prefix='native-edge-',dir=os.environ['RUNNER_TEMP']));root.chmod(0o755)
@@ -89,7 +89,8 @@ try:
 except Exception as e:result['pass']=False;result['failure']=str(e)
 finally:
  if created:
-  (SOURCE/'native-runtime-container.log').write_text(cmd(['docker','logs',name],False).stdout+cmd(['docker','logs',name],False).stderr)
+  log=cmd(['docker','logs',name],False);diagnostic=log.stdout+log.stderr
+  result['runtime_diagnostics']=[re.sub(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}','[UUID]',line)[:500] for line in diagnostic.splitlines() if any(word in line for word in ['Error','error','failed','boot','Uncaught'])][-15:]
   cmd(['docker','rm','-f',name],False)
  if net:cmd(['docker','network','rm',network],False)
  shutil.rmtree(root)
