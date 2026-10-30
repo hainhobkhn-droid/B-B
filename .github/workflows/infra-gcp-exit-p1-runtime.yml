@@ -62,7 +62,7 @@ jobs:
               let python;let initMs;
               Deno.serve(async()=>{
                 try{
-                  if(!python){const t=performance.now();python=await loadPyodide({indexURL:'file:///proof/runtime/'});initMs=performance.now()-t;}
+                  if(!python){const t=performance.now();python=await loadPyodide({indexURL:new URL('../../runtime/',import.meta.url).pathname});initMs=performance.now()-t;}
                   const t=performance.now();const raw=python.runPython(`
           import json,hashlib
           from decimal import Decimal
