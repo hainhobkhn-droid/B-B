@@ -1,0 +1,12 @@
+{
+  "base_commit": "9c24879505652b26acc1313d78df0b81c083afb5",
+  "tag": "admin-overview-rating-20261031-v1",
+  "files": {
+    "_releases/admin-overview-rating-20261031-v1/app.js": "fbfc4482475da2158f679874bcaca024ea616ffe14f7c0a2b17c2c7f4706bfc5",
+    "_releases/admin-overview-rating-20261031-v1/app.css": "7c1952a1bcefc15590f14a97565a745a8aa1841e9485f21431278ab6e43902ef",
+    "_releases/admin-overview-rating-20261031-v1/account.js": "4a87a05d7836f11e9d072f56dfbb7aee33b20a94436c5043561cf0ad2e89387e",
+    "index.html": "accae7e641ab1ebcec1ca99c4e24e76e7cd8ef969e6c74974e1aea91363c008a"
+  },
+  "unchanged_runtime_assets": "all except app.js, app.css, account.js",
+  "backend_changed": false
+}
